@@ -1,67 +1,20 @@
-# Dependencies
+# Root-level dependencies (if any)
 node_modules/
-frontend/node_modules/
-backend/venv/
-backend/.venv/
-*.egg-info/
-__pycache__/
-*.pyc
-*.pyo
-*.pyd
 
-# Environment variables
+# Root-level environment
 .env
-.env.local
-.env.*.local
 
-# Build directories
-/build/
-/dist/
-/.react-router/
-/.next/
-/.nuxt/
-/out/
-
-# Cache directories
-.cache/
-.vitest/
-.pytest_cache/
-*.tsbuildinfo
-
-# IDE and Editor
+# IDE
 .vscode/
 .idea/
-*.sublime-project
-*.sublime-workspace
-*.swp
-*.swo
-*~
 .DS_Store
-Thumbs.db
-
-# Package managers
-bun.lock
-pnpm-lock.yaml
-yarn.lock
-package-lock.json
 
 # Logs
 *.log
 logs/
-npm-debug.log*
-yarn-debug.log*
-yarn-error.log*
 
-# Testing
-coverage/
-.nyc_output/
+# OS
+Thumbs.db
 
-# OS files
-.DS_Store
-.env.local
-
-# Temporary files
-*.tmp
-*.temp
-tmp/
-temp/
+# Docker
+.dockerignore
