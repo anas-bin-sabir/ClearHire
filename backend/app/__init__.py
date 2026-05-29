@@ -1,0 +1,1 @@
+"""ClearHire FastAPI backend."""

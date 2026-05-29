@@ -1,0 +1,23 @@
+fastapi==0.115.6
+uvicorn[standard]==0.34.0
+python-dotenv==1.0.1
+pydantic==2.10.4
+pydantic-settings==2.7.0
+
+# PostgreSQL (async)
+sqlalchemy[asyncio]==2.0.36
+asyncpg==0.30.0
+pgvector==0.3.6
+
+# MongoDB
+motor==3.6.0
+
+# Neo4j
+neo4j==5.27.0
+
+# AI / LLM
+anthropic==0.42.0
+numpy==2.2.1
+
+# CSP (optional helper; core solver is custom)
+python-constraint==1.4.0
