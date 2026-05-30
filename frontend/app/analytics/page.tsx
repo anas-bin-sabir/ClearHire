@@ -4,8 +4,9 @@ import { motion } from "motion/react";
 import { BarChart3, TrendingUp, Users, ShieldAlert, Cpu } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { getSession, isAdmin } from "@/utils/clearhire-auth";
+import { getAnalyticsTimeseries, type TimeSeriesResponse } from "@/lib/api";
 
-const BAR_DATA = [
+const FALLBACK_DATA = [
   { label: "Mon", searches: 48, teams: 12, fraud: 3 },
   { label: "Tue", searches: 62, teams: 18, fraud: 5 },
   { label: "Wed", searches: 55, teams: 14, fraud: 2 },
@@ -20,19 +21,35 @@ const MAX_VAL = 100;
 export default function AnalyticsPage() {
   const [session, setSession] = useState(null);
   const [authed, setAuthed] = useState(false);
+  const [barData, setBarData] = useState(FALLBACK_DATA);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     const s = getSession();
     setSession(s);
-    if (isAdmin(s)) setAuthed(true);
-    else window.location.href = "/dashboard";
+    if (isAdmin(s)) {
+      setAuthed(true);
+      // Load analytics data
+      getAnalyticsTimeseries(7)
+        .then((res) => {
+          setBarData(res.data || FALLBACK_DATA);
+        })
+        .catch(() => {
+          setBarData(FALLBACK_DATA);
+        })
+        .finally(() => {
+          setLoading(false);
+        });
+    } else {
+      window.location.href = "/dashboard";
+    }
   }, []);
 
   if (!authed) return null;
 
-  const totalSearches = BAR_DATA.reduce((s, d) => s + d.searches, 0);
-  const totalTeams = BAR_DATA.reduce((s, d) => s + d.teams, 0);
-  const totalFraud = BAR_DATA.reduce((s, d) => s + d.fraud, 0);
+  const totalSearches = barData.reduce((s, d) => s + d.searches, 0);
+  const totalTeams = barData.reduce((s, d) => s + d.teams, 0);
+  const totalFraud = barData.reduce((s, d) => s + d.fraud, 0);
 
   return (
     <AppLayout title="Analytics — Admin">
@@ -131,7 +148,7 @@ export default function AnalyticsPage() {
           </div>
 
           <div className="flex items-end gap-3 h-40">
-            {BAR_DATA.map((d, i) => (
+            {barData.map((d, i) => (
               <div
                 key={d.label}
                 className="flex-1 flex flex-col items-center gap-1"

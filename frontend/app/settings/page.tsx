@@ -19,7 +19,16 @@ import {
 import AppLayout from "@/components/AppLayout";
 import Link from "next/link";
 import { signOut } from "next-auth/react";
-import { getSession, setCachedSession, clearSession } from "@/utils/clearhire-auth";
+import {
+  getSession,
+  setCachedSession,
+  clearSession,
+} from "@/utils/clearhire-auth";
+import {
+  getUserSettings,
+  updateUserSettings,
+  type UserPreferences,
+} from "@/lib/api";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
@@ -432,59 +441,50 @@ function NotificationsSection() {
 }
 
 // ─── AI Preferences Section ────────────────────────────────────────────────────
-const AI_PREFS = [
-  {
-    id: "fraud_sensitivity",
-    label: "Fraud Detection Sensitivity",
-    desc: "Higher = more aggressive flagging at lower thresholds",
-    color: "#EF4444",
-  },
-  {
-    id: "match_weight_skills",
-    label: "Skill Match Weight (A* Search)",
-    desc: "How much skill overlap influences ranking score",
-    color: "#00D4FF",
-  },
-  {
-    id: "match_weight_rate",
-    label: "Rate Alignment Weight",
-    desc: "Penalty for freelancers above budget target",
-    color: "#7C3AED",
-  },
-  {
-    id: "csp_timeout",
-    label: "CSP Solver Aggressiveness",
-    desc: "Higher = explores more branches, slower but more optimal",
-    color: "#F59E0B",
-  },
-  {
-    id: "ai_verbosity",
-    label: "AI Explanation Verbosity",
-    desc: "Longer explanations with more reasoning detail",
-    color: "#10B981",
-  },
-];
-
-function AIPreferencesSection() {
+function AIPreferencesSection({ userId }: { userId: number }) {
   const [vals, setVals] = useState({
-    fraud_sensitivity: 65,
-    match_weight_skills: 80,
-    match_weight_rate: 40,
-    csp_timeout: 55,
-    ai_verbosity: 70,
+    notifications_enabled: true,
+    email_alerts: true,
+    fraud_sensitivity: 0.6,
+    preferred_skills: [],
+    theme: "dark",
   });
   const [saved, setSaved] = useState(false);
-  const set = (k, v) => setVals((p) => ({ ...p, [k]: v }));
-  const handleSave = () => {
-    setSaved(true);
-    setTimeout(() => setSaved(false), 2000);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    if (!userId) return;
+    // Load user preferences from backend
+    getUserSettings(userId)
+      .then((res) => {
+        setVals(res.preferences as any);
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId]);
+
+  const set = (k: string, v: any) => setVals((p) => ({ ...p, [k]: v }));
+
+  const handleSave = async () => {
+    if (!userId) return;
+    try {
+      await updateUserSettings(userId, vals);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {
+      console.error("Failed to save settings");
+    }
   };
+
+  if (loading)
+    return <div className="text-slate-500">Loading preferences...</div>;
+
   return (
     <div className="space-y-6">
       <div className="flex items-center gap-2 pb-1">
         <Sliders size={14} className="text-cyan-400" />
         <h4 className="text-[10px] font-mono uppercase tracking-widest text-slate-500">
-          AI Inference Parameters
+          AI & Security Preferences
         </h4>
       </div>
       <div
@@ -495,34 +495,93 @@ function AIPreferencesSection() {
         }}
       >
         <p className="text-[11px] font-mono text-cyan-400/80 leading-relaxed">
-          These sliders tune the weights used by the A* search, CSP solver, and
-          Bayesian fraud engine in real time.
+          Configure your fraud detection sensitivity and notification settings
         </p>
       </div>
-      <div className="space-y-6">
-        {AI_PREFS.map((p) => (
-          <div
-            key={p.id}
-            className="p-4 rounded-2xl space-y-3"
-            style={{
-              background: "rgba(255,255,255,0.02)",
-              border: "1px solid rgba(255,255,255,0.05)",
-            }}
-          >
-            <div>
-              <div className="text-sm font-medium text-white">{p.label}</div>
-              <div className="text-[10px] font-mono text-slate-500 mt-0.5">
-                {p.desc}
-              </div>
+      <div className="space-y-4">
+        <div
+          className="p-4 rounded-2xl space-y-3"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div>
+            <div className="text-sm font-medium text-white">
+              Fraud Detection Sensitivity
             </div>
-            <Slider
-              value={vals[p.id]}
-              onChange={(v) => set(p.id, v)}
-              color={p.color}
-              label={p.label.split(" ").slice(-1)[0]}
-            />
+            <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+              Higher = more aggressive flagging at lower thresholds (0.0 to 1.0)
+            </div>
           </div>
-        ))}
+          <div className="relative">
+            <input
+              type="range"
+              min="0"
+              max="1"
+              step="0.1"
+              value={vals.fraud_sensitivity}
+              onChange={(e) =>
+                set("fraud_sensitivity", parseFloat(e.target.value))
+              }
+              className="w-full"
+            />
+            <div className="text-xs font-mono text-red-400 mt-2">
+              {vals.fraud_sensitivity.toFixed(1)}
+            </div>
+          </div>
+        </div>
+
+        <div
+          className="p-4 rounded-2xl space-y-3"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div>
+            <div className="text-sm font-medium text-white">
+              Preferred Skills (comma-separated)
+            </div>
+            <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+              Mark skills you want to focus on
+            </div>
+          </div>
+          <input
+            type="text"
+            value={vals.preferred_skills?.join(", ") || ""}
+            onChange={(e) =>
+              set(
+                "preferred_skills",
+                e.target.value.split(",").map((s) => s.trim()),
+              )
+            }
+            placeholder="Python, React, FastAPI"
+            className={INPUT}
+          />
+        </div>
+
+        <div
+          className="p-4 rounded-2xl flex items-center justify-between"
+          style={{
+            background: "rgba(255,255,255,0.02)",
+            border: "1px solid rgba(255,255,255,0.05)",
+          }}
+        >
+          <div>
+            <div className="text-sm font-medium text-white">
+              Email Notifications
+            </div>
+            <div className="text-[10px] font-mono text-slate-500 mt-0.5">
+              Receive email alerts for important updates
+            </div>
+          </div>
+          <Toggle
+            checked={vals.email_alerts}
+            onChange={(v) => set("email_alerts", v)}
+            color="#00D4FF"
+          />
+        </div>
       </div>
       <div className="flex items-center gap-3">
         <button
@@ -536,22 +595,22 @@ function AIPreferencesSection() {
         >
           {saved ? (
             <>
-              <Check size={14} /> Applied
+              <Check size={14} /> Saved
             </>
           ) : (
             <>
-              <Cpu size={14} /> Apply to AI Engine
+              <Cpu size={14} /> Save Preferences
             </>
           )}
         </button>
         <button
           onClick={() =>
             setVals({
-              fraud_sensitivity: 65,
-              match_weight_skills: 80,
-              match_weight_rate: 40,
-              csp_timeout: 55,
-              ai_verbosity: 70,
+              notifications_enabled: true,
+              email_alerts: true,
+              fraud_sensitivity: 0.6,
+              preferred_skills: [],
+              theme: "dark",
             })
           }
           className="px-4 py-2.5 rounded-xl font-mono text-xs text-slate-400 transition-colors hover:text-white"
@@ -749,6 +808,8 @@ export default function SettingsPage() {
     setSessionState(getSession());
   }, []);
 
+  const userId = session?.id || 1; // Fallback to 1 if no session ID
+
   return (
     <AppLayout title="Settings">
       <div className="space-y-6 pb-10 max-w-4xl">
@@ -823,7 +884,7 @@ export default function SettingsPage() {
                   />
                 )}
                 {active === "notifications" && <NotificationsSection />}
-                {active === "ai" && <AIPreferencesSection />}
+                {active === "ai" && <AIPreferencesSection userId={userId} />}
                 {active === "danger" && <DangerZoneSection session={session} />}
               </motion.div>
             </AnimatePresence>

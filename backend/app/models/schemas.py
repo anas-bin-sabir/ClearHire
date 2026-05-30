@@ -203,3 +203,37 @@ class HealthResponse(BaseModel):
     mongodb: str
     neo4j: str
     anthropic_configured: bool
+
+
+# --- Analytics ---
+
+
+class DayMetrics(BaseModel):
+    label: str
+    searches: int
+    teams: int
+    fraud: int
+
+
+class TimeSeriesResponse(BaseModel):
+    data: list[DayMetrics]
+    total_searches: int
+    total_teams: int
+    total_fraud: int
+    period: str = "weekly"
+
+
+# --- Settings ---
+
+
+class UserPreferences(BaseModel):
+    notifications_enabled: bool = True
+    email_alerts: bool = True
+    fraud_sensitivity: float = Field(default=0.6, ge=0.0, le=1.0)
+    preferred_skills: list[str] = Field(default_factory=list)
+    theme: str = "dark"
+
+
+class UserSettingsResponse(BaseModel):
+    user_id: int
+    preferences: UserPreferences

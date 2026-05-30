@@ -21,7 +21,12 @@ import {
 import AppLayout from "@/components/AppLayout";
 import FraudGauge from "@/components/FraudGauge";
 import AIReasoningBox from "@/components/AIReasoningBox";
-import { getFreelancer, enrichFreelancer } from "@/lib/api";
+import {
+  getFreelancer,
+  enrichFreelancer,
+  getFraudScore,
+  type FraudResponse,
+} from "@/lib/api";
 
 const TABS = ["Overview", "Skills", "Work History", "Reviews", "Fraud Report"];
 
@@ -601,7 +606,38 @@ function ReviewsTab({ f }) {
 
 // ─── Fraud Report Tab ──────────────────────────────────────────────────────────
 function FraudReportTab({ f }) {
-  const pct = Math.round(f.fraud_score * 100);
+  const [fraudData, setFraudData] = useState<FraudResponse | null>(null);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    getFraudScore({
+      freelancer_id: f.id,
+      name: f.name,
+      account_age_days: f.account_age_days,
+      rating: f.rating,
+      hourly_rate: f.hourly_rate,
+      experience_years: f.experience_years,
+      review_count: f.review_count,
+      portfolio_urls: f.portfolio_urls,
+      skills: f.skills,
+    })
+      .then(setFraudData)
+      .catch(() => setFraudData(null))
+      .finally(() => setLoading(false));
+  }, [f]);
+
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center py-12">
+        <div className="text-slate-500 font-mono text-sm">
+          Loading fraud analysis...
+        </div>
+      </div>
+    );
+  }
+
+  const score = fraudData?.score ?? f.fraud_score;
+  const pct = Math.round(score * 100);
   const vel =
     f.account_age_days > 0
       ? ((f.review_count / f.account_age_days) * 30).toFixed(1)
@@ -609,22 +645,26 @@ function FraudReportTab({ f }) {
   const rateMismatch = f.hourly_rate > 130 && f.experience_years < 3;
   const highVel = parseFloat(vel) > 5;
 
-  const aiText = `Comprehensive fraud assessment for ${f.name} (ID #${f.id}). Account registered ${f.account_age_days} days ago — ${f.account_age_days < 30 ? "HIGH RISK: very new account" : "account tenure is normal"}. Hourly rate of $${f.hourly_rate}/hr with ${f.experience_years} years experience ${rateMismatch ? "shows a significant rate-experience mismatch — red flag" : "is consistent with stated experience"}. Review count of ${f.review_count} at a velocity of ${vel}/month — ${highVel ? "ANOMALOUS velocity detected — potential review ring" : "within normal range"}. Final Bayesian posterior probability: ${pct}%. Confidence: 92%. Verdict: ${pct < 30 ? "AUTHENTIC — proceed with standard vetting." : pct < 70 ? "SUSPICIOUS — enhanced manual verification required before contract." : "FRAUDULENT — BLOCK RECOMMENDED, escalate to fraud review team immediately."}`;
-
   return (
     <div className="space-y-5">
       <div
         className="flex flex-col items-center gap-5 p-6 rounded-2xl"
         style={{
           background: "rgba(17,24,39,0.8)",
-          border: `1px solid ${f.fraud_score < 0.3 ? "rgba(16,185,129,0.2)" : f.fraud_score < 0.7 ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.25)"}`,
+          border: `1px solid ${score < 0.3 ? "rgba(16,185,129,0.2)" : score < 0.7 ? "rgba(245,158,11,0.2)" : "rgba(239,68,68,0.25)"}`,
         }}
       >
-        <FraudGauge score={f.fraud_score} size={160} thickness={12} />
+        <FraudGauge score={score} size={160} thickness={12} />
         <div className="w-full max-w-xs space-y-2">
           <div className="flex justify-between text-[10px] font-mono text-slate-500 uppercase">
             <span>Confidence Index</span>
-            <span className="text-cyan-400">92%</span>
+            <span className="text-cyan-400">
+              {fraudData?.confidence === "high"
+                ? "95%"
+                : fraudData?.confidence === "medium"
+                  ? "80%"
+                  : "60%"}
+            </span>
           </div>
           <div
             className="h-1.5 rounded-full overflow-hidden"
@@ -632,7 +672,14 @@ function FraudReportTab({ f }) {
           >
             <motion.div
               initial={{ width: 0 }}
-              animate={{ width: "92%" }}
+              animate={{
+                width:
+                  fraudData?.confidence === "high"
+                    ? "95%"
+                    : fraudData?.confidence === "medium"
+                      ? "80%"
+                      : "60%",
+              }}
               transition={{ delay: 0.5, duration: 0.9 }}
               className="h-full rounded-full bg-cyan-400"
             />
@@ -678,7 +725,7 @@ function FraudReportTab({ f }) {
 
       <AIReasoningBox
         key={`fraud-${f.id}`}
-        text={aiText}
+        text={fraudData?.explanation || "Fetching fraud analysis..."}
         speed={14}
         title="FRAUD RISK ASSESSMENT"
       />

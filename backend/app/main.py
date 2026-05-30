@@ -11,7 +11,7 @@ from app.db.neo4j_client import get_neo4j_driver
 from app.db.repositories.neo4j import GraphRepository
 from app.db.session import async_session_factory
 from app.models.schemas import HealthResponse
-from app.routers import fraud, freelancers, graph, projects, search, seed, stats, team_builder
+from app.routers import analytics, fraud, freelancers, graph, projects, search, seed, settings, stats, team_builder
 
 
 @asynccontextmanager
@@ -55,6 +55,8 @@ app.include_router(seed.router, prefix="/seed", tags=["Seed"])
 app.include_router(freelancers.router, prefix="/freelancers", tags=["Freelancers"])
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
+app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(settings.router, prefix="/settings", tags=["Settings"])
 
 
 @app.get("/")
@@ -71,6 +73,9 @@ async def root():
             "GET /freelancers",
             "GET /projects",
             "GET /stats",
+            "GET /analytics",
+            "GET /settings/{user_id}",
+            "POST /settings/{user_id}",
             "GET /health",
         ],
     }
