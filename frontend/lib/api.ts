@@ -307,7 +307,7 @@ export function seedDatabase(
     method: "POST",
     body: JSON.stringify({ freelancer_count: freelancerCount, reset }),
   });
-
+}
 
 export function getAnalyticsTimeseries(
   days: number = 7,

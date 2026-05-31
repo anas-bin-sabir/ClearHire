@@ -11,8 +11,8 @@ from app.db.neo4j_client import get_neo4j_driver
 from app.db.repositories.neo4j import GraphRepository
 from app.db.session import async_session_factory
 from app.models.schemas import HealthResponse
-from app.routers import analytics, fraud, freelancers, graph, projects, search, seed, settings, stats, team_builder
-
+from app.routers import analytics, fraud, freelancers, graph, projects, search, seed, stats, team_builder, user_settings
+from app.core.config import settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
@@ -56,7 +56,7 @@ app.include_router(freelancers.router, prefix="/freelancers", tags=["Freelancers
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
-app.include_router(settings.router, prefix="/settings", tags=["Settings"])
+app.include_router(user_settings.router, prefix="/settings", tags=["Settings"])
 
 
 @app.get("/")

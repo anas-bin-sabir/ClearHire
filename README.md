@@ -1,6 +1,6 @@
 # ClearHire — Full Project Setup Guide
 
-> Based on the SRS: Next.js frontend · FastAPI backend · PostgreSQL + pgvector · Neo4j · LLM API
+> Next.js frontend · FastAPI backend · PostgreSQL + pgvector · Neo4j · LLM API
 
 ---
 
@@ -18,6 +18,26 @@ Download links:
 - Python: https://www.python.org/downloads/
 - Node.js: https://nodejs.org/
 - Docker Desktop: https://www.docker.com/products/docker-desktop/
+
+---
+
+## Multi-database Approach Benefits
+
+- Performance - Each DB optimized for its use case
+- Reliability - Separate failure domains
+- Scalability - Independent scaling per database
+- Intelligence - Graph for recommendations, vectors for ML
+
+---
+
+## Data Flow Example
+
+1. User searches for "Python + React developers"
+2. Query goes to PostgreSQL (vector search + embedding)
+3. Neo4j finds related skills (Python → JavaScript → React)
+4. MongoDB logs the search query for analytics
+5. Results returned with AI explanations (also saved to MongoDB)
+6. Activity logged to MongoDB for audit trail
 
 ---
 

@@ -1,5 +1,6 @@
 # Root-level dependencies (if any)
 node_modules/
+.next/
 
 # Root-level environment
 .env
