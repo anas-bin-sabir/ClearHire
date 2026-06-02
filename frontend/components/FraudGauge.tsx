@@ -1,6 +1,14 @@
 "use client";
 import { useEffect, useRef } from "react";
 
+interface FraudGaugeProps {
+  score?: number;
+  size?: number;
+  thickness?: number;
+  showLabel?: boolean;
+  animated?: boolean;
+}
+
 /**
  * Shared animated SVG fraud gauge.
  * Props:
@@ -16,8 +24,8 @@ export default function FraudGauge({
   thickness = 10,
   showLabel = true,
   animated = true,
-}) {
-  const circleRef = useRef(null);
+}: FraudGaugeProps) {
+  const circleRef = useRef<SVGCircleElement>(null);
   const pct = Math.round(score * 100);
 
   const color = pct < 30 ? "#10B981" : pct < 70 ? "#F59E0B" : "#EF4444";
@@ -41,19 +49,20 @@ export default function FraudGauge({
   useEffect(() => {
     if (!circleRef.current) return;
     if (!animated) {
-      circleRef.current.style.strokeDashoffset = targetOffset;
+      circleRef.current.style.strokeDashoffset = `${targetOffset}`;
       return;
     }
-    circleRef.current.style.strokeDashoffset = circumference;
+    circleRef.current.style.strokeDashoffset = `${circumference}`;
     const start = performance.now();
     const duration = 1100;
 
-    const raf = requestAnimationFrame(function step(now) {
+    const raf = requestAnimationFrame(function step(now: number) {
       const t = Math.min((now - start) / duration, 1);
       // easeOutCubic
       const eased = 1 - Math.pow(1 - t, 3);
       const current = circumference - eased * (circumference - targetOffset);
-      if (circleRef.current) circleRef.current.style.strokeDashoffset = current;
+      if (circleRef.current)
+        circleRef.current.style.strokeDashoffset = `${current}`;
       if (t < 1) requestAnimationFrame(step);
     });
     return () => cancelAnimationFrame(raf);

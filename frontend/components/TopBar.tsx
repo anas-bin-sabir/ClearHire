@@ -13,7 +13,29 @@ import { signOut } from "next-auth/react";
 import { getSession, clearSession } from "@/utils/clearhire-auth";
 import { motion, AnimatePresence } from "motion/react";
 
-const ROLE_CONFIG = {
+interface RoleConfig {
+  label: string;
+  color: string;
+  bg: string;
+  icon: React.ComponentType<{ size: number }>;
+}
+
+interface Notification {
+  id: number;
+  text: string;
+  time: string;
+  type: "warning" | "success" | "info";
+}
+
+interface Session {
+  role: string;
+  name: string;
+  email: string;
+  avatar: string;
+  department: string;
+}
+
+const ROLE_CONFIG: Record<string, RoleConfig> = {
   admin: {
     label: "Admin",
     color: "text-violet-400",
@@ -34,7 +56,7 @@ const ROLE_CONFIG = {
   },
 };
 
-const DUMMY_NOTIFICATIONS = [
+const DUMMY_NOTIFICATIONS: Notification[] = [
   {
     id: 1,
     text: "New fraud signal detected on Account #8241",
@@ -55,16 +77,20 @@ const DUMMY_NOTIFICATIONS = [
   },
 ];
 
-export default function TopBar({ pageTitle }) {
-  const [session, setSession] = useState(null);
-  const [showNotifs, setShowNotifs] = useState(false);
-  const [showUser, setShowUser] = useState(false);
+interface TopBarProps {
+  pageTitle?: string;
+}
+
+export default function TopBar({ pageTitle }: TopBarProps) {
+  const [session, setSession] = useState<Session | null>(null);
+  const [showNotifs, setShowNotifs] = useState<boolean>(false);
+  const [showUser, setShowUser] = useState<boolean>(false);
 
   useEffect(() => {
-    setSession(getSession());
+    setSession(getSession() as Session | null);
   }, []);
 
-  const role = ROLE_CONFIG[session?.role] || ROLE_CONFIG.client;
+  const role = ROLE_CONFIG[session?.role || "client"] || ROLE_CONFIG.client;
   const RoleIcon = role.icon;
 
   return (

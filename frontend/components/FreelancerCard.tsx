@@ -10,7 +10,26 @@ import {
   Users,
 } from "lucide-react";
 
-function FraudBadge({ score }) {
+interface Freelancer {
+  id: number;
+  name: string;
+  avatar: string;
+  location?: string;
+  skills: string[];
+  rating: number;
+  hourly_rate: number;
+  experience_years: number;
+  availability: boolean;
+  fraud_score: number;
+  match_score: number;
+  [key: string]: any;
+}
+
+interface FraudBadgeProps {
+  score: number;
+}
+
+function FraudBadge({ score }: FraudBadgeProps) {
   const pct = Math.round(score * 100);
   const cfg =
     pct < 25
@@ -75,12 +94,19 @@ function FraudBadge({ score }) {
   );
 }
 
+interface FreelancerCardProps {
+  freelancer: Freelancer;
+  index?: number;
+  onViewProfile?: (freelancer: Freelancer) => void;
+  onAddToTeam?: (freelancer: Freelancer) => void;
+}
+
 export default function FreelancerCard({
   freelancer,
   index = 0,
   onViewProfile,
   onAddToTeam,
-}) {
+}: FreelancerCardProps) {
   const {
     name,
     avatar,
@@ -183,7 +209,7 @@ export default function FreelancerCard({
 
       {/* Skills */}
       <div className="flex flex-wrap gap-1.5">
-        {skills.slice(0, 4).map((s) => (
+        {skills.slice(0, 4).map((s: string) => (
           <span
             key={s}
             className="px-2 py-0.5 rounded-md text-[10px] font-mono text-slate-300"
@@ -249,10 +275,12 @@ export default function FreelancerCard({
             color: "#00D4FF",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(0,212,255,0.15)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "rgba(0,212,255,0.15)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(0,212,255,0.08)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "rgba(0,212,255,0.08)";
           }}
         >
           <span className="flex items-center justify-center gap-1.5">
@@ -268,10 +296,12 @@ export default function FreelancerCard({
             color: "#A78BFA",
           }}
           onMouseEnter={(e) => {
-            e.currentTarget.style.background = "rgba(124,58,237,0.15)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "rgba(124,58,237,0.15)";
           }}
           onMouseLeave={(e) => {
-            e.currentTarget.style.background = "rgba(124,58,237,0.08)";
+            (e.currentTarget as HTMLButtonElement).style.background =
+              "rgba(124,58,237,0.08)";
           }}
         >
           <span className="flex items-center justify-center gap-1.5">

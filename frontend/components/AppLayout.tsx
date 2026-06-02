@@ -1,5 +1,5 @@
 "use client";
-import { useState, useEffect } from "react";
+import { useState, useEffect, ReactNode } from "react";
 import { motion } from "motion/react";
 import { useSession } from "next-auth/react";
 import { usePathname, useRouter } from "next/navigation";
@@ -7,9 +7,23 @@ import Sidebar from "@/components/Sidebar";
 import TopBar from "@/components/TopBar";
 import { setCachedSession } from "@/utils/clearhire-auth";
 
-export default function AppLayout({ children, title }) {
-  const [collapsed, setCollapsed] = useState(false);
-  const [mounted, setMounted] = useState(false);
+interface AppLayoutProps {
+  children: ReactNode;
+  title?: string;
+}
+
+interface SessionUser {
+  id: string;
+  name: string;
+  email: string;
+  role: string;
+  avatar: string;
+  department: string;
+}
+
+export default function AppLayout({ children, title }: AppLayoutProps) {
+  const [collapsed, setCollapsed] = useState<boolean>(false);
+  const [mounted, setMounted] = useState<boolean>(false);
   const { data: session, status } = useSession();
   const router = useRouter();
   const pathname = usePathname();
@@ -26,17 +40,18 @@ export default function AppLayout({ children, title }) {
       router.replace("/login");
       return;
     }
+    const user = session.user as SessionUser;
     setCachedSession({
-      id: Number(session.user.id),
-      name: session.user.name,
-      email: session.user.email,
-      role: session.user.role,
-      avatar: session.user.avatar,
-      department: session.user.department,
+      id: Number(user.id),
+      name: user.name,
+      email: user.email,
+      role: user.role,
+      avatar: user.avatar,
+      department: user.department,
     });
   }, [session, status, router]);
 
-  const handleToggle = () => {
+  const handleToggle = (): void => {
     const next = !collapsed;
     setCollapsed(next);
     localStorage.setItem("clearhire_sidebar", next ? "collapsed" : "open");

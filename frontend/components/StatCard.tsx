@@ -2,20 +2,24 @@
 import { useEffect, useRef, useState } from "react";
 import { motion } from "motion/react";
 
-function useCountUp(target, duration = 1200, delay = 0) {
-  const [value, setValue] = useState(0);
-  const raf = useRef(null);
+function useCountUp(
+  target: string | number,
+  duration: number = 1200,
+  delay: number = 0,
+): number {
+  const [value, setValue] = useState<number>(0);
+  const raf = useRef<number | null>(null);
 
   useEffect(() => {
     const numeric = parseFloat(String(target).replace(/[^0-9.]/g, ""));
     if (isNaN(numeric)) {
-      setValue(target);
+      setValue(Number(target));
       return;
     }
 
-    let start = null;
+    let start: number | null = null;
     const timeout = setTimeout(() => {
-      const step = (timestamp) => {
+      const step = (timestamp: number): void => {
         if (!start) start = timestamp;
         const progress = Math.min((timestamp - start) / duration, 1);
         // easeOutExpo
@@ -30,12 +34,56 @@ function useCountUp(target, duration = 1200, delay = 0) {
 
     return () => {
       clearTimeout(timeout);
-      cancelAnimationFrame(raf.current);
+      if (raf.current) cancelAnimationFrame(raf.current);
     };
   }, [target, duration, delay]);
 
   return value;
 }
+
+interface StatCardProps {
+  label: string;
+  value: string | number;
+  icon: React.ComponentType<{ size: number }>;
+  color?: string;
+  delay?: number;
+  suffix?: string;
+  trend?: string;
+}
+
+interface ColorTheme {
+  glow: string;
+  border: string;
+  bg: string;
+}
+
+const colorMap: Record<string, ColorTheme> = {
+  "text-cyan-400": {
+    glow: "rgba(0,212,255,0.08)",
+    border: "rgba(0,212,255,0.12)",
+    bg: "rgba(0,212,255,0.08)",
+  },
+  "text-violet-400": {
+    glow: "rgba(124,58,237,0.08)",
+    border: "rgba(124,58,237,0.12)",
+    bg: "rgba(124,58,237,0.08)",
+  },
+  "text-red-400": {
+    glow: "rgba(239,68,68,0.08)",
+    border: "rgba(239,68,68,0.12)",
+    bg: "rgba(239,68,68,0.08)",
+  },
+  "text-emerald-400": {
+    glow: "rgba(16,185,129,0.08)",
+    border: "rgba(16,185,129,0.12)",
+    bg: "rgba(16,185,129,0.08)",
+  },
+  "text-yellow-400": {
+    glow: "rgba(245,158,11,0.08)",
+    border: "rgba(245,158,11,0.12)",
+    bg: "rgba(245,158,11,0.08)",
+  },
+};
 
 export default function StatCard({
   label,
@@ -45,37 +93,10 @@ export default function StatCard({
   delay = 0,
   suffix = "",
   trend,
-}) {
+}: StatCardProps) {
   const count = useCountUp(value, 1400, delay);
 
-  const colorMap = {
-    "text-cyan-400": {
-      glow: "rgba(0,212,255,0.08)",
-      border: "rgba(0,212,255,0.12)",
-      bg: "rgba(0,212,255,0.08)",
-    },
-    "text-violet-400": {
-      glow: "rgba(124,58,237,0.08)",
-      border: "rgba(124,58,237,0.12)",
-      bg: "rgba(124,58,237,0.08)",
-    },
-    "text-red-400": {
-      glow: "rgba(239,68,68,0.08)",
-      border: "rgba(239,68,68,0.12)",
-      bg: "rgba(239,68,68,0.08)",
-    },
-    "text-emerald-400": {
-      glow: "rgba(16,185,129,0.08)",
-      border: "rgba(16,185,129,0.12)",
-      bg: "rgba(16,185,129,0.08)",
-    },
-    "text-yellow-400": {
-      glow: "rgba(245,158,11,0.08)",
-      border: "rgba(245,158,11,0.12)",
-      bg: "rgba(245,158,11,0.08)",
-    },
-  };
-  const theme = colorMap[color] ?? colorMap["text-cyan-400"];
+  const theme = colorMap[color] || colorMap["text-cyan-400"];
 
   return (
     <motion.div

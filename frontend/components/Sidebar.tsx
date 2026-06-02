@@ -18,7 +18,19 @@ import {
 } from "lucide-react";
 import { getSession, isAdmin } from "@/utils/clearhire-auth";
 
-const ALL_ROUTES = [
+interface RouteItem {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size: number }>;
+}
+
+interface RouteSection {
+  section: string;
+  items: RouteItem[];
+  adminOnly?: boolean;
+}
+
+const ALL_ROUTES: RouteSection[] = [
   {
     section: "Intelligence",
     items: [
@@ -46,11 +58,16 @@ const ALL_ROUTES = [
   },
 ];
 
-export default function Sidebar({ collapsed, onToggle }) {
+interface SidebarProps {
+  collapsed: boolean;
+  onToggle: () => void;
+}
+
+export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
   const pathname = usePathname();
   const session = getSession();
 
-  const isActive = (href) => pathname === href;
+  const isActive = (href: string): boolean => pathname === href;
 
   return (
     <>

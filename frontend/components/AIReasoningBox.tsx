@@ -2,25 +2,32 @@
 import { useEffect, useState, useRef } from "react";
 import { Cpu, Terminal } from "lucide-react";
 
+interface AIReasoningBoxProps {
+  text?: string;
+  title?: string;
+  speed?: number;
+  onDone?: () => void;
+}
+
 export default function AIReasoningBox({
   text = "",
   title = "AI REASONING",
   speed = 18,
   onDone = () => {},
-}) {
-  const [displayed, setDisplayed] = useState("");
-  const [done, setDone] = useState(false);
-  const [cursor, setCursor] = useState(true);
-  const indexRef = useRef(0);
-  const timerRef = useRef(null);
-  const cursorRef = useRef(null);
+}: AIReasoningBoxProps) {
+  const [displayed, setDisplayed] = useState<string>("");
+  const [done, setDone] = useState<boolean>(false);
+  const [cursor, setCursor] = useState<boolean>(true);
+  const indexRef = useRef<number>(0);
+  const timerRef = useRef<NodeJS.Timeout | null>(null);
+  const cursorRef = useRef<NodeJS.Timeout | null>(null);
 
   useEffect(() => {
     setDisplayed("");
     setDone(false);
     indexRef.current = 0;
 
-    const type = () => {
+    const type = (): void => {
       if (indexRef.current < text.length) {
         const chunk = text.slice(0, indexRef.current + 1);
         setDisplayed(chunk);
@@ -36,13 +43,17 @@ export default function AIReasoningBox({
     };
 
     timerRef.current = setTimeout(type, 300);
-    return () => clearTimeout(timerRef.current);
-  }, [text, speed]);
+    return () => {
+      if (timerRef.current) clearTimeout(timerRef.current);
+    };
+  }, [text, speed, onDone]);
 
   // Cursor blink
   useEffect(() => {
     cursorRef.current = setInterval(() => setCursor((c) => !c), 530);
-    return () => clearInterval(cursorRef.current);
+    return () => {
+      if (cursorRef.current) clearInterval(cursorRef.current);
+    };
   }, []);
 
   return (

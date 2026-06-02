@@ -10,7 +10,13 @@ import {
   X,
 } from "lucide-react";
 
-const links = [
+interface NavLink {
+  href: string;
+  label: string;
+  icon: React.ComponentType<{ size: number }>;
+}
+
+const links: NavLink[] = [
   { href: "/", label: "Dashboard", icon: Home },
   { href: "/search", label: "Search", icon: Search },
   { href: "/team-builder", label: "Team Builder", icon: Users },
@@ -19,7 +25,7 @@ const links = [
 ];
 
 export default function Nav() {
-  const [open, setOpen] = useState(false);
+  const [open, setOpen] = useState<boolean>(false);
   const current =
     typeof window !== "undefined" ? window.location.pathname : "/";
 
