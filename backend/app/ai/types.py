@@ -68,7 +68,7 @@ class RankingWeights(BaseModel):
             embedding=self.embedding / total,
         )
 
-
+T
 class ScoreBreakdown(BaseModel):
     skill_gap: float = Field(ge=0.0, le=1.0)
     budget_deviation: float = Field(ge=0.0, le=1.0)
