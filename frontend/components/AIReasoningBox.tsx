@@ -32,7 +32,6 @@ export default function AIReasoningBox({
         const chunk = text.slice(0, indexRef.current + 1);
         setDisplayed(chunk);
         indexRef.current += 1;
-        // Variable speed: faster on spaces/punctuation for natural feel
         const char = text[indexRef.current - 1];
         const delay = /[.,!?;:]/.test(char) ? speed * 4 : speed;
         timerRef.current = setTimeout(type, delay);
@@ -43,63 +42,79 @@ export default function AIReasoningBox({
     };
 
     timerRef.current = setTimeout(type, 300);
-    return () => {
-      if (timerRef.current) clearTimeout(timerRef.current);
-    };
+    return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [text, speed, onDone]);
 
-  // Cursor blink
   useEffect(() => {
     cursorRef.current = setInterval(() => setCursor((c) => !c), 530);
-    return () => {
-      if (cursorRef.current) clearInterval(cursorRef.current);
-    };
+    return () => { if (cursorRef.current) clearInterval(cursorRef.current); };
   }, []);
 
   return (
     <div
-      style={{
-        background: "rgba(0,0,0,0.5)",
-        border: "1px solid rgba(0,212,255,0.2)",
-        borderLeft: "3px solid #00D4FF",
-      }}
       className="rounded-r-xl rounded-bl-xl p-5 font-mono"
+      style={{
+        background: `rgba(var(--bg-primary-rgb), 0.5)`,
+        border: `1px solid rgba(var(--color-primary-rgb), 0.2)`,
+        borderLeft: `3px solid var(--color-primary)`,
+      }}
     >
       {/* Header */}
       <div className="flex items-center gap-2 mb-4">
-        <div className="flex items-center gap-1.5 px-2.5 py-1 rounded-md bg-cyan-500/10 border border-cyan-500/20">
+        <div
+          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
+          style={{
+            background: `rgba(var(--color-primary-rgb), 0.1)`,
+            border: `1px solid rgba(var(--color-primary-rgb), 0.2)`,
+          }}
+        >
           <Cpu
             size={11}
-            className="text-cyan-400"
-            style={{ animation: "aipulse 2s ease-in-out infinite" }}
+            style={{ color: "var(--color-primary)", animation: "aipulse 2s ease-in-out infinite" }}
           />
-          <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-cyan-400">
+          <span
+            className="text-[9px] font-mono uppercase tracking-[0.2em]"
+            style={{ color: "var(--color-primary)" }}
+          >
             {title}
           </span>
         </div>
-        <Terminal size={13} className="text-slate-600 ml-auto" />
+        <Terminal size={13} className="ml-auto" style={{ color: "var(--text-subtle)" }} />
         <div className="flex gap-1">
-          <div className="w-2 h-2 rounded-full bg-red-500/60" />
-          <div className="w-2 h-2 rounded-full bg-yellow-500/60" />
-          <div className="w-2 h-2 rounded-full bg-emerald-500/60" />
+          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-danger-rgb),0.6)" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-warning-rgb),0.6)" }} />
+          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-success-rgb),0.6)" }} />
         </div>
       </div>
 
       {/* Typed content */}
-      <div className="text-[12px] leading-[1.8] text-cyan-100/80 min-h-[3rem]">
+      <div
+        className="text-[12px] leading-[1.8] min-h-[3rem]"
+        style={{ color: `rgba(var(--color-primary-rgb), 0.8)` }}
+      >
         <span>{displayed}</span>
         {!done && (
           <span
-            className="inline-block w-[2px] h-[14px] bg-cyan-400 ml-0.5 align-middle"
-            style={{ opacity: cursor ? 1 : 0, transition: "opacity 0.1s" }}
+            className="inline-block w-[2px] h-[14px] ml-0.5 align-middle"
+            style={{
+              background: "var(--color-primary)",
+              opacity: cursor ? 1 : 0,
+              transition: "opacity 0.1s",
+            }}
           />
         )}
       </div>
 
       {done && (
-        <div className="mt-3 pt-3 border-t border-white/5 flex items-center gap-2">
-          <div className="w-1.5 h-1.5 rounded-full bg-emerald-400" />
-          <span className="text-[9px] font-mono uppercase tracking-widest text-emerald-400">
+        <div
+          className="mt-3 pt-3 flex items-center gap-2"
+          style={{ borderTop: `1px solid rgba(var(--border-base), 0.05)` }}
+        >
+          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--color-success)" }} />
+          <span
+            className="text-[9px] font-mono uppercase tracking-widest"
+            style={{ color: "var(--color-success)" }}
+          >
             Analysis complete
           </span>
         </div>

@@ -2,6 +2,95 @@
 @tailwind components;
 @tailwind utilities;
 
+/* ═══════════════════════════════════════════════════════════════
+   THEME TOKENS — Single source of truth.
+   Changing one variable here updates the entire UI instantly.
+═══════════════════════════════════════════════════════════════ */
+
+:root {
+  /* ── Brand ── */
+  --color-primary: #4B5BFF;
+  --color-primary-rgb: 75, 91, 255;
+  --color-secondary: #A259FF;
+  --color-secondary-rgb: 162, 89, 255;
+  --color-accent: #00BFA6;
+  --color-accent-rgb: 0, 191, 166;
+
+  /* ── Status ── */
+  --color-success: #10B981;
+  --color-success-rgb: 16, 185, 129;
+  --color-warning: #F59E0B;
+  --color-warning-rgb: 245, 158, 11;
+  --color-danger: #EF4444;
+  --color-danger-rgb: 239, 68, 68;
+
+  /* ── Backgrounds ── */
+  --bg-primary: #0B0F14;
+  --bg-primary-rgb: 11, 15, 20;
+  --bg-secondary: #111827;
+  --bg-secondary-rgb: 17, 24, 39;
+  --bg-surface: #0D1117;
+  --bg-surface-rgb: 13, 17, 23;
+
+  /* ── Text ── */
+  --text-primary: #FFFFFF;
+  --text-secondary: #94A3B8;
+  --text-muted: #475569;
+  --text-subtle: #64748B;
+
+  /* ── Border RGB base — for rgba(var(--border-base), 0.05) patterns ── */
+  --border-base: 255, 255, 255;
+
+  /* ── Misc ── */
+  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
+  --select-bg: #111827;
+  --grid-line: rgba(0, 212, 255, 0.5);
+}
+
+/* ─── Light Mode Overrides ─────────────────────────────────── */
+[data-theme="light"] {
+  /* Brand — same across modes */
+  --color-primary: #4B5BFF;
+  --color-primary-rgb: 75, 91, 255;
+  --color-secondary: #A259FF;
+  --color-secondary-rgb: 162, 89, 255;
+  --color-accent: #00BFA6;
+  --color-accent-rgb: 0, 191, 166;
+
+  /* Status — darker variants for light bg readability */
+  --color-success: #059669;
+  --color-success-rgb: 5, 150, 105;
+  --color-warning: #D97706;
+  --color-warning-rgb: 217, 119, 6;
+  --color-danger: #DC2626;
+  --color-danger-rgb: 220, 38, 38;
+
+  /* Backgrounds */
+  --bg-primary: #FFFFFF;
+  --bg-primary-rgb: 255, 255, 255;
+  --bg-secondary: #F5F7FA;
+  --bg-secondary-rgb: 245, 247, 250;
+  --bg-surface: #EAECF0;
+  --bg-surface-rgb: 234, 236, 240;
+
+  /* Text */
+  --text-primary: #111111;
+  --text-secondary: #555555;
+  --text-muted: #9CA3AF;
+  --text-subtle: #6B7280;
+
+  /* Border base flips for light mode */
+  --border-base: 0, 0, 0;
+
+  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
+  --select-bg: #F5F7FA;
+  --grid-line: rgba(75, 91, 255, 0.4);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   BASE STYLES
+═══════════════════════════════════════════════════════════════ */
+
 @layer base {
   input,
   textarea,
@@ -17,42 +106,123 @@
   box-sizing: border-box;
 }
 
+html {
+  color-scheme: dark;
+}
+
+[data-theme="light"] {
+  color-scheme: light;
+}
+
 body {
   margin: 0;
-  font-family: "DM Sans", sans-serif;
-  background: #0a0d14;
-  color: #f1f5f9;
+  font-family: "Saira", sans-serif;
+  background: var(--bg-primary);
+  color: var(--text-primary);
 }
 
 .font-mono {
   font-family: "Space Mono", monospace !important;
 }
 
+/* ── Scrollbar ── */
 ::-webkit-scrollbar {
   width: 4px;
   height: 4px;
 }
-
 ::-webkit-scrollbar-track {
   background: transparent;
 }
-
 ::-webkit-scrollbar-thumb {
-  background: rgba(255, 255, 255, 0.08);
+  background: var(--scrollbar-thumb);
   border-radius: 2px;
 }
 
+/* ── Glass utility ── */
 .glass {
-  background: rgba(17, 24, 39, 0.7);
+  background: rgba(var(--bg-secondary-rgb), 0.7);
   backdrop-filter: blur(12px);
   -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(255, 255, 255, 0.05);
+  border: 1px solid rgba(var(--border-base), 0.05);
 }
 
+/* ── Range inputs ── */
 input[type="range"] {
-  accent-color: #00d4ff;
+  accent-color: var(--color-primary);
 }
 
+/* ── Select option background ── */
 select option {
-  background: #111827;
+  background: var(--select-bg);
+  color: var(--text-primary);
+}
+
+/* ═══════════════════════════════════════════════════════════════
+   LIGHT MODE — normalize Tailwind white/slate utilities
+   [data-theme="light"] has specificity (0,2,0) which beats
+   Tailwind's utility classes at (0,1,0).
+═══════════════════════════════════════════════════════════════ */
+
+/* Text color normalization */
+[data-theme="light"] .text-white,
+[data-theme="light"] .text-slate-100 {
+  color: var(--text-primary);
+}
+[data-theme="light"] .text-slate-200,
+[data-theme="light"] .text-slate-300 {
+  color: var(--text-secondary);
+}
+[data-theme="light"] .text-slate-400,
+[data-theme="light"] .text-slate-500 {
+  color: var(--text-muted);
+}
+[data-theme="light"] .text-slate-600,
+[data-theme="light"] .text-slate-700 {
+  color: var(--text-subtle);
+}
+
+/* Hover text normalization */
+[data-theme="light"] .hover\:text-white:hover,
+[data-theme="light"] .hover\:text-slate-200:hover,
+[data-theme="light"] .hover\:text-slate-300:hover {
+  color: var(--text-secondary);
+}
+
+/* White/opacity background normalization */
+[data-theme="light"] .bg-white\/5 {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .bg-white\/\[0\.02\] {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+[data-theme="light"] .bg-white\/\[0\.03\] {
+  background-color: rgba(0, 0, 0, 0.03);
+}
+[data-theme="light"] .bg-white\/\[0\.04\] {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .hover\:bg-white\/5:hover {
+  background-color: rgba(0, 0, 0, 0.04);
+}
+[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover {
+  background-color: rgba(0, 0, 0, 0.02);
+}
+
+/* Border normalization */
+[data-theme="light"] .border-white\/5 {
+  border-color: rgba(0, 0, 0, 0.05);
+}
+[data-theme="light"] .border-white\/10 {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+[data-theme="light"] .border-white\/\[0\.1\] {
+  border-color: rgba(0, 0, 0, 0.1);
+}
+
+/* Background bar colors in chart for light mode */
+[data-theme="light"] .bg-primary\/60 {
+  background-color: rgba(var(--color-primary-rgb), 0.7);
+}
+[data-theme="light"] .bg-secondary\/60 {
+  background-color: rgba(var(--color-secondary-rgb), 0.7);
 }

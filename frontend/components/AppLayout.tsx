@@ -61,10 +61,10 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
 
   if (!mounted || !authed) {
     return (
-      <div className="flex items-center justify-center min-h-screen bg-[#0A0D14]">
+      <div className="flex items-center justify-center min-h-screen" style={{ background: "var(--bg-primary)" }}>
         <div className="flex flex-col items-center gap-4">
-          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-cyan-400 to-violet-500 animate-pulse" />
-          <p className="text-[10px] font-mono text-slate-600 uppercase tracking-widest animate-pulse">
+          <div className="w-10 h-10 rounded-xl bg-gradient-to-br from-primary to-secondary animate-pulse" />
+          <p className="text-[10px] font-mono text-[var(--text-subtle)] uppercase tracking-widest animate-pulse">
             Initializing Intelligence Systems...
           </p>
         </div>
@@ -73,7 +73,7 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
   }
 
   return (
-    <div className="flex h-screen bg-[#0A0D14] overflow-hidden">
+    <div className="flex h-screen overflow-hidden" style={{ background: "var(--bg-primary)" }}>
       <Sidebar collapsed={collapsed} onToggle={handleToggle} />
 
       <div className="flex flex-col flex-1 min-w-0 overflow-hidden">
@@ -90,7 +90,7 @@ export default function AppLayout({ children, title }: AppLayoutProps) {
             className="fixed inset-0 pointer-events-none opacity-[0.03]"
             style={{
               backgroundImage:
-                "linear-gradient(rgba(0,212,255,0.5) 1px, transparent 1px), linear-gradient(90deg, rgba(0,212,255,0.5) 1px, transparent 1px)",
+                "linear-gradient(var(--grid-line) 1px, transparent 1px), linear-gradient(90deg, var(--grid-line) 1px, transparent 1px)",
               backgroundSize: "40px 40px",
               zIndex: 0,
             }}

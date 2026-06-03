@@ -74,11 +74,18 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
       <motion.aside
         animate={{ width: collapsed ? 72 : 260 }}
         transition={{ duration: 0.25, ease: "easeInOut" }}
-        className="hidden md:flex flex-col h-screen sticky top-0 bg-[#0D1117] border-r border-white/5 overflow-hidden z-40 flex-shrink-0"
+        className="hidden md:flex flex-col h-screen sticky top-0 border-r overflow-hidden z-40 flex-shrink-0"
+        style={{
+          background: "var(--bg-surface)",
+          borderColor: `rgba(var(--border-base), 0.05)`,
+        }}
       >
-        <div className="flex items-center h-16 px-4 border-b border-white/5 flex-shrink-0">
-          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-cyan-400 to-violet-500 flex items-center justify-center text-black font-bold text-sm flex-shrink-0">
-            <Zap size={16} />
+        <div
+          className="flex items-center h-16 px-4 flex-shrink-0"
+          style={{ borderBottom: `1px solid rgba(var(--border-base), 0.05)` }}
+        >
+          <div className="w-8 h-8 rounded-lg bg-gradient-to-br from-primary to-secondary flex items-center justify-center flex-shrink-0">
+            <Zap size={16} className="text-white" />
           </div>
           <AnimatePresence>
             {!collapsed && (
@@ -87,7 +94,8 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                 animate={{ opacity: 1, x: 0 }}
                 exit={{ opacity: 0, x: -10 }}
                 transition={{ duration: 0.15 }}
-                className="ml-3 font-mono font-bold text-white tracking-wider text-sm uppercase whitespace-nowrap"
+                className="ml-3 font-mono font-bold tracking-wider text-sm uppercase whitespace-nowrap"
+                style={{ color: "var(--text-primary)" }}
               >
                 ClearHire
               </motion.span>
@@ -108,7 +116,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       exit={{ opacity: 0 }}
                       className="px-4 mb-2"
                     >
-                      <span className="text-[9px] font-mono uppercase tracking-[0.2em] text-slate-600">
+                      <span
+                        className="text-[9px] font-mono uppercase tracking-[0.2em]"
+                        style={{ color: "var(--text-subtle)" }}
+                      >
                         {section.section}
                       </span>
                     </motion.div>
@@ -122,11 +133,29 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                       key={href}
                       href={href}
                       title={collapsed ? label : undefined}
-                      className={`flex items-center gap-3 mx-2 px-3 py-2.5 rounded-xl mb-1 transition-all group relative ${
+                      className="flex items-center gap-3 mx-2 px-3 py-2.5 rounded-xl mb-1 transition-all group relative"
+                      style={
                         active
-                          ? "bg-cyan-500/10 text-cyan-400 border border-cyan-500/20"
-                          : "text-slate-500 hover:text-slate-200 hover:bg-white/5"
-                      }`}
+                          ? {
+                              background: `rgba(var(--color-primary-rgb), 0.1)`,
+                              color: "var(--color-primary)",
+                              border: `1px solid rgba(var(--color-primary-rgb), 0.2)`,
+                            }
+                          : {
+                              color: "var(--text-subtle)",
+                              border: "1px solid transparent",
+                            }
+                      }
+                      onMouseEnter={(e) => {
+                        if (!active)
+                          (e.currentTarget as HTMLAnchorElement).style.color =
+                            "var(--text-primary)";
+                      }}
+                      onMouseLeave={(e) => {
+                        if (!active)
+                          (e.currentTarget as HTMLAnchorElement).style.color =
+                            "var(--text-subtle)";
+                      }}
                     >
                       <Icon size={18} className="flex-shrink-0" />
                       <AnimatePresence>
@@ -143,7 +172,10 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
                         )}
                       </AnimatePresence>
                       {active && (
-                        <div className="absolute right-2 w-1.5 h-1.5 rounded-full bg-cyan-400" />
+                        <div
+                          className="absolute right-2 w-1.5 h-1.5 rounded-full"
+                          style={{ background: "var(--color-primary)" }}
+                        />
                       )}
                     </Link>
                   );
@@ -155,22 +187,40 @@ export default function Sidebar({ collapsed, onToggle }: SidebarProps) {
 
         <button
           onClick={onToggle}
-          className="flex items-center justify-center h-12 border-t border-white/5 text-slate-600 hover:text-slate-300 transition-colors flex-shrink-0"
+          className="flex items-center justify-center h-12 transition-colors flex-shrink-0"
+          style={{
+            borderTop: `1px solid rgba(var(--border-base), 0.05)`,
+            color: "var(--text-subtle)",
+          }}
+          onMouseEnter={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.color =
+              "var(--text-secondary)")
+          }
+          onMouseLeave={(e) =>
+            ((e.currentTarget as HTMLButtonElement).style.color =
+              "var(--text-subtle)")
+          }
         >
           {collapsed ? <ChevronRight size={16} /> : <ChevronLeft size={16} />}
         </button>
       </motion.aside>
 
-      <nav className="md:hidden fixed bottom-0 left-0 right-0 z-50 bg-[#0D1117]/95 backdrop-blur-xl border-t border-white/5 flex items-center justify-around px-2 py-2">
+      {/* Mobile bottom nav */}
+      <nav
+        className="md:hidden fixed bottom-0 left-0 right-0 z-50 backdrop-blur-xl flex items-center justify-around px-2 py-2"
+        style={{
+          background: `rgba(var(--bg-surface-rgb), 0.95)`,
+          borderTop: `1px solid rgba(var(--border-base), 0.05)`,
+        }}
+      >
         {ALL_ROUTES[0].items.slice(0, 5).map(({ href, label, icon: Icon }) => {
           const active = isActive(href);
           return (
             <Link
               key={href}
               href={href}
-              className={`flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all ${
-                active ? "text-cyan-400" : "text-slate-600 hover:text-slate-300"
-              }`}
+              className="flex flex-col items-center gap-1 px-3 py-1.5 rounded-xl transition-all"
+              style={{ color: active ? "var(--color-primary)" : "var(--text-subtle)" }}
             >
               <Icon size={20} />
               <span className="text-[9px] font-mono uppercase tracking-wider">

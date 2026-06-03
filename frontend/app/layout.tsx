@@ -22,11 +22,11 @@ export default function RootLayout({
           crossOrigin="anonymous"
         />
         <link
-          href="https://fonts.googleapis.com/css2?family=Space+Mono:ital,wght@0,400;0,700&family=DM+Sans:wght@300;400;500;600;700&display=swap"
+          href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700&display=swap"
           rel="stylesheet"
         />
       </head>
-      <body className="min-h-screen bg-[#0A0D14] text-slate-100 overflow-x-hidden">
+      <body className="min-h-screen overflow-x-hidden">
         <Providers>{children}</Providers>
       </body>
     </html>
