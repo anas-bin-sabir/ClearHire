@@ -3,226 +3,263 @@
 @tailwind utilities;
 
 /* ═══════════════════════════════════════════════════════════════
-   THEME TOKENS — Single source of truth.
-   Changing one variable here updates the entire UI instantly.
+   CLEARHIRE DESIGN SYSTEM  —  60/30/10 Electric Indigo
+   60 % deep slate backgrounds · 30 % white/light text
+   10 % electric indigo accent (#6366F1)
 ═══════════════════════════════════════════════════════════════ */
 
-:root {
-  /* ── Brand ── */
-  --color-primary: #4B5BFF;
-  --color-primary-rgb: 75, 91, 255;
-  --color-secondary: #A259FF;
-  --color-secondary-rgb: 162, 89, 255;
-  --color-accent: #00BFA6;
-  --color-accent-rgb: 0, 191, 166;
+:root,
+[data-theme="dark"] {
+  color-scheme: dark;
 
-  /* ── Status ── */
-  --color-success: #10B981;
-  --color-success-rgb: 16, 185, 129;
-  --color-warning: #F59E0B;
-  --color-warning-rgb: 245, 158, 11;
-  --color-danger: #EF4444;
-  --color-danger-rgb: 239, 68, 68;
+  /* ── 60 % Backgrounds ── */
+  --background:            #07091A;
+  --background-rgb:        7, 9, 26;
+  --card:                  #111827;
+  --card-rgb:              17, 24, 39;
+  --card-elevated:         #1B2640;
+  --card-elevated-rgb:     27, 38, 64;
 
-  /* ── Backgrounds ── */
-  --bg-primary: #0B0F14;
-  --bg-primary-rgb: 11, 15, 20;
-  --bg-secondary: #111827;
-  --bg-secondary-rgb: 17, 24, 39;
-  --bg-surface: #0D1117;
-  --bg-surface-rgb: 13, 17, 23;
+  /* ── 30 % Text & Borders ── */
+  --foreground:            #EEF2FF;
+  --foreground-rgb:        238, 242, 255;
+  --muted:                 #7B8DB5;
+  --muted-rgb:             123, 141, 181;
+  --muted-foreground:      #47577A;
+  --border:                #2D3F5C;
+  --border-rgb:            45, 63, 92;
+  --ring:                  #6366F1;
+  --ring-rgb:              99, 102, 241;
 
-  /* ── Text ── */
-  --text-primary: #FFFFFF;
-  --text-secondary: #94A3B8;
-  --text-muted: #475569;
-  --text-subtle: #64748B;
+  /* ── 10 % Electric Indigo ── */
+  --primary:               #6366F1;
+  --primary-rgb:           99, 102, 241;
+  --secondary:             #818CF8;
+  --secondary-rgb:         129, 140, 248;
 
-  /* ── Border RGB base — for rgba(var(--border-base), 0.05) patterns ── */
-  --border-base: 255, 255, 255;
+  /* ── Semantic ── */
+  --success:               #10B981;
+  --success-rgb:           16, 185, 129;
+  --warning:               #F59E0B;
+  --warning-rgb:           245, 158, 11;
+  --danger:                #EF4444;
+  --danger-rgb:            239, 68, 68;
+
+  /* ── Elevation shadows — 1px white ring creates card outline on dark bg ── */
+  --shadow-sm:  0 1px 3px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
+  --shadow-md:  0 4px 16px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
+  --shadow-lg:  0 8px 32px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.07);
 
   /* ── Misc ── */
-  --scrollbar-thumb: rgba(255, 255, 255, 0.08);
-  --select-bg: #111827;
-  --grid-line: rgba(0, 212, 255, 0.5);
-}
+  --scrollbar-thumb:       rgba(99, 102, 241, 0.22);
+  --select-bg:             var(--card);
+  --grid-line:             rgba(99, 102, 241, 0.05);
 
-/* ─── Light Mode Overrides ─────────────────────────────────── */
-[data-theme="light"] {
-  /* Brand — same across modes */
-  --color-primary: #4B5BFF;
-  --color-primary-rgb: 75, 91, 255;
-  --color-secondary: #A259FF;
-  --color-secondary-rgb: 162, 89, 255;
-  --color-accent: #00BFA6;
-  --color-accent-rgb: 0, 191, 166;
-
-  /* Status — darker variants for light bg readability */
-  --color-success: #059669;
-  --color-success-rgb: 5, 150, 105;
-  --color-warning: #D97706;
-  --color-warning-rgb: 217, 119, 6;
-  --color-danger: #DC2626;
-  --color-danger-rgb: 220, 38, 38;
-
-  /* Backgrounds */
-  --bg-primary: #FFFFFF;
-  --bg-primary-rgb: 255, 255, 255;
-  --bg-secondary: #F5F7FA;
-  --bg-secondary-rgb: 245, 247, 250;
-  --bg-surface: #EAECF0;
-  --bg-surface-rgb: 234, 236, 240;
-
-  /* Text */
-  --text-primary: #111111;
-  --text-secondary: #555555;
-  --text-muted: #9CA3AF;
-  --text-subtle: #6B7280;
-
-  /* Border base flips for light mode */
-  --border-base: 0, 0, 0;
-
-  --scrollbar-thumb: rgba(0, 0, 0, 0.12);
-  --select-bg: #F5F7FA;
-  --grid-line: rgba(75, 91, 255, 0.4);
-}
-
-/* ═══════════════════════════════════════════════════════════════
-   BASE STYLES
-═══════════════════════════════════════════════════════════════ */
-
-@layer base {
-  input,
-  textarea,
-  select,
-  button {
-    @apply outline-none focus:outline-none;
-  }
-}
-
-*,
-*::before,
-*::after {
-  box-sizing: border-box;
-}
-
-html {
-  color-scheme: dark;
+  /* ── Legacy aliases — inline styles throughout pages auto-inherit ── */
+  --color-primary:         var(--primary);
+  --color-primary-rgb:     var(--primary-rgb);
+  --color-secondary:       var(--secondary);
+  --color-secondary-rgb:   var(--secondary-rgb);
+  --color-accent:          var(--primary);
+  --color-accent-rgb:      var(--primary-rgb);
+  --color-success:         var(--success);
+  --color-success-rgb:     var(--success-rgb);
+  --color-warning:         var(--warning);
+  --color-warning-rgb:     var(--warning-rgb);
+  --color-danger:          var(--danger);
+  --color-danger-rgb:      var(--danger-rgb);
+  --bg-primary:            var(--background);
+  --bg-primary-rgb:        var(--background-rgb);
+  --bg-secondary:          var(--card);
+  --bg-secondary-rgb:      var(--card-rgb);
+  --bg-surface:            var(--card-elevated);
+  --bg-surface-rgb:        var(--card-elevated-rgb);
+  --text-primary:          var(--foreground);
+  --text-secondary:        var(--muted);
+  --text-muted:            var(--muted-foreground);
+  --text-subtle:           var(--muted);
+  --border-base:           var(--border-rgb);
 }
 
 [data-theme="light"] {
   color-scheme: light;
+
+  /* ── 60 % Backgrounds ── */
+  --background:            #F2F4FF;
+  --background-rgb:        242, 244, 255;
+  --card:                  #FFFFFF;
+  --card-rgb:              255, 255, 255;
+  --card-elevated:         #EBEEff;
+  --card-elevated-rgb:     235, 238, 255;
+
+  /* ── 30 % Text & Borders ── */
+  --foreground:            #07091A;
+  --foreground-rgb:        7, 9, 26;
+  --muted:                 #5A6A90;
+  --muted-rgb:             90, 106, 144;
+  --muted-foreground:      #8B9AB8;
+  --border:                #CDD3EC;
+  --border-rgb:            205, 211, 236;
+  --ring:                  #4F46E5;
+  --ring-rgb:              79, 70, 229;
+
+  /* ── 10 % Electric Indigo ── */
+  --primary:               #4F46E5;
+  --primary-rgb:           79, 70, 229;
+  --secondary:             #6366F1;
+  --secondary-rgb:         99, 102, 241;
+
+  /* ── Semantic ── */
+  --success:               #059669;
+  --success-rgb:           5, 150, 105;
+  --warning:               #D97706;
+  --warning-rgb:           217, 119, 6;
+  --danger:                #DC2626;
+  --danger-rgb:            220, 38, 38;
+
+  /* ── Elevation shadows ── */
+  --shadow-sm:  0 1px 3px rgba(7,9,26,0.08), 0 0 0 1px rgba(7,9,26,0.05);
+  --shadow-md:  0 4px 16px rgba(7,9,26,0.1),  0 0 0 1px rgba(7,9,26,0.06);
+  --shadow-lg:  0 16px 48px rgba(7,9,26,0.13), 0 0 0 1px rgba(7,9,26,0.07);
+
+  /* ── Misc ── */
+  --scrollbar-thumb:       rgba(79, 70, 229, 0.25);
+  --select-bg:             var(--card);
+  --grid-line:             rgba(79, 70, 229, 0.05);
+
+  /* ── Legacy aliases ── */
+  --color-primary:         var(--primary);
+  --color-primary-rgb:     var(--primary-rgb);
+  --color-secondary:       var(--secondary);
+  --color-secondary-rgb:   var(--secondary-rgb);
+  --color-accent:          var(--primary);
+  --color-accent-rgb:      var(--primary-rgb);
+  --color-success:         var(--success);
+  --color-success-rgb:     var(--success-rgb);
+  --color-warning:         var(--warning);
+  --color-warning-rgb:     var(--warning-rgb);
+  --color-danger:          var(--danger);
+  --color-danger-rgb:      var(--danger-rgb);
+  --bg-primary:            var(--background);
+  --bg-primary-rgb:        var(--background-rgb);
+  --bg-secondary:          var(--card);
+  --bg-secondary-rgb:      var(--card-rgb);
+  --bg-surface:            var(--card-elevated);
+  --bg-surface-rgb:        var(--card-elevated-rgb);
+  --text-primary:          var(--foreground);
+  --text-secondary:        var(--muted);
+  --text-muted:            var(--muted-foreground);
+  --text-subtle:           var(--muted);
+  --border-base:           var(--border-rgb);
 }
 
-body {
-  margin: 0;
-  font-family: "Saira", sans-serif;
-  background: var(--bg-primary);
-  color: var(--text-primary);
+@layer base {
+  *,
+  *::before,
+  *::after {
+    box-sizing: border-box;
+  }
+
+  html {
+    scroll-behavior: smooth;
+  }
+
+  html.theme-transition,
+  html.theme-transition *,
+  html.theme-transition *::before,
+  html.theme-transition *::after {
+    transition:
+      background-color 0.2s ease,
+      border-color     0.2s ease,
+      color            0.15s ease,
+      box-shadow       0.2s ease !important;
+  }
+
+  body {
+    margin: 0;
+    font-family: var(--font-inter, "Inter"), system-ui, sans-serif;
+    background: var(--background);
+    color: var(--foreground);
+    -webkit-font-smoothing: antialiased;
+    -moz-osx-font-smoothing: grayscale;
+  }
+
+  input,
+  textarea,
+  select,
+  button {
+    @apply outline-none;
+  }
+
+  input:focus-visible,
+  textarea:focus-visible,
+  select:focus-visible,
+  button:focus-visible,
+  a:focus-visible {
+    outline: 2px solid rgb(var(--ring-rgb) / 0.5);
+    outline-offset: 2px;
+  }
 }
 
+/* Mono = Inter with tabular nums; no separate font family needed */
 .font-mono {
-  font-family: "Space Mono", monospace !important;
+  font-family: var(--font-inter, "Inter"), system-ui, sans-serif !important;
+  font-feature-settings: "tnum" 1;
+  letter-spacing: -0.01em;
 }
 
-/* ── Scrollbar ── */
-::-webkit-scrollbar {
-  width: 4px;
-  height: 4px;
-}
-::-webkit-scrollbar-track {
-  background: transparent;
-}
-::-webkit-scrollbar-thumb {
-  background: var(--scrollbar-thumb);
-  border-radius: 2px;
+@layer components {
+  /* Cards: no border — background elevation creates the separation */
+  .surface-card {
+    @apply rounded-xl bg-card shadow-sm;
+  }
+
+  .surface-card-hover {
+    @apply surface-card transition-all duration-200;
+  }
+
+  .surface-card-hover:hover {
+    @apply shadow-md -translate-y-0.5;
+  }
+
+  .text-meta    { @apply text-sm text-muted; }
+  .page-title   { @apply text-3xl font-bold tracking-tight text-foreground; }
+  .section-title { @apply text-xl font-semibold tracking-tight text-foreground; }
 }
 
-/* ── Glass utility ── */
-.glass {
-  background: rgba(var(--bg-secondary-rgb), 0.7);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid rgba(var(--border-base), 0.05);
+/* Subtle dual-tone glow backdrop — uses indigo only */
+.app-backdrop {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 0;
+  background:
+    radial-gradient(ellipse 70% 45% at 50% -10%,  rgb(var(--primary-rgb) / 0.09), transparent),
+    radial-gradient(ellipse 50% 35% at 100% 110%, rgb(var(--primary-rgb) / 0.05), transparent);
 }
 
-/* ── Range inputs ── */
-input[type="range"] {
-  accent-color: var(--color-primary);
-}
+/* Scrollbar */
+::-webkit-scrollbar          { width: 5px; height: 5px; }
+::-webkit-scrollbar-track    { background: transparent; }
+::-webkit-scrollbar-thumb    { background: var(--scrollbar-thumb); border-radius: 4px; }
 
-/* ── Select option background ── */
+input[type="range"] { accent-color: var(--primary); }
+
 select option {
-  background: var(--select-bg);
-  color: var(--text-primary);
+  background: var(--card);
+  color: var(--foreground);
 }
 
-/* ═══════════════════════════════════════════════════════════════
-   LIGHT MODE — normalize Tailwind white/slate utilities
-   [data-theme="light"] has specificity (0,2,0) which beats
-   Tailwind's utility classes at (0,1,0).
-═══════════════════════════════════════════════════════════════ */
-
-/* Text color normalization */
-[data-theme="light"] .text-white,
-[data-theme="light"] .text-slate-100 {
-  color: var(--text-primary);
+/* Sparkline bars (used by StatCard) */
+.sparkline {
+  display: flex;
+  align-items: flex-end;
+  gap: 2px;
+  height: 24px;
 }
-[data-theme="light"] .text-slate-200,
-[data-theme="light"] .text-slate-300 {
-  color: var(--text-secondary);
-}
-[data-theme="light"] .text-slate-400,
-[data-theme="light"] .text-slate-500 {
-  color: var(--text-muted);
-}
-[data-theme="light"] .text-slate-600,
-[data-theme="light"] .text-slate-700 {
-  color: var(--text-subtle);
-}
-
-/* Hover text normalization */
-[data-theme="light"] .hover\:text-white:hover,
-[data-theme="light"] .hover\:text-slate-200:hover,
-[data-theme="light"] .hover\:text-slate-300:hover {
-  color: var(--text-secondary);
-}
-
-/* White/opacity background normalization */
-[data-theme="light"] .bg-white\/5 {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-[data-theme="light"] .bg-white\/\[0\.02\] {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-[data-theme="light"] .bg-white\/\[0\.03\] {
-  background-color: rgba(0, 0, 0, 0.03);
-}
-[data-theme="light"] .bg-white\/\[0\.04\] {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-[data-theme="light"] .hover\:bg-white\/5:hover {
-  background-color: rgba(0, 0, 0, 0.04);
-}
-[data-theme="light"] .hover\:bg-white\/\[0\.02\]:hover {
-  background-color: rgba(0, 0, 0, 0.02);
-}
-
-/* Border normalization */
-[data-theme="light"] .border-white\/5 {
-  border-color: rgba(0, 0, 0, 0.05);
-}
-[data-theme="light"] .border-white\/10 {
-  border-color: rgba(0, 0, 0, 0.1);
-}
-[data-theme="light"] .border-white\/\[0\.1\] {
-  border-color: rgba(0, 0, 0, 0.1);
-}
-
-/* Background bar colors in chart for light mode */
-[data-theme="light"] .bg-primary\/60 {
-  background-color: rgba(var(--color-primary-rgb), 0.7);
-}
-[data-theme="light"] .bg-secondary\/60 {
-  background-color: rgba(var(--color-secondary-rgb), 0.7);
+.sparkline-bar {
+  flex: 1;
+  border-radius: 2px;
+  background: rgb(var(--primary-rgb) / 0.22);
+  min-width: 3px;
 }

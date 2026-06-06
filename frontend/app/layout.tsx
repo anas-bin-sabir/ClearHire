@@ -1,10 +1,18 @@
 import type { Metadata } from "next";
+import { Inter } from "next/font/google";
 import Providers from "./providers";
 import "./globals.css";
 
+const inter = Inter({
+  subsets: ["latin"],
+  weight: ["400", "500", "600", "700"],
+  variable: "--font-inter",
+  display: "swap",
+});
+
 export const metadata: Metadata = {
-  title: "ClearHire",
-  description: "Recruitment Intelligence System",
+  title: "ClearHire — AI Hiring Intelligence",
+  description: "Professional AI-powered freelancer hiring intelligence platform",
 };
 
 export default function RootLayout({
@@ -13,20 +21,9 @@ export default function RootLayout({
   children: React.ReactNode;
 }) {
   return (
-    <html lang="en">
-      <head>
-        <link rel="preconnect" href="https://fonts.googleapis.com" />
-        <link
-          rel="preconnect"
-          href="https://fonts.gstatic.com"
-          crossOrigin="anonymous"
-        />
-        <link
-          href="https://fonts.googleapis.com/css2?family=Saira:wght@300;400;500;600;700;800&family=Space+Mono:ital,wght@0,400;0,700&display=swap"
-          rel="stylesheet"
-        />
-      </head>
-      <body className="min-h-screen overflow-x-hidden">
+    <html lang="en" className={inter.variable} suppressHydrationWarning>
+      <body className="min-h-screen overflow-x-hidden antialiased">
+        <div className="app-backdrop" aria-hidden="true" />
         <Providers>{children}</Providers>
       </body>
     </html>

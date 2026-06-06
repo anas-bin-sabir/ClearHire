@@ -8,17 +8,20 @@ import { getGraph, mapGraphForUi } from "@/lib/api";
 
 const EMPTY_GRAPH = { nodes: [], edges: [] };
 
+import { graphNodeColors } from "@/lib/theme";
+
 const NODE_CFG = {
-  freelancer: { colorVar: "var(--color-primary)", hexFallback: "#4B5BFF", size: 14 },
-  skill: { colorVar: "var(--color-secondary)", hexFallback: "#A259FF", size: 11 },
-  project: { colorVar: "var(--color-accent)", hexFallback: "#00BFA6", size: 13 },
+  freelancer: { color: graphNodeColors.freelancer, hexFallback: graphNodeColors.freelancer, size: 14 },
+  skill: { color: graphNodeColors.skill, hexFallback: graphNodeColors.skill, size: 11 },
+  project: { color: graphNodeColors.project, hexFallback: graphNodeColors.project, size: 13 },
+  fraud_ring: { color: graphNodeColors.fraudRing, hexFallback: graphNodeColors.fraudRing, size: 12 },
 };
 
 const EDGE_CFG = {
-  HAS_SKILL: { colorVar: "rgba(75,91,255,0.3)", dash: "" },
-  RELATED_TO: { colorVar: "rgba(162,89,255,0.4)", dash: "4,4" },
-  WORKED_ON: { colorVar: "rgba(0,191,166,0.35)", dash: "6,3" },
-  REFERRED_BY: { colorVar: "rgba(239,68,68,0.35)", dash: "2,6" },
+  HAS_SKILL: { colorVar: "rgba(59, 130, 246, 0.35)", dash: "" },
+  RELATED_TO: { colorVar: "rgba(168, 85, 247, 0.4)", dash: "4,4" },
+  WORKED_ON: { colorVar: "rgba(34, 197, 94, 0.35)", dash: "6,3" },
+  REFERRED_BY: { colorVar: "rgba(239, 68, 68, 0.4)", dash: "2,6" },
 };
 
 function useForce(nodes: any[], edges: any[], width: number, height: number) {

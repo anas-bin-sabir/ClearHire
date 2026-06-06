@@ -3,6 +3,7 @@ import { useEffect, useState } from "react";
 import { motion } from "motion/react";
 import { BarChart3, Users, ShieldAlert, Cpu } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import StatCard from "@/components/StatCard";
 import { getSession, isAdmin } from "@/utils/clearhire-auth";
 import { getAnalyticsTimeseries, type TimeSeriesResponse } from "@/lib/api";
 
@@ -37,7 +38,7 @@ export default function AnalyticsPage() {
   const totalSearches = barData.reduce((s, d) => s + d.searches, 0);
   const totalTeams = barData.reduce((s, d) => s + d.teams, 0);
   const totalFraud = barData.reduce((s, d) => s + d.fraud, 0);
-  const cardStyle = { background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid rgba(var(--border-base), 0.05)` };
+  const cardCls = "rounded-2xl p-6 bg-card border border-border/5";
 
   return (
     <AppLayout title="Analytics — Admin">
@@ -53,24 +54,13 @@ export default function AnalyticsPage() {
 
         {/* KPIs */}
         <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-          {[
-            { label: "Weekly Searches", value: totalSearches, icon: Users, colorVar: "var(--color-primary)", trend: "+14%" },
-            { label: "Teams Built", value: totalTeams, icon: Cpu, colorVar: "var(--color-secondary)", trend: "+8%" },
-            { label: "Fraud Flagged", value: totalFraud, icon: ShieldAlert, colorVar: "var(--color-danger)", trend: "-3%" },
-          ].map((kpi, i) => (
-            <motion.div key={kpi.label} initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: i * 0.1 }} className="p-5 rounded-2xl" style={cardStyle}>
-              <div className="flex items-center justify-between mb-4">
-                <kpi.icon size={18} style={{ color: kpi.colorVar }} />
-                <span className="text-[10px] font-mono" style={{ color: kpi.trend.startsWith("+") ? "var(--color-success)" : "var(--color-danger)" }}>{kpi.trend} WoW</span>
-              </div>
-              <div className="text-3xl font-mono font-bold" style={{ color: "var(--text-primary)" }}>{kpi.value}</div>
-              <div className="text-[10px] font-mono uppercase tracking-widest mt-1" style={{ color: "var(--text-subtle)" }}>{kpi.label}</div>
-            </motion.div>
-          ))}
+          <StatCard label="Weekly Searches" value={totalSearches} icon={Users} variant="primary" trend="+14% WoW" trendDirection="up" delay={0} showSparkline />
+          <StatCard label="Teams Built" value={totalTeams} icon={Cpu} variant="success" trend="+8% WoW" trendDirection="up" delay={100} showSparkline />
+          <StatCard label="Fraud Flagged" value={totalFraud} icon={ShieldAlert} variant="danger" trend="-3% WoW" trendDirection="down" delay={200} showSparkline />
         </div>
 
         {/* Bar Chart */}
-        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className="rounded-2xl p-6" style={cardStyle}>
+        <motion.div initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.3 }} className={cardCls}>
           <div className="flex items-center justify-between mb-6">
             <h3 className="font-mono text-xs uppercase tracking-widest" style={{ color: "var(--text-muted)" }}>7-Day Activity Overview</h3>
             <div className="flex items-center gap-4 text-[10px] font-mono">
@@ -113,7 +103,7 @@ export default function AnalyticsPage() {
         </motion.div>
 
         {/* Skills Heatmap */}
-        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className="rounded-2xl p-6" style={cardStyle}>
+        <motion.div initial={{ opacity: 0 }} animate={{ opacity: 1 }} transition={{ delay: 0.5 }} className={cardCls}>
           <h3 className="font-mono text-xs uppercase tracking-widest mb-5" style={{ color: "var(--text-muted)" }}>Most Searched Skills</h3>
           <div className="space-y-3">
             {[

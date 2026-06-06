@@ -286,6 +286,26 @@ export default function TeamBuilderPage() {
           <AnimatePresence>
             {result && !solving && (
               <motion.div key="results" initial={{ opacity: 0, y: 12 }} animate={{ opacity: 1, y: 0 }} className="space-y-5">
+                {result.success && (() => {
+                  const avgFraud = result.team.length > 0 ? result.team.reduce((s: number, f: any) => s + (f.fraud_score ?? 0), 0) / result.team.length : 0;
+                  const metrics = [
+                    { label: "Budget Used", value: `$${result.total_cost.toLocaleString()}`, sub: `${budgetPct}% of $${constraints.budget.toLocaleString()}`, colorVar: budgetPct > 100 ? "var(--color-danger)" : budgetPct > 85 ? "var(--color-warning)" : "var(--color-success)" },
+                    { label: "Skills Covered", value: `${result.skills_covered.length}/${constraints.required_skills.length}`, sub: result.uncovered_skills.length > 0 ? `${result.uncovered_skills.length} gap${result.uncovered_skills.length !== 1 ? "s" : ""}` : "Full coverage", colorVar: result.uncovered_skills.length > 0 ? "var(--color-warning)" : "var(--color-success)" },
+                    { label: "Team Filled", value: `${result.team.length}/${constraints.team_size}`, sub: "members selected", colorVar: result.team.length >= constraints.team_size ? "var(--color-success)" : "var(--color-primary)" },
+                    { label: "Avg Fraud Risk", value: `${Math.round(avgFraud * 100)}%`, sub: avgFraud > 0.5 ? "Elevated — review team" : "Within safe range", colorVar: avgFraud > 0.5 ? "var(--color-danger)" : avgFraud > 0.25 ? "var(--color-warning)" : "var(--color-success)" },
+                  ];
+                  return (
+                    <motion.div initial={{ opacity: 0, y: -8 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.1 }} className="grid grid-cols-2 sm:grid-cols-4 gap-3">
+                      {metrics.map((m) => (
+                        <div key={m.label} className="p-4 rounded-2xl text-center space-y-1" style={{ background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid rgba(var(--border-base), 0.06)` }}>
+                          <div className="text-xl font-mono font-bold" style={{ color: m.colorVar }}>{m.value}</div>
+                          <div className="text-[9px] font-mono uppercase tracking-widest" style={{ color: "var(--text-subtle)" }}>{m.label}</div>
+                          <div className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>{m.sub}</div>
+                        </div>
+                      ))}
+                    </motion.div>
+                  );
+                })()}
                 {result.success ? (
                   <>
                     <div className="p-5 rounded-2xl space-y-4" style={{ background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid ${budgetPct > 100 ? `rgba(var(--color-danger-rgb), 0.2)` : `rgba(var(--color-primary-rgb), 0.15)`}` }}>

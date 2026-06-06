@@ -165,7 +165,7 @@ function NotificationsSection() {
 }
 
 function AIPreferencesSection({ userId }: { userId: number }) {
-  const { theme, setTheme } = useTheme();
+  const { resolvedTheme, setTheme } = useTheme();
   const [vals, setVals] = useState({ notifications_enabled: true, email_alerts: true, fraud_sensitivity: 0.6, preferred_skills: [] as string[], theme: "dark" as "dark" | "light" });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
@@ -187,7 +187,7 @@ function AIPreferencesSection({ userId }: { userId: number }) {
   const set = (k: string, v: any) => setVals((p) => ({ ...p, [k]: v }));
   const handleSave = async () => {
     if (!userId) return;
-    const payload = { ...vals, theme };
+    const payload = { ...vals, theme: resolvedTheme };
     try {
       await updateUserSettings(userId, payload);
       setSaved(true);
@@ -237,20 +237,15 @@ function AIPreferencesSection({ userId }: { userId: number }) {
           <div>
             <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Interface Theme</div>
             <div className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-subtle)" }}>
-              Current: {theme} — synced with header toggle
+              Current: {resolvedTheme} — synced with header toggle
             </div>
           </div>
           <button
             type="button"
-            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
-            className="px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest"
-            style={{
-              background: `rgba(var(--color-primary-rgb), 0.1)`,
-              border: `1px solid rgba(var(--color-primary-rgb), 0.25)`,
-              color: "var(--color-primary)",
-            }}
+            onClick={() => setTheme(resolvedTheme === "dark" ? "light" : "dark")}
+            className="px-3 py-1.5 rounded-lg text-xs font-medium bg-primary/10 text-primary border border-primary/25 hover:bg-primary/15 transition-colors"
           >
-            Use {theme === "dark" ? "light" : "dark"}
+            Use {resolvedTheme === "dark" ? "light" : "dark"}
           </button>
         </div>
       </div>

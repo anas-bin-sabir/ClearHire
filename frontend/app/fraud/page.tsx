@@ -6,6 +6,7 @@ import {
   Clock, Star, DollarSign, Calendar, Network, ChevronRight, Info,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
+import Card from "@/components/ui/Card";
 import FraudGauge from "@/components/FraudGauge";
 import AIReasoningBox from "@/components/AIReasoningBox";
 import { AgentStatusBadge } from "@/components/AgentStatusBadge";
@@ -61,6 +62,7 @@ export default function FraudLabPage() {
   const [fraudExplanation, setFraudExplanation] = useState("");
   const [agentRanAt, setAgentRanAt] = useState<string | null>(null);
   const [isPrecomputed, setIsPrecomputed] = useState(false);
+  const [fraudConfidence, setFraudConfidence] = useState<string | null>(null);
 
   useEffect(() => {
     listFreelancers({ flaggedOnly: true, limit: 8 }).then((r) => setFlaggedSamples(r.freelancers.map(enrichFreelancer))).catch(() => setFlaggedSamples([]));
@@ -95,11 +97,13 @@ export default function FraudLabPage() {
     setFraudExplanation("");
     setAgentRanAt(null);
     setIsPrecomputed(false);
+    setFraudConfidence(null);
     try {
       const res = await getFraudScore({ freelancer_id: f.id });
       const merged = enrichFreelancer({ ...(res.freelancer || f), fraud_score: res.score });
       setSelected(merged);
       setFraudExplanation(res.explanation || "");
+      setFraudConfidence(res.confidence ?? null);
       if (res.source === "agent_precomputed") {
         setIsPrecomputed(true);
         setAgentRanAt(res.ran_at ?? null);
@@ -233,10 +237,17 @@ export default function FraudLabPage() {
                       <AgentStatusBadge
                         pipeline="fraud_detection"
                         ranAt={agentRanAt}
+                        confidence={fraudConfidence ?? undefined}
                       />
                     </div>
                   )}
-                  <FraudGauge score={displayScore} size={156} thickness={11} key={`${selected.id}-${Math.round(displayScore * 100)}`} />
+                  <FraudGauge
+                    score={displayScore}
+                    size={156}
+                    thickness={11}
+                    confidence={fraudConfidence ?? undefined}
+                    key={`${selected.id}-${Math.round(displayScore * 100)}`}
+                  />
                   <div className="w-full space-y-2 pt-2" style={{ borderTop: `1px solid rgba(var(--border-base), 0.05)` }}>
                     <div className="flex justify-between text-[10px] font-mono uppercase" style={{ color: "var(--text-subtle)" }}>
                       <span>Confidence</span>

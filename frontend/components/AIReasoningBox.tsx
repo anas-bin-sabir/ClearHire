@@ -1,39 +1,44 @@
 "use client";
+
 import { useEffect, useState, useRef } from "react";
-import { Cpu, Terminal } from "lucide-react";
+import { Sparkles, Copy, Check, ChevronDown, ChevronUp } from "lucide-react";
+import Badge from "@/components/ui/Badge";
 
 interface AIReasoningBoxProps {
   text?: string;
   title?: string;
   speed?: number;
+  confidence?: number;
+  timestamp?: string;
   onDone?: () => void;
 }
 
 export default function AIReasoningBox({
   text = "",
-  title = "AI REASONING",
-  speed = 18,
+  title = "AI Analysis",
+  speed = 14,
+  confidence,
+  timestamp,
   onDone = () => {},
 }: AIReasoningBoxProps) {
-  const [displayed, setDisplayed] = useState<string>("");
-  const [done, setDone] = useState<boolean>(false);
-  const [cursor, setCursor] = useState<boolean>(true);
-  const indexRef = useRef<number>(0);
-  const timerRef = useRef<NodeJS.Timeout | null>(null);
-  const cursorRef = useRef<NodeJS.Timeout | null>(null);
+  const [displayed, setDisplayed] = useState("");
+  const [done, setDone] = useState(false);
+  const [expanded, setExpanded] = useState(true);
+  const [copied, setCopied] = useState(false);
+  const indexRef = useRef(0);
+  const timerRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
   useEffect(() => {
     setDisplayed("");
     setDone(false);
     indexRef.current = 0;
 
-    const type = (): void => {
+    const type = () => {
       if (indexRef.current < text.length) {
-        const chunk = text.slice(0, indexRef.current + 1);
-        setDisplayed(chunk);
+        setDisplayed(text.slice(0, indexRef.current + 1));
         indexRef.current += 1;
         const char = text[indexRef.current - 1];
-        const delay = /[.,!?;:]/.test(char) ? speed * 4 : speed;
+        const delay = /[.,!?;:]/.test(char) ? speed * 3 : speed;
         timerRef.current = setTimeout(type, delay);
       } else {
         setDone(true);
@@ -41,91 +46,72 @@ export default function AIReasoningBox({
       }
     };
 
-    timerRef.current = setTimeout(type, 300);
+    timerRef.current = setTimeout(type, 200);
     return () => { if (timerRef.current) clearTimeout(timerRef.current); };
   }, [text, speed, onDone]);
 
-  useEffect(() => {
-    cursorRef.current = setInterval(() => setCursor((c) => !c), 530);
-    return () => { if (cursorRef.current) clearInterval(cursorRef.current); };
-  }, []);
+  const handleCopy = async () => {
+    try {
+      await navigator.clipboard.writeText(text);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+    } catch { /* ignore */ }
+  };
 
   return (
-    <div
-      className="rounded-r-xl rounded-bl-xl p-5 font-mono"
-      style={{
-        background: `rgba(var(--bg-primary-rgb), 0.5)`,
-        border: `1px solid rgba(var(--color-primary-rgb), 0.2)`,
-        borderLeft: `3px solid var(--color-primary)`,
-      }}
-    >
+    <div className="rounded-xl bg-card overflow-hidden shadow-sm">
       {/* Header */}
-      <div className="flex items-center gap-2 mb-4">
-        <div
-          className="flex items-center gap-1.5 px-2.5 py-1 rounded-md"
-          style={{
-            background: `rgba(var(--color-primary-rgb), 0.1)`,
-            border: `1px solid rgba(var(--color-primary-rgb), 0.2)`,
-          }}
-        >
-          <Cpu
-            size={11}
-            style={{ color: "var(--color-primary)", animation: "aipulse 2s ease-in-out infinite" }}
-          />
-          <span
-            className="text-[9px] font-mono uppercase tracking-[0.2em]"
-            style={{ color: "var(--color-primary)" }}
-          >
-            {title}
-          </span>
+      <div className="flex items-center gap-3 px-4 py-3 bg-card-elevated">
+        <div className="w-8 h-8 rounded-lg bg-primary/12 flex items-center justify-center flex-shrink-0">
+          <Sparkles size={15} className="text-primary" />
         </div>
-        <Terminal size={13} className="ml-auto" style={{ color: "var(--text-subtle)" }} />
-        <div className="flex gap-1">
-          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-danger-rgb),0.6)" }} />
-          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-warning-rgb),0.6)" }} />
-          <div className="w-2 h-2 rounded-full" style={{ background: "rgba(var(--color-success-rgb),0.6)" }} />
+        <div className="flex-1 min-w-0">
+          <div className="flex items-center gap-2 flex-wrap">
+            <Badge variant="primary">AI</Badge>
+            <span className="text-sm font-semibold text-foreground">{title}</span>
+            {confidence != null && (
+              <span className="text-xs text-muted">{Math.round(confidence * 100)}% confidence</span>
+            )}
+          </div>
+          {timestamp && <p className="text-xs text-muted mt-0.5">{timestamp}</p>}
+        </div>
+        <div className="flex items-center gap-1 flex-shrink-0">
+          <button
+            type="button"
+            onClick={handleCopy}
+            aria-label="Copy analysis"
+            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-background/40 transition-colors"
+          >
+            {copied ? <Check size={14} className="text-success" /> : <Copy size={14} />}
+          </button>
+          <button
+            type="button"
+            onClick={() => setExpanded(!expanded)}
+            aria-label={expanded ? "Collapse" : "Expand"}
+            aria-expanded={expanded}
+            className="p-2 rounded-lg text-muted hover:text-foreground hover:bg-background/40 transition-colors"
+          >
+            {expanded ? <ChevronUp size={14} /> : <ChevronDown size={14} />}
+          </button>
         </div>
       </div>
 
-      {/* Typed content */}
-      <div
-        className="text-[12px] leading-[1.8] min-h-[3rem]"
-        style={{ color: `rgba(var(--color-primary-rgb), 0.8)` }}
-      >
-        <span>{displayed}</span>
-        {!done && (
-          <span
-            className="inline-block w-[2px] h-[14px] ml-0.5 align-middle"
-            style={{
-              background: "var(--color-primary)",
-              opacity: cursor ? 1 : 0,
-              transition: "opacity 0.1s",
-            }}
-          />
-        )}
-      </div>
-
-      {done && (
-        <div
-          className="mt-3 pt-3 flex items-center gap-2"
-          style={{ borderTop: `1px solid rgba(var(--border-base), 0.05)` }}
-        >
-          <div className="w-1.5 h-1.5 rounded-full" style={{ background: "var(--color-success)" }} />
-          <span
-            className="text-[9px] font-mono uppercase tracking-widest"
-            style={{ color: "var(--color-success)" }}
-          >
-            Analysis complete
-          </span>
+      {expanded && (
+        <div className="px-4 py-4">
+          <p className="text-sm text-muted leading-relaxed whitespace-pre-wrap">
+            {displayed}
+            {!done && (
+              <span className="inline-block w-0.5 h-4 ml-0.5 bg-primary align-middle animate-pulse" />
+            )}
+          </p>
+          {done && (
+            <div className="mt-4 pt-3 border-t border-border/15 flex items-center gap-2">
+              <span className="w-1.5 h-1.5 rounded-full bg-success" />
+              <span className="text-xs font-medium text-success">Analysis complete</span>
+            </div>
+          )}
         </div>
       )}
-
-      <style>{`
-        @keyframes aipulse {
-          0%, 100% { opacity: 1; }
-          50% { opacity: 0.3; }
-        }
-      `}</style>
     </div>
   );
 }

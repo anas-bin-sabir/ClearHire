@@ -1,29 +1,32 @@
 "use client";
+
 import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
 import {
-  Users, Briefcase, ShieldAlert, Layers, Database, Activity,
-  Cpu, Search, CheckCircle2, Clock, Zap, Brain, Network, Shield,
+  Users, Briefcase, ShieldAlert, Brain, Search, CheckCircle2, Clock,
+  Cpu, Database, Activity, Shield, Network, ArrowUpRight,
 } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import StatCard from "@/components/StatCard";
+import Card from "@/components/ui/Card";
+import Button from "@/components/ui/Button";
 import { getSession } from "@/utils/clearhire-auth";
 import { getPlatformStats, seedDatabase, getActivityFeed, getRecentSearches } from "@/lib/api";
 
 const AI_MODULES = [
-  { name: "A* Search Engine", desc: "Ranking & retrieval", icon: Search, colorVar: "var(--color-primary)", rgbVar: "var(--color-primary-rgb)" },
-  { name: "CSP Solver", desc: "Team optimization", icon: Brain, colorVar: "var(--color-secondary)", rgbVar: "var(--color-secondary-rgb)" },
-  { name: "Bayesian Fraud", desc: "Risk assessment", icon: Shield, colorVar: "var(--color-success)", rgbVar: "var(--color-success-rgb)" },
-  { name: "Skill Graph", desc: "Relationship mapping", icon: Network, colorVar: "var(--color-warning)", rgbVar: "var(--color-warning-rgb)" },
+  { name: "A* Search Engine", desc: "Ranking & retrieval", icon: Search, href: "/search" },
+  { name: "CSP Solver", desc: "Team optimization", icon: Brain, href: "/team-builder" },
+  { name: "Bayesian Fraud", desc: "Risk assessment", icon: Shield, href: "/fraud" },
+  { name: "Skill Graph", desc: "Relationship mapping", icon: Network, href: "/graph" },
 ];
 
 type FeedType = "search" | "fraud" | "team" | "contract";
 
-const FEED_CFG: Record<FeedType, { icon: React.ComponentType<{ size: number }>, colorVar: string, rgbVar: string }> = {
-  search: { icon: Search, colorVar: "var(--color-primary)", rgbVar: "var(--color-primary-rgb)" },
-  fraud: { icon: ShieldAlert, colorVar: "var(--color-danger)", rgbVar: "var(--color-danger-rgb)" },
-  team: { icon: Users, colorVar: "var(--color-secondary)", rgbVar: "var(--color-secondary-rgb)" },
-  contract: { icon: CheckCircle2, colorVar: "var(--color-success)", rgbVar: "var(--color-success-rgb)" },
+const FEED_CFG: Record<FeedType, { icon: React.ComponentType<{ size: number }>; variant: "primary" | "danger" | "success" | "warning" }> = {
+  search: { icon: Search, variant: "primary" },
+  fraud: { icon: ShieldAlert, variant: "danger" },
+  team: { icon: Users, variant: "warning" },
+  contract: { icon: CheckCircle2, variant: "success" },
 };
 
 export default function DashboardPage() {
@@ -60,209 +63,167 @@ export default function DashboardPage() {
     setSeedMsg("");
     try {
       const data = await seedDatabase(50, false);
-      setSeedMsg(data.success ? "✓ Synced" : "✗ Failed");
+      setSeedMsg(data.success ? "Synced" : "Failed");
     } catch {
-      setSeedMsg("✗ Error");
+      setSeedMsg("Error");
     } finally {
       setSeeding(false);
     }
   };
 
+  const aiDecisionsToday = stats.teams_built + stats.fraud_flagged;
   const filteredFeed =
-    feedFilter === "all"
-      ? activityFeed
-      : activityFeed.filter((e) => e.type === feedFilter);
-
-  const cardStyle = {
-    background: `rgba(var(--bg-secondary-rgb), 0.7)`,
-    border: `1px solid rgba(var(--border-base), 0.05)`,
-  };
+    feedFilter === "all" ? activityFeed : activityFeed.filter((e) => e.type === feedFilter);
 
   return (
     <AppLayout title="Dashboard">
-      <div className="space-y-7 pb-10">
-        {/* Greeting */}
+      <div className="space-y-8 pb-10">
+        {/* Header */}
         <motion.div
-          initial={{ opacity: 0, y: 14 }} animate={{ opacity: 1, y: 0 }} transition={{ duration: 0.4 }}
-          className="flex flex-col sm:flex-row sm:items-center justify-between gap-4"
+          initial={{ opacity: 0, y: 12 }}
+          animate={{ opacity: 1, y: 0 }}
+          className="flex flex-col sm:flex-row sm:items-end justify-between gap-4"
         >
           <div>
-            <h2 className="text-xl font-semibold" style={{ color: "var(--text-primary)" }}>
-              Welcome back,{" "}
-              <span
-                className="font-bold"
-                style={{ background: `linear-gradient(90deg, var(--color-primary), var(--color-secondary))`, WebkitBackgroundClip: "text", WebkitTextFillColor: "transparent" }}
-              >
-                {session?.name?.split(" ")[0] ?? "Agent"}
-              </span>
-            </h2>
-            <p className="text-sm mt-0.5 font-mono" style={{ color: "var(--text-subtle)" }}>
-              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })} — All systems nominal
+            <h1 className="page-title">
+              Welcome back, {session?.name?.split(" ")[0] ?? "there"}
+            </h1>
+            <p className="text-meta mt-1">
+              {new Date().toLocaleDateString("en-US", { weekday: "long", month: "long", day: "numeric" })}
+              {" · "}All intelligence systems operational
             </p>
           </div>
-          <div className="flex items-center gap-2 flex-wrap">
-            <div
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest"
-              style={{ background: `rgba(var(--color-primary-rgb), 0.06)`, border: `1px solid rgba(var(--color-primary-rgb), 0.15)`, color: "var(--color-primary)" }}
-            >
-              <Cpu size={11} style={{ animation: "dpulse 2s ease-in-out infinite" }} />
-              4 Modules Online
-            </div>
-            <button
-              onClick={handleSeed} disabled={seeding}
-              className="flex items-center gap-2 px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest transition-colors disabled:opacity-50"
-              style={{ background: `rgba(var(--border-base), 0.04)`, border: `1px solid rgba(var(--border-base), 0.08)`, color: "var(--text-muted)" }}
-            >
-              <Database size={11} />
-              {seeding ? "Syncing..." : seedMsg || "Sync DB"}
-            </button>
+          <div className="flex items-center gap-2">
+            <span className="inline-flex items-center gap-2 px-3 py-1.5 rounded-lg text-xs font-medium bg-success/10 text-success border border-success/20">
+              <Cpu size={14} /> 4 modules online
+            </span>
+            <Button variant="outline" size="sm" onClick={handleSeed} loading={seeding}>
+              <Database size={14} />
+              {seeding ? "Syncing…" : seedMsg || "Sync database"}
+            </Button>
           </div>
         </motion.div>
 
-        {/* Stat Cards */}
-        <div className="grid grid-cols-2 md:grid-cols-4 gap-4">
-          <StatCard label="Freelancers" value={stats.freelancers_total} icon={Users} color="text-cyan-400" delay={0} trend="live" />
-          <StatCard label="Active Projects" value={stats.open_projects} icon={Briefcase} color="text-violet-400" delay={100} trend="live" />
-          <StatCard label="Fraud Flagged" value={stats.fraud_flagged} icon={ShieldAlert} color="text-red-400" delay={200} trend="live" />
-          <StatCard label="Teams Built" value={stats.teams_built} icon={Layers} color="text-emerald-400" delay={300} trend="live" />
+        {/* KPI Cards */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-4">
+          <StatCard
+            label="Total Freelancers"
+            value={stats.freelancers_total}
+            icon={Users}
+            variant="primary"
+            delay={0}
+            trend="+12%"
+            trendDirection="up"
+          />
+          <StatCard
+            label="Active Projects"
+            value={stats.open_projects}
+            icon={Briefcase}
+            variant="primary"
+            delay={80}
+            trend="+3"
+            trendDirection="up"
+          />
+          <StatCard
+            label="Fraud Alerts"
+            value={stats.fraud_flagged}
+            icon={ShieldAlert}
+            variant="danger"
+            delay={160}
+            trend="-2"
+            trendDirection="down"
+          />
+          <StatCard
+            label="AI Decisions Today"
+            value={aiDecisionsToday}
+            icon={Brain}
+            variant="success"
+            delay={240}
+            trend="Live"
+            trendDirection="neutral"
+          />
         </div>
 
-        {/* Middle Grid */}
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-5">
           {/* Recent Searches */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.25 }}
-            className="p-5 rounded-2xl flex flex-col" style={cardStyle}
-          >
+          <Card className="lg:col-span-1">
             <div className="flex items-center justify-between mb-4">
-              <div className="flex items-center gap-2">
-                <Search size={14} style={{ color: "var(--color-primary)" }} />
-                <h3 className="font-mono text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--text-primary)" }}>
-                  Recent Searches
-                </h3>
-              </div>
-              <a href="/search" className="text-[10px] font-mono uppercase tracking-widest transition-colors" style={{ color: `rgba(var(--color-primary-rgb), 0.6)` }}>
-                All →
+              <h2 className="section-title text-base flex items-center gap-2">
+                <Search size={16} className="text-primary" />
+                Recent Searches
+              </h2>
+              <a href="/search" className="text-xs font-medium text-primary hover:underline flex items-center gap-1">
+                View all <ArrowUpRight size={12} />
               </a>
             </div>
             <div className="space-y-1">
-              {(recentSearches.length > 0 ? recentSearches : []).map((s, i) => (
-                <motion.a
-                  key={i}
-                  href={`/search?q=${encodeURIComponent(s.query)}`}
-                  initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} transition={{ delay: 0.3 + i * 0.08 }}
-                  className="flex items-center justify-between p-2.5 rounded-xl group transition-colors"
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = `rgba(var(--border-base), 0.05)`)}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = "")}
-                >
-                  <div className="flex items-center gap-2.5 min-w-0">
-                    <Search size={11} className="flex-shrink-0 transition-colors" style={{ color: "var(--text-subtle)" }} />
-                    <span className="text-xs truncate transition-colors" style={{ color: "var(--text-secondary)" }}>
+              {recentSearches.length === 0 ? (
+                <p className="text-sm text-muted py-6 text-center">No searches yet</p>
+              ) : (
+                recentSearches.map((s, i) => (
+                  <a
+                    key={i}
+                    href={`/search?q=${encodeURIComponent(s.query)}`}
+                    className="flex items-center justify-between p-2.5 rounded-lg hover:bg-background/60 transition-colors group"
+                  >
+                    <span className="text-sm text-foreground truncate group-hover:text-primary transition-colors">
                       {s.query}
                     </span>
-                  </div>
-                  <div className="flex items-center gap-2 flex-shrink-0 ml-2">
-                    <span className="text-[10px] font-mono" style={{ color: `rgba(var(--color-primary-rgb), 0.7)` }}>
-                      {s.results}
-                    </span>
-                    <span className="text-[9px] font-mono" style={{ color: "var(--text-subtle)" }}>{s.time}</span>
-                  </div>
-                </motion.a>
-              ))}
-              {recentSearches.length === 0 && (
-                <p className="text-xs font-mono py-4 text-center" style={{ color: "var(--text-subtle)" }}>
-                  No searches yet — run a talent search to populate history
-                </p>
+                    <div className="flex items-center gap-2 flex-shrink-0 ml-2 text-xs text-muted">
+                      <span className="text-primary font-medium">{s.results}</span>
+                      <span>{s.time}</span>
+                    </div>
+                  </a>
+                ))
               )}
             </div>
-          </motion.div>
+          </Card>
 
-          {/* AI Module Status */}
-          <motion.div
-            initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.35 }}
-            className="lg:col-span-2 p-5 rounded-2xl" style={cardStyle}
-          >
+          {/* Intelligence Modules */}
+          <Card className="lg:col-span-2">
             <div className="flex items-center justify-between mb-5">
-              <div className="flex items-center gap-2">
-                <Activity size={14} style={{ color: "var(--color-success)", animation: "dpulse 1.5s ease-in-out infinite" }} />
-                <h3 className="font-mono text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--text-primary)" }}>
-                  Intelligence Modules
-                </h3>
-              </div>
-              <span className="text-[10px] font-mono uppercase tracking-widest" style={{ color: "var(--color-success)" }}>
-                4 / 4 Online
-              </span>
+              <h2 className="section-title text-base flex items-center gap-2">
+                <Activity size={16} className="text-success" />
+                Intelligence Modules
+              </h2>
+              <span className="text-xs font-medium text-success">4 / 4 online</span>
             </div>
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
-              {AI_MODULES.map((mod, i) => (
-                <motion.div
+              {AI_MODULES.map((mod) => (
+                <a
                   key={mod.name}
-                  initial={{ opacity: 0, scale: 0.95 }} animate={{ opacity: 1, scale: 1 }} transition={{ delay: 0.4 + i * 0.07 }}
-                  className="flex items-center gap-3 p-3.5 rounded-xl"
-                  style={{ background: `rgba(var(--border-base), 0.03)`, border: `1px solid rgba(var(--border-base), 0.06)` }}
+                  href={mod.href}
+                  className="flex items-center gap-3 p-3.5 rounded-lg border border-border bg-background/40 hover:border-primary/25 hover:bg-primary/5 transition-all group"
                 >
-                  <div
-                    className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: `rgba(${mod.rgbVar}, 0.12)` }}
-                  >
-                    <mod.icon size={16} style={{ color: mod.colorVar }} />
+                  <div className="w-9 h-9 rounded-lg bg-primary/10 flex items-center justify-center text-primary group-hover:bg-primary/15">
+                    <mod.icon size={18} />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <div className="text-xs font-semibold truncate" style={{ color: "var(--text-primary)" }}>{mod.name}</div>
-                    <div className="text-[10px] font-mono" style={{ color: "var(--text-subtle)" }}>{mod.desc}</div>
+                    <div className="text-sm font-medium text-foreground">{mod.name}</div>
+                    <div className="text-xs text-muted">{mod.desc}</div>
                   </div>
-                  <div className="flex items-center gap-1.5 flex-shrink-0">
-                    <span
-                      className="w-1.5 h-1.5 rounded-full"
-                      style={{ background: "var(--color-success)", animation: `dpulse ${1.5 + i * 0.3}s ease-in-out infinite` }}
-                    />
-                    <span className="text-[9px] font-mono uppercase" style={{ color: "var(--color-success)" }}>ONLINE</span>
-                  </div>
-                </motion.div>
-              ))}
-            </div>
-            <div className="flex gap-2 mt-4 pt-4" style={{ borderTop: `1px solid rgba(var(--border-base), 0.05)` }}>
-              {[
-                { href: "/search", label: "Search Talent", colorVar: "var(--color-primary)", rgbVar: "var(--color-primary-rgb)" },
-                { href: "/team-builder", label: "Build Team", colorVar: "var(--color-secondary)", rgbVar: "var(--color-secondary-rgb)" },
-                { href: "/fraud", label: "Fraud Scan", colorVar: "var(--color-danger)", rgbVar: "var(--color-danger-rgb)" },
-              ].map((a) => (
-                <a
-                  key={a.href} href={a.href}
-                  className="flex-1 py-2 rounded-xl text-center text-[10px] font-mono uppercase tracking-wider transition-colors"
-                  style={{ color: a.colorVar, background: `rgba(${a.rgbVar}, 0.07)`, border: `1px solid rgba(${a.rgbVar}, 0.2)` }}
-                  onMouseEnter={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = `rgba(${a.rgbVar}, 0.14)`)}
-                  onMouseLeave={(e) => ((e.currentTarget as HTMLAnchorElement).style.background = `rgba(${a.rgbVar}, 0.07)`)}
-                >
-                  {a.label}
+                  <span className="w-1.5 h-1.5 rounded-full bg-success flex-shrink-0" />
                 </a>
               ))}
             </div>
-          </motion.div>
+          </Card>
         </div>
 
         {/* Activity Feed */}
-        <motion.div
-          initial={{ opacity: 0, y: 16 }} animate={{ opacity: 1, y: 0 }} transition={{ delay: 0.45 }}
-          className="p-5 rounded-2xl" style={cardStyle}
-        >
+        <Card>
           <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-5">
-            <div className="flex items-center gap-2">
-              <Zap size={14} className="text-yellow-400" />
-              <h3 className="font-mono text-[11px] uppercase tracking-[0.2em]" style={{ color: "var(--text-primary)" }}>
-                Intelligence Stream
-              </h3>
-            </div>
-            <div className="flex flex-wrap gap-1 p-0.5 rounded-lg" style={{ background: `rgba(var(--border-base), 0.04)` }}>
+            <h2 className="section-title text-base">Intelligence Stream</h2>
+            <div className="flex flex-wrap gap-1 p-0.5 rounded-lg bg-background border border-border">
               {["all", "search", "fraud", "team", "contract"].map((t) => (
                 <button
-                  key={t} onClick={() => setFeedFilter(t)}
-                  className="px-2.5 py-1 rounded-md text-[9px] font-mono uppercase tracking-wider transition-all"
-                  style={
+                  key={t}
+                  onClick={() => setFeedFilter(t)}
+                  className={[
+                    "px-2.5 py-1 rounded-md text-xs font-medium capitalize transition-all",
                     feedFilter === t
-                      ? { background: `rgba(var(--color-primary-rgb), 0.1)`, color: "var(--color-primary)", border: `1px solid rgba(var(--color-primary-rgb), 0.2)` }
-                      : { color: "var(--text-subtle)" }
-                  }
+                      ? "bg-primary/10 text-primary"
+                      : "text-muted hover:text-foreground",
+                  ].join(" ")}
                 >
                   {t}
                 </button>
@@ -272,46 +233,40 @@ export default function DashboardPage() {
           <div className="space-y-1">
             <AnimatePresence mode="popLayout">
               {filteredFeed.length === 0 && (
-                <p className="text-xs font-mono py-6 text-center" style={{ color: "var(--text-subtle)" }}>
-                  No platform activity yet — search, fraud scan, or build a team
-                </p>
+                <p className="text-sm text-muted py-8 text-center">No platform activity yet</p>
               )}
               {filteredFeed.map((event) => {
-                const cfg =
-                  FEED_CFG[event.type as FeedType] ??
-                  FEED_CFG.search;
+                const cfg = FEED_CFG[event.type as FeedType] ?? FEED_CFG.search;
                 const Icon = cfg.icon;
+                const iconBg = {
+                  primary: "bg-primary/10 text-primary",
+                  danger: "bg-danger/10 text-danger",
+                  warning: "bg-warning/10 text-warning",
+                  success: "bg-success/10 text-success",
+                }[cfg.variant];
                 return (
                   <motion.div
-                    key={event.id} layout
-                    initial={{ opacity: 0, x: -8 }} animate={{ opacity: 1, x: 0 }} exit={{ opacity: 0, x: 8 }}
-                    className="flex items-start gap-3 p-3 rounded-xl transition-colors"
-                    onMouseEnter={(e) => ((e.currentTarget as HTMLDivElement).style.background = `rgba(var(--border-base), 0.02)`)}
-                    onMouseLeave={(e) => ((e.currentTarget as HTMLDivElement).style.background = "")}
+                    key={event.id}
+                    layout
+                    initial={{ opacity: 0, x: -6 }}
+                    animate={{ opacity: 1, x: 0 }}
+                    exit={{ opacity: 0 }}
+                    className="flex items-start gap-3 p-3 rounded-lg hover:bg-background/50 transition-colors"
                   >
-                    <div
-                      className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0 mt-0.5"
-                      style={{ background: `rgba(${cfg.rgbVar}, 0.1)` }}
-                    >
-                      <Icon size={13} style={{ color: cfg.colorVar }} />
+                    <div className={`w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0 ${iconBg}`}>
+                      <Icon size={14} />
                     </div>
-                    <p className="flex-1 text-[12px] leading-relaxed min-w-0" style={{ color: "var(--text-secondary)" }}>
-                      {event.text}
-                    </p>
-                    <div className="flex items-center gap-1 flex-shrink-0 text-[10px] font-mono whitespace-nowrap" style={{ color: "var(--text-subtle)" }}>
-                      <Clock size={10} /> {event.time}
-                    </div>
+                    <p className="flex-1 text-sm text-muted leading-relaxed min-w-0">{event.text}</p>
+                    <span className="flex items-center gap-1 text-xs text-muted whitespace-nowrap">
+                      <Clock size={12} /> {event.time}
+                    </span>
                   </motion.div>
                 );
               })}
             </AnimatePresence>
           </div>
-        </motion.div>
+        </Card>
       </div>
-
-      <style>{`
-        @keyframes dpulse { 0%,100%{opacity:1;} 50%{opacity:0.35;} }
-      `}</style>
     </AppLayout>
   );
 }

@@ -1,5 +1,7 @@
 "use client";
+
 import { useEffect, useRef } from "react";
+import { fraudThresholds, fraudRiskLevel } from "@/lib/theme";
 
 interface FraudGaugeProps {
   score?: number;
@@ -7,6 +9,7 @@ interface FraudGaugeProps {
   thickness?: number;
   showLabel?: boolean;
   animated?: boolean;
+  confidence?: string;
 }
 
 export default function FraudGauge({
@@ -15,13 +18,25 @@ export default function FraudGauge({
   thickness = 10,
   showLabel = true,
   animated = true,
+  confidence,
 }: FraudGaugeProps) {
   const circleRef = useRef<SVGCircleElement>(null);
   const pct = Math.round(score * 100);
+  const level = fraudRiskLevel(pct);
 
-  const colorVar = pct < 30 ? "var(--color-success)" : pct < 70 ? "var(--color-warning)" : "var(--color-danger)";
-  const glowRgb = pct < 30 ? "var(--color-success-rgb)" : pct < 70 ? "var(--color-warning-rgb)" : "var(--color-danger-rgb)";
-  const label = pct < 30 ? "Low Risk" : pct < 70 ? "Moderate" : "High Risk";
+  const strokeClass =
+    level === "low" ? "stroke-success" : level === "medium" ? "stroke-warning" : "stroke-danger";
+  const textClass =
+    level === "low" ? "text-success" : level === "medium" ? "text-warning" : "text-danger";
+
+  const riskLabel =
+    level === "low" ? "Low risk" : level === "medium" ? "Moderate risk" : "High risk";
+  const riskDesc =
+    level === "low"
+      ? "Within acceptable range"
+      : level === "medium"
+        ? "Review recommended"
+        : "Immediate attention required";
 
   const r = (size - thickness * 2) / 2;
   const cx = size / 2;
@@ -37,7 +52,7 @@ export default function FraudGauge({
     }
     circleRef.current.style.strokeDashoffset = `${circumference}`;
     const start = performance.now();
-    const duration = 1100;
+    const duration = 1000;
 
     const raf = requestAnimationFrame(function step(now: number) {
       const t = Math.min((now - start) / duration, 1);
@@ -51,57 +66,63 @@ export default function FraudGauge({
 
   return (
     <div
-      className="relative inline-flex items-center justify-center"
-      style={{ width: size, height: size }}
+      className="relative inline-flex flex-col items-center justify-center"
+      role="img"
+      aria-label={`Fraud risk score ${pct} percent, ${riskLabel}`}
     >
-      {/* Outer glow */}
-      <div
-        className="absolute inset-0 rounded-full"
-        style={{
-          boxShadow: `0 0 ${size * 0.2}px rgba(${glowRgb}, 0.35)`,
-          borderRadius: "50%",
-          transition: "box-shadow 0.8s ease",
-        }}
-      />
+      <div className="relative" style={{ width: size, height: size }}>
+        <svg width={size} height={size} className="-rotate-90">
+          <circle
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            className="stroke-border/40"
+            strokeWidth={thickness}
+          />
+          <circle
+            ref={circleRef}
+            cx={cx}
+            cy={cy}
+            r={r}
+            fill="none"
+            className={strokeClass}
+            strokeWidth={thickness}
+            strokeLinecap="round"
+            strokeDasharray={circumference}
+            strokeDashoffset={circumference}
+            style={{ transition: "stroke 0.4s ease" }}
+          />
+        </svg>
 
-      <svg width={size} height={size} style={{ transform: "rotate(-90deg)" }}>
-        {/* Track */}
-        <circle
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke={`rgba(var(--border-base), 0.05)`}
-          strokeWidth={thickness}
-        />
-        {/* Progress */}
-        <circle
-          ref={circleRef}
-          cx={cx} cy={cy} r={r}
-          fill="none"
-          stroke={colorVar}
-          strokeWidth={thickness}
-          strokeLinecap="round"
-          strokeDasharray={circumference}
-          strokeDashoffset={circumference}
-          style={{ transition: "stroke 0.5s ease", filter: `drop-shadow(0 0 6px ${colorVar})` }}
-        />
-      </svg>
+        {showLabel && (
+          <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none gap-0.5">
+            <span className={`font-bold leading-none ${textClass}`} style={{ fontSize: size * 0.2 }}>
+              {pct}%
+            </span>
+            <span className={`text-xs font-medium ${textClass}`}>{riskLabel}</span>
+            <span className="text-[10px] text-muted text-center px-2">{riskDesc}</span>
+          </div>
+        )}
+      </div>
 
-      {showLabel && (
-        <div className="absolute inset-0 flex flex-col items-center justify-center pointer-events-none">
-          <span
-            className="font-mono font-bold leading-none"
-            style={{ fontSize: size * 0.18, color: colorVar }}
-          >
-            {pct}%
-          </span>
-          <span
-            className="font-mono uppercase tracking-widest mt-1"
-            style={{ fontSize: size * 0.075, color: "var(--text-subtle)" }}
-          >
-            {label}
-          </span>
+      {confidence && (
+        <div className="mt-3 px-3 py-1 rounded-full text-xs font-medium bg-card border border-border text-muted">
+          Confidence: <span className="text-foreground capitalize">{confidence}</span>
         </div>
       )}
+
+      <div className="flex gap-3 mt-3 text-[10px] text-muted" aria-hidden>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-success" /> 0–{fraudThresholds.low}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-warning" /> {fraudThresholds.low + 1}–{fraudThresholds.medium}
+        </span>
+        <span className="flex items-center gap-1">
+          <span className="w-2 h-2 rounded-full bg-danger" /> {fraudThresholds.medium + 1}–100
+        </span>
+      </div>
     </div>
   );
 }
