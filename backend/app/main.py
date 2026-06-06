@@ -11,11 +11,25 @@ from app.db.neo4j_client import get_neo4j_driver
 from app.db.repositories.neo4j import GraphRepository
 from app.db.session import async_session_factory
 from app.models.schemas import HealthResponse
-from app.routers import analytics, fraud, freelancers, graph, projects, search, seed, stats, team_builder, user_settings
-from app.core.config import settings
+from app.ai.agents.orchestrator import register_all_agents
+from app.routers import (
+    activity,
+    analytics,
+    contracts,
+    fraud,
+    freelancers,
+    graph,
+    projects,
+    search,
+    seed,
+    stats,
+    team_builder,
+    user_settings,
+)
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
+    register_all_agents()
     await init_postgres()
     await init_mongodb()
     try:
@@ -54,8 +68,10 @@ app.include_router(graph.router, prefix="/graph", tags=["Graph"])
 app.include_router(seed.router, prefix="/seed", tags=["Seed"])
 app.include_router(freelancers.router, prefix="/freelancers", tags=["Freelancers"])
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
+app.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
+app.include_router(activity.router, prefix="/activity", tags=["Activity"])
 app.include_router(user_settings.router, prefix="/settings", tags=["Settings"])
 
 
@@ -72,8 +88,14 @@ async def root():
             "POST /seed",
             "GET /freelancers",
             "GET /projects",
+            "POST /projects",
+            "GET /contracts/project/{id}",
+            "POST /contracts",
+            "POST /contracts/batch",
             "GET /stats",
             "GET /analytics",
+            "GET /activity/feed",
+            "GET /activity/searches/recent",
             "GET /settings/{user_id}",
             "POST /settings/{user_id}",
             "GET /health",
