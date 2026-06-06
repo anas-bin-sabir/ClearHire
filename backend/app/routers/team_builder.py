@@ -85,6 +85,7 @@ async def build_team(
             response_summary={
                 "success": response.success,
                 "team_size": len(response.team),
+                "team_ids": [m.get("id") for m in response.team if isinstance(m, dict)],
                 "total_cost": response.total_cost,
             },
         )
