@@ -1,3 +1,5 @@
+from typing import Any
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.ai.csp import solve_team
@@ -6,12 +8,28 @@ from app.ai.types import FreelancerCandidate, TeamBuilderConstraints, TeamExplan
 from app.core.activity import log_activity
 from app.core.config import settings
 from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
+from app.core.events import ClearHireEvent, emit
 from app.db.repositories.mongo import AIExplanationRepository
 from app.db.repositories.postgres import FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
 from app.models.schemas import TeamBuilderRequest, TeamBuilderResponse
 
 router = APIRouter()
+
+
+@router.get("/status/{project_id}")
+async def get_team_build_status(
+    project_id: int,
+    ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
+) -> dict[str, Any]:
+    """Poll background CSP agent result for a project."""
+    cached = await ai_explanation_repo.get_latest(
+        entity_id=project_id,
+        pipeline="csp_team_builder",
+    )
+    if not cached:
+        return {"status": "pending", "project_id": project_id}
+    return {"status": "complete", "project_id": project_id, **cached}
 
 
 @router.post("", response_model=TeamBuilderResponse)
@@ -22,6 +40,16 @@ async def build_team(
 ) -> TeamBuilderResponse:
     endpoint = "/team-builder"
     try:
+        await emit(ClearHireEvent.TEAM_BUILD_REQUESTED, {
+            "project_id": body.project_id,
+            "required_skills": body.required_skills,
+            "budget": body.budget,
+            "deadline_days": body.deadline_days,
+            "team_size": body.team_size,
+            "hours_per_member": body.hours_per_member,
+            "max_fraud_score": body.max_fraud_score,
+        })
+
         freelancers_orm = await freelancer_repo.list_for_team_building(
             max_fraud_score=body.max_fraud_score
         )

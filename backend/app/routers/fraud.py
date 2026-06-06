@@ -1,3 +1,5 @@
+from typing import Any, Optional
+
 from fastapi import APIRouter, Depends, HTTPException
 
 from app.ai.bayesian import assess_fraud
@@ -14,6 +16,68 @@ from app.models.schemas import FraudRequest, FraudResponse
 router = APIRouter()
 
 
+def _fraud_response_from_cache(
+    cached: dict[str, Any],
+    profile_dict: Optional[dict[str, Any]] = None,
+) -> FraudResponse:
+    metadata = cached.get("metadata") or {}
+    return FraudResponse(
+        score=float(metadata.get("score", 0.0)),
+        confidence=metadata.get("confidence", "low"),
+        signals=metadata.get("signals", []),
+        risk_factors=metadata.get("risk_factors", []),
+        is_flagged=bool(metadata.get("is_flagged", False)),
+        freelancer=profile_dict,
+        explanation=cached.get("explanation", ""),
+        source="agent_precomputed",
+        ran_at=cached.get("ran_at"),
+        note="Result computed automatically when freelancer signed up",
+    )
+
+
+async def _get_precomputed_fraud(
+    freelancer_id: int,
+    ai_explanation_repo: AIExplanationRepository,
+    freelancer_repo: FreelancerRepository,
+) -> Optional[FraudResponse]:
+    cached = await ai_explanation_repo.get_latest(
+        entity_id=freelancer_id,
+        entity_type="freelancer",
+        pipeline="fraud_detection",
+    )
+    if not cached:
+        return None
+    profile_dict: Optional[dict[str, Any]] = None
+    freelancer = await freelancer_repo.get_by_id(freelancer_id)
+    if freelancer is not None:
+        profile_dict = freelancer_to_dict(freelancer)
+    return _fraud_response_from_cache(cached, profile_dict)
+
+
+@router.get("/{freelancer_id}", response_model=FraudResponse)
+async def get_fraud_analysis(
+    freelancer_id: int,
+    freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
+    ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
+) -> FraudResponse:
+    """Return pre-computed fraud analysis from the fraud agent when available."""
+    cached = await _get_precomputed_fraud(
+        freelancer_id, ai_explanation_repo, freelancer_repo
+    )
+    if cached:
+        return cached
+
+    freelancer = await freelancer_repo.get_by_id(freelancer_id)
+    if freelancer is None:
+        raise HTTPException(status_code=404, detail="Freelancer not found")
+
+    return await analyze_fraud(
+        FraudRequest(freelancer_id=freelancer_id),
+        freelancer_repo=freelancer_repo,
+        ai_explanation_repo=ai_explanation_repo,
+    )
+
+
 @router.post("", response_model=FraudResponse)
 async def analyze_fraud(
     body: FraudRequest,
@@ -22,6 +86,13 @@ async def analyze_fraud(
 ) -> FraudResponse:
     endpoint = "/fraud"
     try:
+        if body.freelancer_id is not None:
+            cached = await _get_precomputed_fraud(
+                body.freelancer_id, ai_explanation_repo, freelancer_repo
+            )
+            if cached:
+                return cached
+
         if body.freelancer_id is not None:
             freelancer = await freelancer_repo.get_by_id(body.freelancer_id)
             if freelancer is None:

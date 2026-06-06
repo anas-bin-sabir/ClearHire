@@ -68,6 +68,9 @@ class FraudResponse(BaseModel):
     is_flagged: bool
     freelancer: Optional[dict[str, Any]] = None
     explanation: str
+    source: Optional[str] = None
+    ran_at: Optional[str] = None
+    note: Optional[str] = None
 
 
 # --- Team builder ---
@@ -84,6 +87,11 @@ class TeamBuilderRequest(BaseModel):
         le=1.0,
         description="Maximum allowed fraud_score for candidates",
     )
+    project_id: Optional[int] = Field(
+        default=None,
+        description="Optional project to associate with background CSP agent run",
+    )
+    deadline_days: Optional[int] = Field(default=30, ge=1)
 
 
 class TeamBuilderResponse(BaseModel):
@@ -223,6 +231,80 @@ class TimeSeriesResponse(BaseModel):
     period: str = "weekly"
 
 
+# --- Projects (create) ---
+
+
+class ProjectCreateRequest(BaseModel):
+    title: str = Field(min_length=1, max_length=255)
+    description: Optional[str] = None
+    client: Optional[str] = None
+    required_skills: list[str] = Field(default_factory=list)
+    budget: float = Field(gt=0)
+    deadline_days: int = Field(default=30, ge=1, le=365)
+    team_size: int = Field(default=1, ge=1, le=50)
+
+
+class ProjectCreateResponse(BaseModel):
+    project: ProjectRecord
+
+
+# --- Contracts ---
+
+
+class ContractRecord(BaseModel):
+    id: int
+    freelancer_id: int
+    project_id: int
+    status: str
+    created_at: Optional[str] = None
+
+
+class ContractListResponse(BaseModel):
+    contracts: list[ContractRecord]
+    total: int
+
+
+class ContractCreateRequest(BaseModel):
+    freelancer_id: int
+    project_id: int
+    status: str = Field(default="active", pattern=r"^(pending|active|completed|cancelled)$")
+
+
+class ContractUpdateRequest(BaseModel):
+    status: str = Field(pattern=r"^(pending|active|completed|cancelled)$")
+
+
+class ContractBatchRequest(BaseModel):
+    project_id: int
+    freelancer_ids: list[int] = Field(default_factory=list)
+    status: str = Field(default="active", pattern=r"^(pending|active|completed|cancelled)$")
+
+
+class ActivityFeedItem(BaseModel):
+    id: str
+    type: str
+    text: str
+    time: str
+
+
+class ActivityFeedResponse(BaseModel):
+    items: list[ActivityFeedItem]
+
+
+class RecentSearchItem(BaseModel):
+    query: str
+    results: int
+    time: str
+
+
+class RecentSearchResponse(BaseModel):
+    searches: list[RecentSearchItem]
+
+
+class SkillListResponse(BaseModel):
+    skills: list[str]
+
+
 # --- Settings ---
 
 
@@ -237,3 +319,20 @@ class UserPreferences(BaseModel):
 class UserSettingsResponse(BaseModel):
     user_id: int
     preferences: UserPreferences
+
+
+class FreelancerCreateRequest(BaseModel):
+    name: str
+    skills: list[str] = []
+    hourly_rate: float = 0.0
+    experience_years: int = 0
+    rating: float | None = None
+    review_count: int | None = None
+    account_age_days: int | None = None
+    availability: bool | None = None
+    portfolio_urls: list[str] | None = None
+
+
+class FreelancerCreateResponse(BaseModel):
+    freelancer: dict
+    message: str

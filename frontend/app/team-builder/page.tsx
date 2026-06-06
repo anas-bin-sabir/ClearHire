@@ -4,8 +4,9 @@ import { motion, AnimatePresence } from "motion/react";
 import { Plus, X, Users, Cpu, CheckCircle2, AlertCircle, DollarSign, Calendar, TrendingUp, Shield, Star, MapPin, Clock, Zap, FolderOpen } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import AIReasoningBox from "@/components/AIReasoningBox";
+import { AgentStatusBadge } from "@/components/AgentStatusBadge";
 import { ALL_SKILLS } from "@/data/mockData";
-import { buildTeam, enrichFreelancer, listProjects, assignTeamToProject } from "@/lib/api";
+import { buildTeam, enrichFreelancer, listProjects, assignTeamToProject, getTeamBuildStatus } from "@/lib/api";
 
 const SOLVE_STEPS = [
   { label: "Scanning freelancer pool", detail: "Loading 20 candidates into working set..." },
@@ -25,6 +26,9 @@ export default function TeamBuilderPage() {
   const [selectedProjectId, setSelectedProjectId] = useState<number | "">("");
   const [savingTeam, setSavingTeam] = useState(false);
   const [saveMsg, setSaveMsg] = useState("");
+  const [isAgentRunning, setIsAgentRunning] = useState(false);
+  const [agentRanAt, setAgentRanAt] = useState<string | null>(null);
+  const [buildProjectId, setBuildProjectId] = useState<number | null>(null);
 
   useEffect(() => {
     listProjects()
@@ -44,13 +48,25 @@ export default function TeamBuilderPage() {
     setSolveStep(0);
     setResult(null);
     setAiText("");
+    setAgentRanAt(null);
+    const projectId = selectedProjectId ? Number(selectedProjectId) : null;
+    setBuildProjectId(projectId);
+    setIsAgentRunning(projectId != null);
     for (let i = 0; i < SOLVE_STEPS.length; i++) {
       await new Promise((r) => setTimeout(r, 700 + Math.random() * 400));
       setSolveStep(i + 1);
     }
     await new Promise((r) => setTimeout(r, 400));
     try {
-      const apiRes = await buildTeam({ budget: constraints.budget, required_skills: constraints.required_skills, team_size: constraints.team_size, hours_per_member: 40, max_fraud_score: 0.6 });
+      const apiRes = await buildTeam({
+        budget: constraints.budget,
+        required_skills: constraints.required_skills,
+        team_size: constraints.team_size,
+        hours_per_member: 40,
+        max_fraud_score: 0.6,
+        project_id: projectId ?? undefined,
+        deadline_days: constraints.deadline_days,
+      });
       const team = (apiRes.team || []).map(enrichFreelancer);
       const skillsCovered = constraints.required_skills.filter((s) => team.some((f: any) => f.skills?.includes(s)));
       setResult({ success: apiRes.success, team, total_cost: apiRes.total_cost, skills_covered: skillsCovered, uncovered_skills: constraints.required_skills.filter((s) => !skillsCovered.includes(s)) });
@@ -58,9 +74,30 @@ export default function TeamBuilderPage() {
     } catch {
       setResult({ success: false, team: [], total_cost: 0, skills_covered: [], uncovered_skills: constraints.required_skills });
       setAiText("Team builder request failed. Ensure the API is running on port 8000.");
+      setIsAgentRunning(false);
     }
     setSolving(false);
   };
+
+  useEffect(() => {
+    if (!isAgentRunning || !buildProjectId) return;
+    let stopped = false;
+    const poll = async () => {
+      try {
+        const status = await getTeamBuildStatus(buildProjectId);
+        if (stopped) return;
+        if (status.status === "complete") {
+          setIsAgentRunning(false);
+          setAgentRanAt(typeof status.ran_at === "string" ? status.ran_at : null);
+        }
+      } catch {
+        /* keep polling */
+      }
+    };
+    poll();
+    const interval = setInterval(poll, 2000);
+    return () => { stopped = true; clearInterval(interval); };
+  }, [isAgentRunning, buildProjectId]);
 
   const handleSaveTeam = async () => {
     if (!result?.success || !selectedProjectId) return;
@@ -167,6 +204,23 @@ export default function TeamBuilderPage() {
               </AnimatePresence>
             </div>
 
+            <div className="space-y-2">
+              <label className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--text-subtle)" }}>
+                <FolderOpen size={11} /> Link to project (optional)
+              </label>
+              <select
+                value={selectedProjectId}
+                onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : "")}
+                className="w-full rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none"
+                style={{ ...inputStyle, background: `rgba(var(--bg-secondary-rgb), 0.95)` }}
+              >
+                <option value="">No project — sync CSP only</option>
+                {projects.map((p) => (
+                  <option key={p.id} value={p.id}>{p.title}</option>
+                ))}
+              </select>
+            </div>
+
             {/* CTA */}
             <button
               onClick={handleBuild} disabled={solving}
@@ -184,7 +238,16 @@ export default function TeamBuilderPage() {
 
         {/* Right: Results */}
         <div className="lg:col-span-7 space-y-5">
-          <h3 className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: "var(--text-subtle)" }}>Optimisation Output</h3>
+          <div className="flex items-center justify-between gap-3">
+            <h3 className="font-mono text-[10px] uppercase tracking-[0.25em]" style={{ color: "var(--text-subtle)" }}>Optimisation Output</h3>
+            {(isAgentRunning || agentRanAt) && (
+              <AgentStatusBadge
+                pipeline="csp_team_builder"
+                isRunning={isAgentRunning}
+                ranAt={agentRanAt ?? undefined}
+              />
+            )}
+          </div>
 
           <AnimatePresence>
             {solving && (
@@ -291,6 +354,9 @@ export default function TeamBuilderPage() {
                     <div className="p-4 rounded-2xl space-y-3" style={{ background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid rgba(var(--border-base), 0.06)` }}>
                       <p className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--text-subtle)" }}>
                         <FolderOpen size={11} /> Save team to project
+                      </p>
+                      <p className="text-[10px] font-mono" style={{ color: "var(--text-muted)" }}>
+                        Select a project before building to enable background CSP agent tracking.
                       </p>
                       <select
                         value={selectedProjectId}

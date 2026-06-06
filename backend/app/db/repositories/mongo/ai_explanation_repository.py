@@ -32,3 +32,28 @@ class AIExplanationRepository:
         }
         result = await self._collection.insert_one(document)
         return str(result.inserted_id)
+
+    async def get_latest(
+        self,
+        *,
+        entity_id: int,
+        entity_type: Optional[str] = None,
+        pipeline: Optional[str] = None,
+    ) -> Optional[dict[str, Any]]:
+        """Most recent agent explanation for an entity, newest ran_at first."""
+        query: dict[str, Any] = {"entity_id": entity_id}
+        if entity_type is not None:
+            query["entity_type"] = entity_type
+        if pipeline is not None:
+            query["pipeline"] = pipeline
+        doc = await self._collection.find_one(query, sort=[("ran_at", -1)])
+        if doc is None:
+            return None
+        doc.pop("_id", None)
+        ran_at = doc.get("ran_at")
+        if ran_at is not None and hasattr(ran_at, "isoformat"):
+            doc["ran_at"] = ran_at.isoformat()
+        timestamp = doc.get("timestamp")
+        if timestamp is not None and hasattr(timestamp, "isoformat"):
+            doc["timestamp"] = timestamp.isoformat()
+        return doc

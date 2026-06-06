@@ -29,7 +29,7 @@ async def run_team_pipeline(payload: dict) -> None:
             "endpoint": "/agents/team",
             "triggered_by": "team.build_requested",
             "entity_id": project_id,
-            "entity_type": "team_request",
+            "entity_type": "project",
             "pipeline": "csp_team_builder",
             "explanation": "Team build event received. CSP ran synchronously in router.",
             "model": "csp_deterministic",
@@ -41,5 +41,4 @@ async def run_team_pipeline(payload: dict) -> None:
         })
         logger.info(f"[TeamAgent] Event logged — project_id={project_id}")
     except Exception as exc:
-        logger.error(f"[TeamAgent] Failed — project_id={project_id}: {exc}")
-        raise
+        logger.error(f"[TeamAgent] Error: {exc}")

@@ -59,6 +59,8 @@ export default function FraudLabPage() {
   const [flaggedSamples, setFlaggedSamples] = useState<any[]>([]);
   const [displayScore, setDisplayScore] = useState(0);
   const [fraudExplanation, setFraudExplanation] = useState("");
+  const [agentRanAt, setAgentRanAt] = useState<string | null>(null);
+  const [isPrecomputed, setIsPrecomputed] = useState(false);
 
   useEffect(() => {
     listFreelancers({ flaggedOnly: true, limit: 8 }).then((r) => setFlaggedSamples(r.freelancers.map(enrichFreelancer))).catch(() => setFlaggedSamples([]));
@@ -91,11 +93,17 @@ export default function FraudLabPage() {
     setSearched(true);
     setQuery(f.name);
     setFraudExplanation("");
+    setAgentRanAt(null);
+    setIsPrecomputed(false);
     try {
       const res = await getFraudScore({ freelancer_id: f.id });
       const merged = enrichFreelancer({ ...(res.freelancer || f), fraud_score: res.score });
       setSelected(merged);
       setFraudExplanation(res.explanation || "");
+      if (res.source === "agent_precomputed") {
+        setIsPrecomputed(true);
+        setAgentRanAt(res.ran_at ?? null);
+      }
     } catch (err: any) {
       setSelected(f);
       setFraudExplanation(err?.message || "Fraud scan failed — is the API running?");
@@ -220,12 +228,11 @@ export default function FraudLabPage() {
                   style={{ background: `rgba(var(--bg-secondary-rgb), 0.8)`, border: `1px solid rgba(${fcRgb}, 0.28)` }}
                 >
                   <div className="w-full h-0.5 rounded-full" style={{ background: `linear-gradient(90deg,transparent,${fc},transparent)` }} />
-                  {selected?.id != null && (
+                  {isPrecomputed && agentRanAt && (
                     <div className="mb-1">
                       <AgentStatusBadge
-                        entityType="freelancer"
-                        entityId={Number(selected.id)}
-                        pollUntilComplete={true}
+                        pipeline="fraud_detection"
+                        ranAt={agentRanAt}
                       />
                     </div>
                   )}

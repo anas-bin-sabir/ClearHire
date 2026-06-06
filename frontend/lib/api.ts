@@ -113,6 +113,9 @@ export interface FraudResponse {
   is_flagged: boolean;
   freelancer?: FreelancerRecord | null;
   explanation: string;
+  source?: string;
+  ran_at?: string;
+  note?: string;
 }
 
 export interface TeamBuilderRequest {
@@ -121,6 +124,8 @@ export interface TeamBuilderRequest {
   team_size: number;
   hours_per_member?: number;
   max_fraud_score?: number;
+  project_id?: number;
+  deadline_days?: number;
 }
 
 export interface TeamBuilderResponse {
@@ -220,6 +225,47 @@ export interface UserSettingsResponse {
   preferences: UserPreferences;
 }
 
+export interface ProjectCreateRequest {
+  title: string;
+  description?: string;
+  client?: string;
+  required_skills: string[];
+  budget: number;
+  deadline_days: number;
+  team_size: number;
+}
+
+export interface ProjectCreateResponse {
+  project: ProjectRecord;
+}
+
+export interface ContractRecord {
+  id: number;
+  freelancer_id: number;
+  project_id: number;
+  status: string;
+  created_at?: string;
+}
+
+export interface ContractBatchRequest {
+  project_id: number;
+  freelancer_ids: number[];
+  status?: string;
+}
+
+export interface ActivityFeedItem {
+  id: string;
+  type: string;
+  text: string;
+  time: string;
+}
+
+export interface RecentSearchItem {
+  query: string;
+  results: number;
+  time: string;
+}
+
 // --- API functions ---
 
 export function getHealth(): Promise<HealthStatus> {
@@ -254,6 +300,75 @@ export function listProjects(): Promise<{
   return request("/projects", { method: "GET" });
 }
 
+export function createProject(
+  body: ProjectCreateRequest,
+): Promise<ProjectCreateResponse> {
+  return request<ProjectCreateResponse>("/projects", {
+    method: "POST",
+    body: JSON.stringify(body),
+  });
+}
+
+export function listContractsByProject(
+  projectId: number,
+): Promise<{ contracts: ContractRecord[]; total: number }> {
+  return request(`/contracts/project/${projectId}`, { method: "GET" });
+}
+
+export function listContractsByFreelancer(
+  freelancerId: number,
+): Promise<{ contracts: ContractRecord[]; total: number }> {
+  return request(`/contracts/freelancer/${freelancerId}`, { method: "GET" });
+}
+
+export function createContract(body: {
+  freelancer_id: number;
+  project_id: number;
+  status?: string;
+}): Promise<ContractRecord> {
+  return request<ContractRecord>("/contracts", {
+    method: "POST",
+    body: JSON.stringify({
+      freelancer_id: body.freelancer_id,
+      project_id: body.project_id,
+      status: body.status ?? "active",
+    }),
+  });
+}
+
+export function assignTeamToProject(
+  projectId: number,
+  freelancerIds: number[],
+  status = "active",
+): Promise<{ contracts: ContractRecord[]; total: number }> {
+  return request("/contracts/batch", {
+    method: "POST",
+    body: JSON.stringify({
+      project_id: projectId,
+      freelancer_ids: freelancerIds,
+      status,
+    }),
+  });
+}
+
+export function getActivityFeed(
+  limit = 20,
+): Promise<{ items: ActivityFeedItem[] }> {
+  return request(`/activity/feed?limit=${limit}`, { method: "GET" });
+}
+
+export function getRecentSearches(
+  limit = 5,
+): Promise<{ searches: RecentSearchItem[] }> {
+  return request(`/activity/searches/recent?limit=${limit}`, {
+    method: "GET",
+  });
+}
+
+export function listSkillNames(): Promise<{ skills: string[] }> {
+  return request("/freelancers/skills/list", { method: "GET" });
+}
+
 export function searchFreelancers(
   body: SearchRequest,
 ): Promise<SearchResponse> {
@@ -274,10 +389,30 @@ export function searchFreelancers(
 }
 
 export function getFraudScore(body: FraudRequest): Promise<FraudResponse> {
+  if (body.freelancer_id != null && body.name == null) {
+    return request<FraudResponse>(`/fraud/${body.freelancer_id}`, { method: "GET" });
+  }
   return request<FraudResponse>("/fraud", {
     method: "POST",
     body: JSON.stringify(body),
   });
+}
+
+export function getPrecomputedSearch(projectId: number): Promise<{
+  precomputed: boolean;
+  ranked_freelancers?: FreelancerRecord[];
+  ran_at?: string;
+  total_candidates?: number;
+}> {
+  return request(`/search/precomputed/${projectId}`, { method: "GET" });
+}
+
+export function getTeamBuildStatus(projectId: number): Promise<{
+  status: "pending" | "complete";
+  ran_at?: string;
+  [key: string]: unknown;
+}> {
+  return request(`/team-builder/status/${projectId}`, { method: "GET" });
 }
 
 export function buildTeam(
@@ -291,6 +426,8 @@ export function buildTeam(
       team_size: body.team_size,
       hours_per_member: body.hours_per_member ?? 40,
       max_fraud_score: body.max_fraud_score ?? 0.6,
+      project_id: body.project_id,
+      deadline_days: body.deadline_days ?? 30,
     }),
   });
 }

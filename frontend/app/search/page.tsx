@@ -11,7 +11,7 @@ import FreelancerCard from "@/components/FreelancerCard";
 import AIReasoningBox from "@/components/AIReasoningBox";
 import { AgentStatusBadge } from "@/components/AgentStatusBadge";
 import { ALL_SKILLS } from "@/data/mockData";
-import { searchFreelancers, enrichFreelancer } from "@/lib/api";
+import { searchFreelancers, enrichFreelancer, getPrecomputedSearch } from "@/lib/api";
 
 const PLACEHOLDERS = [
   "Search for a Python ML Engineer...",
@@ -62,6 +62,7 @@ export default function SearchPage() {
   const [searchError, setSearchError] = useState("");
   const [explanation, setExplanation] = useState("");
   const [precomputedAt, setPrecomputedAt] = useState<string | null>(null);
+  const [usingPrecomputed, setUsingPrecomputed] = useState(false);
   const [filters, setFilters] = useState({ skills: [] as string[], minRate: 0, maxRate: 250, minRating: 0, availableOnly: false, maxFraud: 1 });
   const phRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -81,6 +82,7 @@ export default function SearchPage() {
   }, [placeholderIdx]);
 
   useEffect(() => {
+    if (usingPrecomputed) return;
     let cancelled = false;
     const timer = setTimeout(async () => {
       setSearchLoading(true);
@@ -93,19 +95,22 @@ export default function SearchPage() {
       } finally { if (!cancelled) setSearchLoading(false); }
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
-  }, [query, filters.skills, filters.minRate, filters.maxRate, filters.minRating, filters.availableOnly, filters.maxFraud]);
+  }, [query, filters.skills, filters.minRate, filters.maxRate, filters.minRating, filters.availableOnly, filters.maxFraud, usingPrecomputed]);
 
   useEffect(() => {
     if (!projectId) return;
-    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/search/precomputed/${projectId}`)
-      .then((r) => r.json())
+    let cancelled = false;
+    getPrecomputedSearch(projectId)
       .then((data) => {
-        if (data.precomputed && data.ranked_freelancers?.length > 0) {
-          setApiResults(data.ranked_freelancers);
+        if (cancelled) return;
+        if (data.precomputed && data.ranked_freelancers?.length) {
+          setApiResults(data.ranked_freelancers.map(enrichFreelancer));
           setPrecomputedAt(data.ran_at ?? null);
+          setUsingPrecomputed(true);
         }
       })
       .catch(() => {/* silent — fall back to manual search */});
+    return () => { cancelled = true; };
   }, [projectId]);
 
   const results = apiResults ?? [];
@@ -274,14 +279,10 @@ export default function SearchPage() {
             <span>Sort: A* Match Score</span>
           </div>
 
-          {precomputedAt && projectId != null && (
+          {precomputedAt && (
             <div className="flex items-center gap-2 mb-3">
-              <AgentStatusBadge
-                entityType="project"
-                entityId={Number(projectId)}
-                pollUntilComplete={false}
-              />
-              <span className="text-xs text-gray-500">
+              <AgentStatusBadge pipeline="matching" ranAt={precomputedAt} />
+              <span className="text-xs" style={{ color: "var(--text-subtle)" }}>
                 Results pre-ranked when project was posted
               </span>
             </div>
