@@ -35,3 +35,11 @@ class ActivityLogRepository:
         return await self._collection.count_documents(
             {"endpoint": endpoint, "status": "success"}
         )
+
+    async def list_recent(self, limit: int = 20) -> list[dict[str, Any]]:
+        cursor = (
+            self._collection.find({"status": "success"})
+            .sort("timestamp", -1)
+            .limit(limit)
+        )
+        return await cursor.to_list(length=limit)

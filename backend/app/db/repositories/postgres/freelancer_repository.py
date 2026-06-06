@@ -53,6 +53,15 @@ class FreelancerRepository:
         result = await self._session.execute(select(func.count()).select_from(Freelancer))
         return int(result.scalar_one())
 
+    async def list_distinct_skills(self) -> list[str]:
+        result = await self._session.execute(select(Freelancer.skills))
+        skills: set[str] = set()
+        for row in result.scalars().all():
+            for skill in row or []:
+                if skill:
+                    skills.add(skill)
+        return sorted(skills)
+
     async def count_flagged(self, threshold: float = 0.6) -> int:
         result = await self._session.execute(
             select(func.count())

@@ -26,7 +26,7 @@ async def search_freelancers(
 ) -> SearchResponse:
     endpoint = "/search"
     try:
-        freelancers = await freelancer_repo.list_available(max_fraud_score=0.7)
+        freelancers = await freelancer_repo.list_available(max_fraud_score=body.max_fraud)
         candidate_dicts = await freelancer_repo.to_ranked_dicts(freelancers)
         candidate_dicts = await freelancer_repo.filter_dicts(
             candidate_dicts,
@@ -108,3 +108,59 @@ async def search_freelancers(
             error=str(exc),
         )
         raise HTTPException(status_code=500, detail=str(exc)) from exc
+
+
+@router.get("/precomputed/{project_id}")
+async def get_precomputed_results(project_id: int):
+    """
+    Returns pre-ranked freelancers cached by the matching agent when
+    the project was created. Frontend calls this on page load —
+    if precomputed is True, results are shown without a manual search.
+    """
+    from app.db import mongodb as mongo_db
+    db = mongo_db.get_database()
+    doc = await db[mongo_db.COLLECTION_SEARCH_HISTORY].find_one(
+        {"project_id": project_id, "pipeline": "matching"},
+        sort=[("ran_at", -1)],
+    )
+    if not doc:
+        return {"precomputed": False, "project_id": project_id, "ranked_freelancers": []}
+    doc.pop("_id", None)
+    if "ran_at" in doc and hasattr(doc["ran_at"], "isoformat"):
+        doc["ran_at"] = doc["ran_at"].isoformat()
+    return {
+        "precomputed": True,
+        "project_id": project_id,
+        "ranked_freelancers": doc.get("ranked_freelancers", []),
+        "total_candidates": doc.get("total_candidates", 0),
+        "ran_at": doc.get("ran_at"),
+    }
+
+
+@router.get("/agent-status/{entity_type}/{entity_id}")
+async def get_agent_status(entity_type: str, entity_id: int):
+    """
+    Returns latest agent run metadata for a freelancer or project.
+    Used by AgentStatusBadge component on the frontend.
+    entity_type: "freelancer" or "project"
+    """
+    from app.db import mongodb as mongo_db
+    db = mongo_db.get_database()
+    doc = await db[mongo_db.COLLECTION_AI_EXPLANATIONS].find_one(
+        {"entity_id": entity_id, "entity_type": entity_type},
+        sort=[("ran_at", -1)],
+    )
+    if not doc:
+        return {"ran": False, "entity_id": entity_id, "entity_type": entity_type}
+    doc.pop("_id", None)
+    if "ran_at" in doc and hasattr(doc["ran_at"], "isoformat"):
+        doc["ran_at"] = doc["ran_at"].isoformat()
+    return {
+        "ran": True,
+        "pipeline": doc.get("pipeline"),
+        "ran_at": doc.get("ran_at"),
+        "triggered_by": doc.get("triggered_by"),
+        "entity_id": entity_id,
+        "entity_type": entity_type,
+        "metadata": doc.get("metadata", {}),
+    }
