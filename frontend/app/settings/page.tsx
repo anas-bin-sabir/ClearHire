@@ -7,6 +7,7 @@ import Link from "next/link";
 import { signOut } from "next-auth/react";
 import { getSession, setCachedSession, clearSession } from "@/utils/clearhire-auth";
 import { getUserSettings, updateUserSettings, type UserPreferences } from "@/lib/api";
+import { useTheme } from "@/lib/ThemeContext";
 
 const SECTIONS = [
   { id: "profile", label: "Profile", icon: User },
@@ -164,19 +165,34 @@ function NotificationsSection() {
 }
 
 function AIPreferencesSection({ userId }: { userId: number }) {
-  const [vals, setVals] = useState({ notifications_enabled: true, email_alerts: true, fraud_sensitivity: 0.6, preferred_skills: [] as string[], theme: "dark" });
+  const { theme, setTheme } = useTheme();
+  const [vals, setVals] = useState({ notifications_enabled: true, email_alerts: true, fraud_sensitivity: 0.6, preferred_skills: [] as string[], theme: "dark" as "dark" | "light" });
   const [saved, setSaved] = useState(false);
   const [loading, setLoading] = useState(true);
 
   useEffect(() => {
     if (!userId) return;
-    getUserSettings(userId).then((res) => setVals(res.preferences as any)).catch(() => {}).finally(() => setLoading(false));
-  }, [userId]);
+    getUserSettings(userId)
+      .then((res) => {
+        const prefs = res.preferences as UserPreferences;
+        setVals(prefs);
+        if (prefs.theme === "light" || prefs.theme === "dark") {
+          setTheme(prefs.theme);
+        }
+      })
+      .catch(() => {})
+      .finally(() => setLoading(false));
+  }, [userId, setTheme]);
 
   const set = (k: string, v: any) => setVals((p) => ({ ...p, [k]: v }));
   const handleSave = async () => {
     if (!userId) return;
-    try { await updateUserSettings(userId, vals); setSaved(true); setTimeout(() => setSaved(false), 2000); } catch {}
+    const payload = { ...vals, theme };
+    try {
+      await updateUserSettings(userId, payload);
+      setSaved(true);
+      setTimeout(() => setSaved(false), 2000);
+    } catch {}
   };
 
   if (loading) return <div className="font-mono text-sm" style={{ color: "var(--text-subtle)" }}>Loading preferences...</div>;
@@ -216,6 +232,26 @@ function AIPreferencesSection({ userId }: { userId: number }) {
             <div className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-subtle)" }}>Receive email alerts for important updates</div>
           </div>
           <Toggle checked={vals.email_alerts} onChange={(v) => set("email_alerts", v)} />
+        </div>
+        <div className="p-4 rounded-2xl flex items-center justify-between" style={cardStyle}>
+          <div>
+            <div className="text-sm font-medium" style={{ color: "var(--text-primary)" }}>Interface Theme</div>
+            <div className="text-[10px] font-mono mt-0.5" style={{ color: "var(--text-subtle)" }}>
+              Current: {theme} — synced with header toggle
+            </div>
+          </div>
+          <button
+            type="button"
+            onClick={() => setTheme(theme === "dark" ? "light" : "dark")}
+            className="px-3 py-1.5 rounded-lg text-[10px] font-mono uppercase tracking-widest"
+            style={{
+              background: `rgba(var(--color-primary-rgb), 0.1)`,
+              border: `1px solid rgba(var(--color-primary-rgb), 0.25)`,
+              color: "var(--color-primary)",
+            }}
+          >
+            Use {theme === "dark" ? "light" : "dark"}
+          </button>
         </div>
       </div>
       <div className="flex items-center gap-3">

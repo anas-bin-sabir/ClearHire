@@ -1,6 +1,6 @@
 from typing import Any
 
-from app.models.orm import Freelancer, Project
+from app.models.orm import Contract, Freelancer, Project
 
 
 def freelancer_to_dict(fl: Freelancer | dict[str, Any]) -> dict[str, Any]:
@@ -26,6 +26,7 @@ def freelancer_to_dict(fl: Freelancer | dict[str, Any]) -> dict[str, Any]:
 
 
 def project_to_dict(project: Project) -> dict[str, Any]:
+    created = getattr(project, "created_at", None)
     return {
         "id": project.id,
         "client_id": project.client_id,
@@ -35,4 +36,16 @@ def project_to_dict(project: Project) -> dict[str, Any]:
         "budget": project.budget,
         "deadline_days": project.deadline_days,
         "team_size": project.team_size,
+        "created_at": created.isoformat() if created else None,
+    }
+
+
+def contract_to_dict(contract: Contract) -> dict[str, Any]:
+    created = getattr(contract, "created_at", None)
+    return {
+        "id": contract.id,
+        "freelancer_id": contract.freelancer_id,
+        "project_id": contract.project_id,
+        "status": contract.status,
+        "created_at": created.isoformat() if created else None,
     }

@@ -7,7 +7,7 @@ import { Star, MapPin, Clock, DollarSign, ShieldAlert, ArrowLeft, Users, CheckCi
 import AppLayout from "@/components/AppLayout";
 import FraudGauge from "@/components/FraudGauge";
 import AIReasoningBox from "@/components/AIReasoningBox";
-import { getFreelancer, enrichFreelancer, getFraudScore, type FraudResponse } from "@/lib/api";
+import { getFreelancer, enrichFreelancer, getFraudScore, listContractsByFreelancer, listProjects, type FraudResponse } from "@/lib/api";
 
 const TABS = ["Overview", "Skills", "Work History", "Reviews", "Fraud Report"];
 
@@ -131,20 +131,46 @@ function SkillsTab({ f }: { f: any }) {
   );
 }
 
-const HISTORY_POOL = [
-  { title: "ML Pipeline Engineer", company: "DataFlow AI", duration: "8 months", year: 2024, skills: ["Python", "ML"], outcome: "Delivered 3× throughput improvement on inference pipeline." },
-  { title: "Backend Developer", company: "PayStream", duration: "6 months", year: 2023, skills: ["FastAPI", "PostgreSQL"], outcome: "Built core payment API handling 100k req/day." },
-  { title: "Platform Engineer", company: "CloudBase", duration: "1 year", year: 2022, skills: ["Docker", "DevOps"], outcome: "Led migration to Kubernetes — zero downtime." },
-  { title: "Frontend Lead", company: "SaaSly", duration: "4 months", year: 2022, skills: ["React", "UI/UX"], outcome: "Achieved perfect Lighthouse score across all pages." },
-  { title: "Data Scientist", company: "InsureTech", duration: "10 months", year: 2021, skills: ["Data Science", "Python"], outcome: "Risk model improved accuracy by 35%." },
-  { title: "UI/UX Designer", company: "HealthSync", duration: "6 months", year: 2023, skills: ["UI/UX", "Figma"], outcome: "Designed onboarding flow reducing churn by 22%." },
-  { title: "API Developer", company: "Logistics.io", duration: "5 months", year: 2023, skills: ["Node.js", "PostgreSQL"], outcome: "Shipped real-time tracking API used by 500k users." },
-  { title: "DevOps Lead", company: "FintechBase", duration: "1 year", year: 2021, skills: ["DevOps", "Docker"], outcome: "Reduced deployment times by 80% via GitOps." },
-];
-
 function WorkHistoryTab({ f }: { f: any }) {
-  const matches = HISTORY_POOL.filter((w) => w.skills.some((s) => f.skills.includes(s))).slice(0, 5);
+  const [matches, setMatches] = useState<
+    { title: string; company: string; duration: string; year: number; skills: string[]; outcome: string }[]
+  >([]);
+  const [loading, setLoading] = useState(true);
+
+  useEffect(() => {
+    Promise.all([listContractsByFreelancer(f.id), listProjects()])
+      .then(([contractsRes, projectsRes]) => {
+        const byId = Object.fromEntries(
+          (projectsRes.projects || []).map((p) => [p.id, p]),
+        );
+        const items = (contractsRes.contracts || []).map((c) => {
+          const p = byId[c.project_id];
+          const created = p?.created ? new Date(p.created) : new Date();
+          return {
+            title: p?.title || `Project #${c.project_id}`,
+            company: p?.client || "ClearHire client",
+            duration: p ? `${p.deadline_days} day scope` : "—",
+            year: created.getFullYear(),
+            skills: p?.required_skills || [],
+            outcome: `Contract ${c.status} — assigned via platform`,
+          };
+        });
+        setMatches(items);
+      })
+      .catch(() => setMatches([]))
+      .finally(() => setLoading(false));
+  }, [f.id]);
+
   const cardStyle = { background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid rgba(var(--border-base), 0.06)` };
+
+  if (loading) {
+    return (
+      <div className="text-center py-16 font-mono text-sm" style={{ color: "var(--text-subtle)" }}>
+        Loading work history from contracts...
+      </div>
+    );
+  }
+
   return (
     <div className="space-y-3">
       {matches.map((w, i) => (
@@ -167,7 +193,11 @@ function WorkHistoryTab({ f }: { f: any }) {
           </div>
         </motion.div>
       ))}
-      {matches.length === 0 && <div className="text-center py-16 font-mono text-sm" style={{ color: "var(--text-subtle)" }}>No matching work history found</div>}
+      {matches.length === 0 && (
+        <div className="text-center py-16 font-mono text-sm" style={{ color: "var(--text-subtle)" }}>
+          No contracts yet — assign this freelancer from Team Builder
+        </div>
+      )}
     </div>
   );
 }

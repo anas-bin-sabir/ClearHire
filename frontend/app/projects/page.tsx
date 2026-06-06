@@ -4,7 +4,7 @@ import { motion, AnimatePresence } from "motion/react";
 import { FolderOpen, Plus, Clock, Users, DollarSign, Search, ChevronDown, X, CheckCircle2, Cpu, Star, ArrowRight } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import { ALL_SKILLS } from "@/data/mockData";
-import { listProjects, listFreelancers, enrichFreelancer } from "@/lib/api";
+import { listProjects, listFreelancers, enrichFreelancer, createProject } from "@/lib/api";
 
 const STATUS_CFG: Record<string, { label: string; colorVar: string; rgbVar: string }> = {
   open: { label: "Open", colorVar: "var(--color-success)", rgbVar: "var(--color-success-rgb)" },
@@ -33,10 +33,33 @@ function NewProjectModal({ onClose, onSave }: { onClose: () => void; onSave: (p:
   const [form, setForm] = useState({ title: "", description: "", client: "", budget: 10000, deadline_days: 30, team_size: 2, required_skills: [] as string[], status: "open", priority: "medium" });
   const [skillInput, setSkillInput] = useState("");
   const [step, setStep] = useState(1);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState("");
   const upd = (k: string, v: any) => setForm((f) => ({ ...f, [k]: v }));
   const addSkill = (s?: string) => { const sk = s || skillInput.trim(); if (sk && !form.required_skills.includes(sk)) upd("required_skills", [...form.required_skills, sk]); setSkillInput(""); };
   const rmSkill = (s: string) => upd("required_skills", form.required_skills.filter((x) => x !== s));
-  const submit = () => { if (!form.title.trim()) return; onSave({ ...form, id: Date.now(), created: new Date().toISOString().split("T")[0], team_members: [] }); onClose(); };
+  const submit = async () => {
+    if (!form.title.trim() || saving) return;
+    setSaving(true);
+    setError("");
+    try {
+      const res = await createProject({
+        title: form.title.trim(),
+        description: form.description.trim() || undefined,
+        client: form.client.trim() || undefined,
+        required_skills: form.required_skills,
+        budget: form.budget,
+        deadline_days: form.deadline_days,
+        team_size: form.team_size,
+      });
+      onSave({ ...res.project, priority: form.priority, status: res.project.status || form.status });
+      onClose();
+    } catch (err: any) {
+      setError(err?.message || "Failed to create project");
+    } finally {
+      setSaving(false);
+    }
+  };
 
   const inputCls = "w-full rounded-xl px-4 py-2.5 text-sm font-mono focus:outline-none transition-colors";
   const inputStyle = { background: `rgba(var(--border-base), 0.05)`, border: `1px solid rgba(var(--border-base), 0.1)`, color: "var(--text-primary)" };
@@ -129,9 +152,14 @@ function NewProjectModal({ onClose, onSave }: { onClose: () => void; onSave: (p:
               Next <ArrowRight size={13} />
             </button>
           ) : (
-            <button onClick={submit} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-white" style={{ background: `linear-gradient(135deg, var(--color-primary), var(--color-secondary))` }}>
-              <CheckCircle2 size={13} /> Create
-            </button>
+            <div className="flex flex-col items-end gap-2">
+              {error && (
+                <p className="text-xs font-mono" style={{ color: "var(--color-danger)" }}>{error}</p>
+              )}
+              <button onClick={submit} disabled={saving} className="flex items-center gap-2 px-5 py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-white disabled:opacity-50" style={{ background: `linear-gradient(135deg, var(--color-primary), var(--color-secondary))` }}>
+                <CheckCircle2 size={13} /> {saving ? "Creating..." : "Create"}
+              </button>
+            </div>
           )}
         </div>
       </motion.div>
@@ -344,7 +372,12 @@ export default function ProjectsPage() {
       </div>
 
       <AnimatePresence>
-        {showModal && <NewProjectModal onClose={() => setShowModal(false)} onSave={(p) => setProjects((prev) => [p, ...prev])} />}
+        {showModal && (
+          <NewProjectModal
+            onClose={() => setShowModal(false)}
+            onSave={(p) => setProjects((prev) => [p, ...prev])}
+          />
+        )}
       </AnimatePresence>
     </AppLayout>
   );

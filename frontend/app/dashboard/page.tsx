@@ -8,8 +8,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import StatCard from "@/components/StatCard";
 import { getSession } from "@/utils/clearhire-auth";
-import { getPlatformStats, seedDatabase } from "@/lib/api";
-import { ACTIVITY_FEED } from "@/data/mockData";
+import { getPlatformStats, seedDatabase, getActivityFeed, getRecentSearches } from "@/lib/api";
 
 const AI_MODULES = [
   { name: "A* Search Engine", desc: "Ranking & retrieval", icon: Search, colorVar: "var(--color-primary)", rgbVar: "var(--color-primary-rgb)" },
@@ -27,24 +26,33 @@ const FEED_CFG: Record<FeedType, { icon: React.ComponentType<{ size: number }>, 
   contract: { icon: CheckCircle2, colorVar: "var(--color-success)", rgbVar: "var(--color-success-rgb)" },
 };
 
-const RECENT_SEARCHES = [
-  { query: "Python ML Engineer", results: 12, time: "2m ago" },
-  { query: "React UI/UX designer", results: 8, time: "14m ago" },
-  { query: "DevOps Kubernetes", results: 5, time: "1h ago" },
-  { query: "FastAPI backend developer", results: 9, time: "2h ago" },
-  { query: "Data Science pipeline", results: 7, time: "3h ago" },
-];
-
 export default function DashboardPage() {
   const [session, setSession] = useState<{ name?: string; role?: string } | null>(null);
   const [seeding, setSeeding] = useState(false);
   const [seedMsg, setSeedMsg] = useState("");
   const [feedFilter, setFeedFilter] = useState("all");
   const [stats, setStats] = useState({ freelancers_total: 0, open_projects: 0, fraud_flagged: 0, teams_built: 0 });
+  const [activityFeed, setActivityFeed] = useState<{ id: string | number; type: string; text: string; time: string }[]>([]);
+  const [recentSearches, setRecentSearches] = useState<{ query: string; results: number; time: string }[]>([]);
 
   useEffect(() => {
     setSession(getSession());
     getPlatformStats().then(setStats).catch(() => {});
+    getActivityFeed(20)
+      .then((res) =>
+        setActivityFeed(
+          (res.items || []).map((item) => ({
+            id: item.id,
+            type: item.type,
+            text: item.text,
+            time: item.time,
+          })),
+        ),
+      )
+      .catch(() => setActivityFeed([]));
+    getRecentSearches(5)
+      .then((res) => setRecentSearches(res.searches || []))
+      .catch(() => setRecentSearches([]));
   }, []);
 
   const handleSeed = async () => {
@@ -60,7 +68,10 @@ export default function DashboardPage() {
     }
   };
 
-  const filteredFeed = feedFilter === "all" ? ACTIVITY_FEED : ACTIVITY_FEED.filter((e) => e.type === feedFilter);
+  const filteredFeed =
+    feedFilter === "all"
+      ? activityFeed
+      : activityFeed.filter((e) => e.type === feedFilter);
 
   const cardStyle = {
     background: `rgba(var(--bg-secondary-rgb), 0.7)`,
@@ -135,7 +146,7 @@ export default function DashboardPage() {
               </a>
             </div>
             <div className="space-y-1">
-              {RECENT_SEARCHES.map((s, i) => (
+              {(recentSearches.length > 0 ? recentSearches : []).map((s, i) => (
                 <motion.a
                   key={i}
                   href={`/search?q=${encodeURIComponent(s.query)}`}
@@ -158,6 +169,11 @@ export default function DashboardPage() {
                   </div>
                 </motion.a>
               ))}
+              {recentSearches.length === 0 && (
+                <p className="text-xs font-mono py-4 text-center" style={{ color: "var(--text-subtle)" }}>
+                  No searches yet — run a talent search to populate history
+                </p>
+              )}
             </div>
           </motion.div>
 
@@ -255,8 +271,15 @@ export default function DashboardPage() {
           </div>
           <div className="space-y-1">
             <AnimatePresence mode="popLayout">
+              {filteredFeed.length === 0 && (
+                <p className="text-xs font-mono py-6 text-center" style={{ color: "var(--text-subtle)" }}>
+                  No platform activity yet — search, fraud scan, or build a team
+                </p>
+              )}
               {filteredFeed.map((event) => {
-                const cfg = FEED_CFG[event.type as FeedType] ?? FEED_CFG.search;
+                const cfg =
+                  FEED_CFG[event.type as FeedType] ??
+                  FEED_CFG.search;
                 const Icon = cfg.icon;
                 return (
                   <motion.div

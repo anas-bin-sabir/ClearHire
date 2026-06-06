@@ -12,7 +12,6 @@ from app.db.repositories.postgres import (
     FreelancerRepository,
     ProjectRepository,
 )
-from app.models.orm import ContractStatus
 from app.models.schemas import PlatformStatsResponse
 from app.routers.projects import resolve_project_status
 
@@ -29,11 +28,15 @@ async def platform_stats(
     freelancers_total = await freelancer_repo.count_all()
     fraud_flagged = await freelancer_repo.count_flagged(threshold=0.6)
     projects = await project_repo.list_all(limit=500)
+    project_ids = [p.id for p in projects]
+    contracts_by_project = await contract_repo.list_by_project_ids(project_ids)
+
     open_projects = 0
     for project in projects:
-        contracts = await contract_repo.list_by_project(project.id)
+        contracts = contracts_by_project.get(project.id, [])
         if resolve_project_status(contracts) == "open":
             open_projects += 1
+
     teams_built = await activity_repo.count_successful(endpoint="/team-builder")
 
     return PlatformStatsResponse(
