@@ -1,11 +1,11 @@
 "use client";
-import { useState } from "react";
+import { useState, useEffect } from "react";
 import { motion, AnimatePresence } from "motion/react";
-import { Plus, X, Users, Cpu, CheckCircle2, AlertCircle, DollarSign, Calendar, TrendingUp, Shield, Star, MapPin, Clock, Zap } from "lucide-react";
+import { Plus, X, Users, Cpu, CheckCircle2, AlertCircle, DollarSign, Calendar, TrendingUp, Shield, Star, MapPin, Clock, Zap, FolderOpen } from "lucide-react";
 import AppLayout from "@/components/AppLayout";
 import AIReasoningBox from "@/components/AIReasoningBox";
 import { ALL_SKILLS } from "@/data/mockData";
-import { buildTeam, enrichFreelancer } from "@/lib/api";
+import { buildTeam, enrichFreelancer, listProjects, assignTeamToProject } from "@/lib/api";
 
 const SOLVE_STEPS = [
   { label: "Scanning freelancer pool", detail: "Loading 20 candidates into working set..." },
@@ -21,6 +21,16 @@ export default function TeamBuilderPage() {
   const [solveStep, setSolveStep] = useState(-1);
   const [result, setResult] = useState<any>(null);
   const [aiText, setAiText] = useState("");
+  const [projects, setProjects] = useState<any[]>([]);
+  const [selectedProjectId, setSelectedProjectId] = useState<number | "">("");
+  const [savingTeam, setSavingTeam] = useState(false);
+  const [saveMsg, setSaveMsg] = useState("");
+
+  useEffect(() => {
+    listProjects()
+      .then((res) => setProjects(res.projects || []))
+      .catch(() => setProjects([]));
+  }, []);
 
   const addSkill = (s?: string) => {
     const skill = s || skillInput.trim();
@@ -50,6 +60,21 @@ export default function TeamBuilderPage() {
       setAiText("Team builder request failed. Ensure the API is running on port 8000.");
     }
     setSolving(false);
+  };
+
+  const handleSaveTeam = async () => {
+    if (!result?.success || !selectedProjectId) return;
+    setSavingTeam(true);
+    setSaveMsg("");
+    try {
+      const ids = result.team.map((f: any) => f.id);
+      const res = await assignTeamToProject(Number(selectedProjectId), ids);
+      setSaveMsg(`✓ ${res.total} contract(s) saved to project`);
+    } catch (err: any) {
+      setSaveMsg(err?.message || "✗ Failed to save team");
+    } finally {
+      setSavingTeam(false);
+    }
   };
 
   const budgetPct = result ? Math.round(Math.min(result.total_cost / constraints.budget, 1) * 100) : 0;
@@ -262,6 +287,35 @@ export default function TeamBuilderPage() {
                           </div>
                         </motion.div>
                       ))}
+                    </div>
+                    <div className="p-4 rounded-2xl space-y-3" style={{ background: `rgba(var(--bg-secondary-rgb), 0.7)`, border: `1px solid rgba(var(--border-base), 0.06)` }}>
+                      <p className="text-[10px] font-mono uppercase tracking-widest flex items-center gap-1.5" style={{ color: "var(--text-subtle)" }}>
+                        <FolderOpen size={11} /> Save team to project
+                      </p>
+                      <select
+                        value={selectedProjectId}
+                        onChange={(e) => setSelectedProjectId(e.target.value ? Number(e.target.value) : "")}
+                        className="w-full rounded-xl px-3 py-2.5 text-xs font-mono focus:outline-none"
+                        style={{ ...inputStyle, background: `rgba(var(--bg-secondary-rgb), 0.95)` }}
+                      >
+                        <option value="">Select a project...</option>
+                        {projects.map((p) => (
+                          <option key={p.id} value={p.id}>{p.title}</option>
+                        ))}
+                      </select>
+                      <button
+                        onClick={handleSaveTeam}
+                        disabled={savingTeam || !selectedProjectId}
+                        className="w-full py-2.5 rounded-xl text-xs font-mono font-bold uppercase tracking-wider text-white disabled:opacity-40"
+                        style={{ background: `linear-gradient(135deg, var(--color-accent), var(--color-primary))` }}
+                      >
+                        {savingTeam ? "Saving..." : "Assign team to project"}
+                      </button>
+                      {saveMsg && (
+                        <p className="text-[10px] font-mono" style={{ color: saveMsg.startsWith("✓") ? "var(--color-success)" : "var(--color-danger)" }}>
+                          {saveMsg}
+                        </p>
+                      )}
                     </div>
                     <AIReasoningBox key={JSON.stringify(constraints)} text={aiText} speed={12} title="CSP SOLVER REASONING" />
                   </>

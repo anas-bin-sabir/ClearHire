@@ -1,5 +1,6 @@
 "use client";
 import { useState, useEffect, useRef } from "react";
+import { useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import {
   Search, SlidersHorizontal, X, Star, MapPin, DollarSign,
@@ -8,6 +9,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import FreelancerCard from "@/components/FreelancerCard";
 import AIReasoningBox from "@/components/AIReasoningBox";
+import { AgentStatusBadge } from "@/components/AgentStatusBadge";
 import { ALL_SKILLS } from "@/data/mockData";
 import { searchFreelancers, enrichFreelancer } from "@/lib/api";
 
@@ -46,6 +48,9 @@ function FraudGauge({ score }: { score: number }) {
 }
 
 export default function SearchPage() {
+  const searchParams = useSearchParams();
+  const projectId = searchParams ? Number(searchParams.get("project")) || null : null;
+
   const [query, setQuery] = useState("");
   const [placeholderIdx, setPlaceholderIdx] = useState(0);
   const [displayedPlaceholder, setDisplayedPlaceholder] = useState("");
@@ -56,6 +61,7 @@ export default function SearchPage() {
   const [searchLoading, setSearchLoading] = useState(false);
   const [searchError, setSearchError] = useState("");
   const [explanation, setExplanation] = useState("");
+  const [precomputedAt, setPrecomputedAt] = useState<string | null>(null);
   const [filters, setFilters] = useState({ skills: [] as string[], minRate: 0, maxRate: 250, minRating: 0, availableOnly: false, maxFraud: 1 });
   const phRef = useRef<ReturnType<typeof setTimeout> | null>(null);
 
@@ -88,6 +94,19 @@ export default function SearchPage() {
     }, 350);
     return () => { cancelled = true; clearTimeout(timer); };
   }, [query, filters.skills, filters.minRate, filters.maxRate, filters.minRating, filters.availableOnly, filters.maxFraud]);
+
+  useEffect(() => {
+    if (!projectId) return;
+    fetch(`${process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:8000"}/search/precomputed/${projectId}`)
+      .then((r) => r.json())
+      .then((data) => {
+        if (data.precomputed && data.ranked_freelancers?.length > 0) {
+          setApiResults(data.ranked_freelancers);
+          setPrecomputedAt(data.ran_at ?? null);
+        }
+      })
+      .catch(() => {/* silent — fall back to manual search */});
+  }, [projectId]);
 
   const results = apiResults ?? [];
   const updateFilter = (key: string, val: any) => setFilters((f) => ({ ...f, [key]: val }));
@@ -254,6 +273,19 @@ export default function SearchPage() {
             <span>{searchLoading ? "Searching..." : `${results.length} profiles matched`}</span>
             <span>Sort: A* Match Score</span>
           </div>
+
+          {precomputedAt && projectId != null && (
+            <div className="flex items-center gap-2 mb-3">
+              <AgentStatusBadge
+                entityType="project"
+                entityId={Number(projectId)}
+                pollUntilComplete={false}
+              />
+              <span className="text-xs text-gray-500">
+                Results pre-ranked when project was posted
+              </span>
+            </div>
+          )}
 
           {searchError && (
             <div className="px-4 py-3 rounded-xl text-xs font-mono" style={{ background: `rgba(var(--color-danger-rgb), 0.1)`, border: `1px solid rgba(var(--color-danger-rgb), 0.2)`, color: "var(--color-danger)" }}>

@@ -8,6 +8,7 @@ import {
 import AppLayout from "@/components/AppLayout";
 import FraudGauge from "@/components/FraudGauge";
 import AIReasoningBox from "@/components/AIReasoningBox";
+import { AgentStatusBadge } from "@/components/AgentStatusBadge";
 import { getFraudScore, enrichFreelancer, listFreelancers } from "@/lib/api";
 
 function buildEvidence(f: any) {
@@ -34,14 +35,6 @@ function buildTimeline(f: any) {
   if (f.review_count > 40) events.push({ date: fmt(now - Math.floor(f.account_age_days * 0.6) * dayMs), label: "Review velocity spike", type: f.review_count > 80 ? "danger" : "warning", detail: `${f.review_count} reviews over account lifetime` });
   events.push({ date: fmt(now), label: "Bayesian scan completed", type: f.fraud_score > 0.7 ? "danger" : f.fraud_score > 0.3 ? "warning" : "success", detail: `Final probability: ${Math.round(f.fraud_score * 100)}%` });
   return events;
-}
-
-function buildAIText(f: any, evidence: any[]) {
-  const pct = Math.round(f.fraud_score * 100);
-  const highFactors = evidence.filter((e) => e.risk === "high").map((e) => e.factor);
-  const verdict = pct < 30 ? "AUTHENTIC" : pct < 70 ? "SUSPICIOUS" : "FRAUDULENT";
-  const vel = f.account_age_days > 0 ? ((f.review_count / f.account_age_days) * 30).toFixed(1) : "0.0";
-  return `Bayesian fraud analysis initiated for subject: ${f.name} (ID #${f.id}). Computing posterior probability using log-odds form. Prior: P(Fraud) = 0.05 (5% base rate for platform). ${highFactors.length > 0 ? `High-signal anomalies detected: ${highFactors.join(", ")}. ` : "No major anomaly signals detected. "}Account tenure: ${f.account_age_days} days. Review velocity: ${vel}/month. Rate/experience coefficient: $${f.hourly_rate}/hr at ${f.experience_years} years. Posterior fraud probability: ${pct}%. Confidence interval: ±${Math.max(3, 8 - Math.floor(f.account_age_days / 100))}%. Verdict: ${verdict}. ${pct < 30 ? "Recommend proceeding with standard contract vetting." : pct < 70 ? "Recommend enhanced manual verification before contract initiation." : "BLOCK RECOMMENDED — escalate to fraud review team immediately."}`;
 }
 
 const RISK_STYLES: Record<string, { colorVar: string; rgbVar: string }> = {
@@ -227,6 +220,15 @@ export default function FraudLabPage() {
                   style={{ background: `rgba(var(--bg-secondary-rgb), 0.8)`, border: `1px solid rgba(${fcRgb}, 0.28)` }}
                 >
                   <div className="w-full h-0.5 rounded-full" style={{ background: `linear-gradient(90deg,transparent,${fc},transparent)` }} />
+                  {selected?.id != null && (
+                    <div className="mb-1">
+                      <AgentStatusBadge
+                        entityType="freelancer"
+                        entityId={Number(selected.id)}
+                        pollUntilComplete={true}
+                      />
+                    </div>
+                  )}
                   <FraudGauge score={displayScore} size={156} thickness={11} key={`${selected.id}-${Math.round(displayScore * 100)}`} />
                   <div className="w-full space-y-2 pt-2" style={{ borderTop: `1px solid rgba(var(--border-base), 0.05)` }}>
                     <div className="flex justify-between text-[10px] font-mono uppercase" style={{ color: "var(--text-subtle)" }}>
