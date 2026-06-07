@@ -438,6 +438,19 @@ body {
   .text-white\/80:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
     color: var(--foreground) !important;
   }
+
+  /* Fix skill chip / predefined skill button backgrounds:
+     In light mode bg-slate-900 resolves to #f1f5f9 (near-white) via CSS var,
+     making skill buttons invisible. Use a subtle dark tint instead. */
+  .bg-slate-900\/60 {
+    background-color: rgba(15, 23, 42, 0.07) !important;
+  }
+  .bg-slate-900\/40 {
+    background-color: rgba(15, 23, 42, 0.05) !important;
+  }
+  .hover\:bg-slate-900\/40:hover {
+    background-color: rgba(15, 23, 42, 0.07) !important;
+  }
 }
 
 /* Premium Collapsed Sidebar Tooltips */

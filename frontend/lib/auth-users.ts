@@ -10,7 +10,7 @@ export interface DemoUser {
 }
 
 export const DEMO_USERS: DemoUser[] = [
-  { id: 1,  email: 'client@demo.com',     password: 'demo', role: 'client',     name: 'Sara Ahmed' },
-  { id: 2,  email: 'freelancer@demo.com', password: 'demo', role: 'freelancer', name: 'Ali Raza', freelancerId: 1 },
-  { id: 99, email: 'admin@demo.com',      password: 'demo', role: 'admin',      name: 'Admin' },
+  { id: 1,  email: 'client@demo.com',     password: 'demo',     role: 'client',     name: 'Sara Ahmed' },
+  { id: 2,  email: 'freelancer@demo.com', password: 'demo',     role: 'freelancer', name: 'Ali Raza', freelancerId: 1 },
+  { id: 99, email: 'anas@admin.com',      password: 'admin123', role: 'admin',      name: 'Anas' },
 ]

@@ -357,8 +357,12 @@ export default function EditProfilePage() {
                   onChange={e => setSkillQuery(e.target.value)}
                   className="input mb-2 text-xs"
                 />
-                <div className="max-h-25 overflow-y-auto bg-slate-950/40 p-2.5 border border-white/5 rounded-lg flex flex-wrap gap-1">
-                  {filteredSkills.map(skill => {
+                <div className="max-h-[100px] overflow-y-auto bg-slate-950/40 p-2.5 border border-white/5 rounded-lg flex flex-wrap gap-1 min-h-[40px]">
+                  {filteredSkills.length === 0 ? (
+                    <p className="text-[10px] text-slate-500 italic self-center w-full text-center">
+                      {allSkills.length === 0 ? 'Loading predefined skills...' : 'No skills match your search'}
+                    </p>
+                  ) : filteredSkills.map(skill => {
                     const active = skills.includes(skill)
                     return (
                       <button

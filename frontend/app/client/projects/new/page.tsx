@@ -72,6 +72,9 @@ export default function NewProjectPage() {
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault()
+    if (step < 3) {
+      return
+    }
     setLoading(true)
     try {
       const clientName = session?.user?.name || 'Sara Ahmed'
@@ -229,8 +232,12 @@ export default function NewProjectPage() {
                   )}
 
                   {/* Predefined skills list */}
-                  <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/30 p-3 flex flex-wrap gap-1.5">
-                    {filteredSkills.map(skill => {
+                  <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/30 p-3 flex flex-wrap gap-1.5 min-h-[44px]">
+                    {filteredSkills.length === 0 ? (
+                      <p className="text-xs text-slate-500 italic self-center w-full text-center">
+                        {availableSkills.length === 0 ? 'Loading predefined skills...' : 'No skills match your search'}
+                      </p>
+                    ) : filteredSkills.map(skill => {
                       const selected = requiredSkills.includes(skill)
                       return (
                         <button
@@ -240,7 +247,7 @@ export default function NewProjectPage() {
                           className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer transition-all ${
                             selected
                               ? 'bg-electric text-white border-electric shadow-md'
-                              : 'bg-slate-900 text-slate-300 border-white/5 hover:border-white/10'
+                              : 'bg-slate-900/60 text-slate-400 border-white/5 hover:border-white/10'
                           }`}
                         >
                           {skill}
@@ -315,6 +322,7 @@ export default function NewProjectPage() {
 
             {step < 3 ? (
               <button
+                key="btn-next"
                 type="button"
                 disabled={step === 1 && !title.trim()}
                 onClick={nextStep}
@@ -324,6 +332,7 @@ export default function NewProjectPage() {
               </button>
             ) : (
               <button
+                key="btn-submit"
                 type="submit"
                 disabled={loading}
                 className="btn btn-md btn-primary shadow-lg shadow-electric/25 flex items-center gap-2"

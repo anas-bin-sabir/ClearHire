@@ -219,8 +219,10 @@ export default function SearchPage() {
                   </div>
                 )}
 
-                <div className="max-h-[120px] overflow-y-auto bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-wrap gap-1">
-                  {allSkills.map(skill => {
+                <div className="max-h-[120px] overflow-y-auto bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-wrap gap-1 min-h-[40px]">
+                  {allSkills.length === 0 ? (
+                    <p className="text-[10px] text-slate-500 italic self-center w-full text-center">Loading predefined skills...</p>
+                  ) : allSkills.map(skill => {
                     const active = skills.includes(skill)
                     return (
                       <button

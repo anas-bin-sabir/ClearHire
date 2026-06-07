@@ -4,8 +4,8 @@ import { useState } from 'react'
 import { signIn } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
 import Link from 'next/link'
-import { DEMO_USERS, Role } from '@/lib/auth-users'
-import { Sparkles, ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, UserCheck } from 'lucide-react'
+import { Role } from '@/lib/auth-users'
+import { ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff } from 'lucide-react'
 import { motion } from 'framer-motion'
 import ThemeToggle from '@/components/ThemeToggle'
 
@@ -44,25 +44,6 @@ export default function LoginPage() {
     } catch (err: any) {
       setError(err?.message || 'Something went wrong')
       setLoading(false)
-    }
-  }
-
-  const handleDemoSignIn = async (demoEmail: string, role: Role) => {
-    setLoading(true)
-    setError(null)
-    const res = await signIn('credentials', {
-      email: demoEmail,
-      password: 'demo',
-      redirect: false,
-    })
-
-    if (res?.error) {
-      setError('Failed to log in as demo user.')
-      setLoading(false)
-    } else {
-      if (role === 'client') router.push('/client/dashboard')
-      else if (role === 'freelancer') router.push('/freelancer/dashboard')
-      else if (role === 'admin') router.push('/admin/dashboard')
     }
   }
 
@@ -128,11 +109,8 @@ export default function LoginPage() {
               </div>
 
               <div>
-                <div className="flex justify-between items-center mb-1">
+                <div className="mb-1">
                   <label className="input-label text-xs mb-0">Password</label>
-                  <Link href="#" className="text-[11px] text-electric hover:underline font-semibold">
-                    Forgot password?
-                  </Link>
                 </div>
                 <div className="relative">
                   <Lock className="absolute left-3.5 top-3.5 h-4 w-4 text-slate-500" />
@@ -173,42 +151,6 @@ export default function LoginPage() {
             </form>
           </div>
 
-          {/* Quick pass block */}
-          <div className="mt-8">
-            <div className="relative my-6">
-              <div className="absolute inset-0 flex items-center">
-                <div className="w-full border-t border-white/5" />
-              </div>
-              <div className="relative flex justify-center text-[10px] uppercase">
-                <span className="bg-slate-950 px-3 text-slate-500 font-mono tracking-wider">Demo Accounts Quick Pass</span>
-              </div>
-            </div>
-
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-2.5">
-              {DEMO_USERS.map(demo => (
-                <motion.button 
-                  key={demo.id}
-                  type="button"
-                  onClick={() => handleDemoSignIn(demo.email, demo.role)}
-                  disabled={loading}
-                  whileHover={{ scale: 1.02 }}
-                  whileTap={{ scale: 0.98 }}
-                  className="flex flex-col items-center justify-between p-3 rounded-xl border border-white/5 hover:border-white/10 bg-white/3 hover:bg-white/5 transition-all text-center cursor-pointer"
-                >
-                  <span className="text-xs font-semibold text-white truncate max-w-full">{demo.name}</span>
-                  <span className={`mt-1.5 px-2 py-0.5 rounded text-[8px] font-mono font-bold tracking-wider uppercase ${
-                    demo.role === 'client' 
-                      ? 'bg-electric/10 text-electric border border-electric/20' 
-                      : demo.role === 'freelancer'
-                        ? 'bg-mint/10 text-mint border border-mint/20'
-                        : 'bg-rose/10 text-rose border border-rose/20'
-                  }`}>
-                    {demo.role}
-                  </span>
-                </motion.button>
-              ))}
-            </div>
-          </div>
         </div>
 
         {/* RIGHT PANEL: ILLUSTRATION & FEATURES */}
