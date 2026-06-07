@@ -422,6 +422,22 @@ body {
   .to-slate-900\/60 {
     --tw-gradient-to: rgba(148, 163, 184, 0.08) !important;
   }
+
+  /* Fix nav item hover text visibility (sidebar hover:text-white → dark in light mode) */
+  .hover\:text-white:hover {
+    color: var(--foreground) !important;
+  }
+  .group:hover .group-hover\:text-white {
+    color: var(--foreground) !important;
+  }
+
+  /* Fix opacity-variant white text in AIReasoningBox and similar */
+  .text-white\/90:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: var(--foreground) !important;
+  }
+  .text-white\/80:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: var(--foreground) !important;
+  }
 }
 
 /* Premium Collapsed Sidebar Tooltips */

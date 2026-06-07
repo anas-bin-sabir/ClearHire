@@ -134,35 +134,14 @@ export default function SignupPage() {
           
           <div className="h-4" />
 
-          {/* Central Visual Mockup: Team Generator CSP visual */}
-          <motion.div 
-            whileHover={{ scale: 1.02, rotate: 0.5 }}
-            transition={{ type: 'spring', stiffness: 200, damping: 20 }}
-            className="relative z-10 w-full max-w-sm mx-auto glass-card border border-white/10 bg-slate-900/80 p-6 rounded-2xl shadow-xl flex flex-col gap-4 select-none"
-          >
-            <div className="flex justify-between items-center pb-2.5 border-b border-white/5">
-              <div>
-                <h4 className="text-xs font-bold text-white uppercase tracking-wider">AI Team Assembly</h4>
-                <p className="text-[10px] text-slate-400">Constraint Solver Optimization</p>
-              </div>
-              <span className="text-[10px] text-mint font-mono bg-mint/10 border border-mint/20 px-2 py-0.5 rounded font-bold">Limit: 3 Members</span>
-            </div>
-            
-            <div className="space-y-2.5">
-              <div className="flex items-center justify-between text-xs bg-slate-950/40 p-2.5 rounded-lg border border-white/3">
-                <span className="text-slate-305 font-medium">UI/UX Architect</span>
-                <span className="text-mint font-mono font-bold">Ali Raza</span>
-              </div>
-              <div className="flex items-center justify-between text-xs bg-slate-950/40 p-2.5 rounded-lg border border-white/3">
-                <span className="text-slate-305 font-medium">FastAPI Engineer</span>
-                <span className="text-mint font-mono font-bold">Zainab Bibi</span>
-              </div>
-              <div className="flex items-center justify-between text-xs bg-slate-950/40 p-2.5 rounded-lg border border-white/3">
-                <span className="text-slate-350 font-medium">Data Scientist</span>
-                <span className="text-slate-500 font-mono italic">Allocating...</span>
-              </div>
-            </div>
-          </motion.div>
+          {/* Profile Image */}
+          <div className="relative z-10 flex items-center justify-center select-none">
+            <img
+              src="/boy-img.png"
+              alt="Client Profile"
+              className="w-full max-w-75 object-contain drop-shadow-2xl"
+            />
+          </div>
 
           {/* Features Description */}
           <div className="w-full max-w-md space-y-3 mt-6 relative z-10 select-none text-left">

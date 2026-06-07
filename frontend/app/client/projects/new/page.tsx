@@ -5,15 +5,16 @@ import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
 import { motion, AnimatePresence } from 'framer-motion'
-import { 
-  Sparkles, 
-  ArrowRight, 
-  ArrowLeft, 
-  Check, 
-  Briefcase, 
-  Search, 
+import {
+  Sparkles,
+  ArrowRight,
+  ArrowLeft,
+  Check,
+  Briefcase,
+  Search,
   ShieldCheck,
-  Code
+  Code,
+  Plus
 } from 'lucide-react'
 
 export default function NewProjectPage() {
@@ -35,6 +36,7 @@ export default function NewProjectPage() {
   // Skill choices from DB
   const [availableSkills, setAvailableSkills] = useState<string[]>([])
   const [skillSearch, setSkillSearch] = useState('')
+  const [customSkillInput, setCustomSkillInput] = useState('')
 
   useEffect(() => {
     api.freelancers.skills()
@@ -57,9 +59,15 @@ export default function NewProjectPage() {
   }
 
   const toggleSkill = (skill: string) => {
-    setRequiredSkills(prev => 
+    setRequiredSkills(prev =>
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
     )
+  }
+
+  const addCustomSkill = () => {
+    const t = customSkillInput.trim()
+    if (t && !requiredSkills.includes(t)) setRequiredSkills(prev => [...prev, t])
+    setCustomSkillInput('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -173,16 +181,54 @@ export default function NewProjectPage() {
 
                   <div className="relative">
                     <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input 
+                    <input
                       type="text"
-                      placeholder="Search skills (e.g. React, Python...)"
+                      placeholder="Search predefined skills (e.g. React, Python...)"
                       value={skillSearch}
                       onChange={e => setSkillSearch(e.target.value)}
                       className="input pl-10"
                     />
                   </div>
 
-                  {/* Skills lists */}
+                  {/* Custom skill input */}
+                  <div className="flex gap-2">
+                    <input
+                      type="text"
+                      placeholder="Type a custom skill and press Enter..."
+                      value={customSkillInput}
+                      onChange={e => setCustomSkillInput(e.target.value)}
+                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
+                      className="input text-xs flex-1"
+                    />
+                    <button
+                      type="button"
+                      onClick={addCustomSkill}
+                      disabled={!customSkillInput.trim()}
+                      className="btn btn-sm btn-ghost px-3 border border-electric/20 text-electric hover:bg-electric/10 disabled:opacity-30 shrink-0 cursor-pointer"
+                    >
+                      <Plus className="h-3.5 w-3.5" />
+                    </button>
+                  </div>
+
+                  {/* Selected skills (predefined + custom) as chips */}
+                  {requiredSkills.length > 0 && (
+                    <div className="flex flex-wrap gap-1.5">
+                      {requiredSkills.map(skill => (
+                        <span key={skill} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-electric/15 text-white border border-electric/30">
+                          {skill}
+                          <button
+                            type="button"
+                            onClick={() => setRequiredSkills(prev => prev.filter(s => s !== skill))}
+                            className="text-electric/70 hover:text-white transition-colors cursor-pointer leading-none ml-0.5"
+                          >
+                            ×
+                          </button>
+                        </span>
+                      ))}
+                    </div>
+                  )}
+
+                  {/* Predefined skills list */}
                   <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/30 p-3 flex flex-wrap gap-1.5">
                     {filteredSkills.map(skill => {
                       const selected = requiredSkills.includes(skill)

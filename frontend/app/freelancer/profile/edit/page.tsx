@@ -33,6 +33,7 @@ export default function EditProfilePage() {
   // Skill ontology options
   const [allSkills, setAllSkills] = useState<string[]>([])
   const [skillQuery, setSkillQuery] = useState('')
+  const [customSkillInput, setCustomSkillInput] = useState('')
 
   useEffect(() => {
     let active = true
@@ -85,9 +86,15 @@ export default function EditProfilePage() {
   }
 
   const toggleSkill = (skill: string) => {
-    setSkills(prev => 
+    setSkills(prev =>
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
     )
+  }
+
+  const addCustomSkill = () => {
+    const t = customSkillInput.trim()
+    if (t && !skills.includes(t)) setSkills(prev => [...prev, t])
+    setCustomSkillInput('')
   }
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -303,14 +310,54 @@ export default function EditProfilePage() {
 
               <div>
                 <label className="input-label">Skill Capabilities</label>
-                <input 
+
+                {/* Custom skill input */}
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Type a custom skill and press Enter..."
+                    value={customSkillInput}
+                    onChange={e => setCustomSkillInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
+                    className="input text-xs flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomSkill}
+                    disabled={!customSkillInput.trim()}
+                    className="btn btn-sm btn-ghost px-3 border border-mint/20 text-mint hover:bg-mint/10 disabled:opacity-30 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Selected skill chips */}
+                {skills.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {skills.map(skill => (
+                      <span key={skill} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-mint/15 text-white border border-mint/30">
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => setSkills(prev => prev.filter(s => s !== skill))}
+                          className="text-mint/70 hover:text-white ml-0.5 transition-colors cursor-pointer leading-none"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
+                {/* Filter predefined skills */}
+                <input
                   type="text"
-                  placeholder="Filter skills checklist..."
+                  placeholder="Search predefined skills..."
                   value={skillQuery}
                   onChange={e => setSkillQuery(e.target.value)}
                   className="input mb-2 text-xs"
                 />
-                <div className="max-h-[100px] overflow-y-auto bg-slate-950/40 p-2.5 border border-white/5 rounded-lg flex flex-wrap gap-1">
+                <div className="max-h-25 overflow-y-auto bg-slate-950/40 p-2.5 border border-white/5 rounded-lg flex flex-wrap gap-1">
                   {filteredSkills.map(skill => {
                     const active = skills.includes(skill)
                     return (
@@ -319,8 +366,8 @@ export default function EditProfilePage() {
                         key={skill}
                         onClick={() => toggleSkill(skill)}
                         className={`text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                          active 
-                            ? 'bg-mint/15 text-white border border-mint/30' 
+                          active
+                            ? 'bg-mint/15 text-white border border-mint/30'
                             : 'bg-slate-900/60 text-slate-400 border border-white/5'
                         }`}
                       >

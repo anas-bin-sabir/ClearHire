@@ -218,37 +218,13 @@ export default function LoginPage() {
           
           <div className="h-6" />
 
-          {/* Core Match Visual Mockup Card */}
-          <div className="relative z-10 w-full max-w-sm mx-auto glass-card border border-white/10 bg-slate-900/70 p-6 rounded-2xl shadow-xl flex flex-col gap-4 select-none">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-3">
-                <div className="h-10 w-10 rounded-full bg-mint/15 border border-mint/25 flex items-center justify-center text-mint font-bold text-sm">
-                  AR
-                </div>
-                <div>
-                  <h4 className="text-sm font-bold text-white">Ali Raza</h4>
-                  <p className="text-[10px] text-slate-400">Full Stack Developer</p>
-                </div>
-              </div>
-              <div className="flex flex-col items-end">
-                <span className="text-xs font-bold text-mint">$75/hr</span>
-                <span className="text-[9px] text-slate-500">Declared rate</span>
-              </div>
-            </div>
-            
-            <div className="flex flex-wrap gap-1.5 border-t border-white/5 pt-3">
-              {['React', 'Node.js', 'FastAPI', 'PostgreSQL'].map(s => (
-                <span key={s} className="bg-slate-950/60 text-slate-400 text-[9px] px-2 py-0.5 rounded border border-white/3">{s}</span>
-              ))}
-            </div>
-
-            <div className="flex justify-between items-center bg-slate-950/40 p-3 rounded-lg border border-white/3 mt-1">
-              <div className="flex items-center gap-2">
-                <ShieldCheck className="h-4.5 w-4.5 text-mint" />
-                <span className="text-[10px] text-slate-300 font-medium">Reputation Verified</span>
-              </div>
-              <span className="text-[10px] text-mint font-mono font-semibold bg-mint/10 border border-mint/20 px-2 py-0.5 rounded">0.05 Fraud</span>
-            </div>
+          {/* Profile Image */}
+          <div className="relative z-10 flex items-center justify-center select-none">
+            <img
+              src="/girl-img.png"
+              alt="Freelancer Profile"
+              className="w-full max-w-75 object-contain drop-shadow-2xl"
+            />
           </div>
 
           {/* Features Highlights */}

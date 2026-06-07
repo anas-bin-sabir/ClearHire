@@ -7,7 +7,7 @@ import { FreelancerCard } from '@/components/ui/FreelancerCard'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
 import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge'
 import { SkillBadge } from '@/components/ui/SkillBadge'
-import { Search, Filter, Sparkles, AlertCircle, RefreshCw } from 'lucide-react'
+import { Search, Filter, Sparkles, AlertCircle, RefreshCw, Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function SearchPage() {
@@ -35,6 +35,7 @@ export default function SearchPage() {
 
   // Skill options
   const [allSkills, setAllSkills] = useState<string[]>([])
+  const [customSkillInput, setCustomSkillInput] = useState('')
 
   useEffect(() => {
     // Load skills
@@ -119,9 +120,15 @@ export default function SearchPage() {
   }
 
   const toggleFormSkill = (skill: string) => {
-    setSkills(prev => 
+    setSkills(prev =>
       prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
     )
+  }
+
+  const addCustomSkill = () => {
+    const t = customSkillInput.trim()
+    if (t && !skills.includes(t)) setSkills(prev => [...prev, t])
+    setCustomSkillInput('')
   }
 
   return (
@@ -173,6 +180,45 @@ export default function SearchPage() {
 
               <div>
                 <label className="input-label">Filter Skills</label>
+
+                {/* Custom skill input */}
+                <div className="flex gap-2 mb-2">
+                  <input
+                    type="text"
+                    placeholder="Type a custom skill and press Enter..."
+                    value={customSkillInput}
+                    onChange={e => setCustomSkillInput(e.target.value)}
+                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
+                    className="input text-xs flex-1"
+                  />
+                  <button
+                    type="button"
+                    onClick={addCustomSkill}
+                    disabled={!customSkillInput.trim()}
+                    className="btn btn-sm btn-ghost px-3 border border-electric/20 text-electric hover:bg-electric/10 disabled:opacity-30 shrink-0 cursor-pointer"
+                  >
+                    <Plus className="h-3.5 w-3.5" />
+                  </button>
+                </div>
+
+                {/* Selected skill chips */}
+                {skills.length > 0 && (
+                  <div className="flex flex-wrap gap-1 mb-2">
+                    {skills.map(skill => (
+                      <span key={skill} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-electric/15 text-white border border-electric/30">
+                        {skill}
+                        <button
+                          type="button"
+                          onClick={() => setSkills(prev => prev.filter(s => s !== skill))}
+                          className="text-electric/70 hover:text-white ml-0.5 transition-colors cursor-pointer leading-none"
+                        >
+                          ×
+                        </button>
+                      </span>
+                    ))}
+                  </div>
+                )}
+
                 <div className="max-h-[120px] overflow-y-auto bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-wrap gap-1">
                   {allSkills.map(skill => {
                     const active = skills.includes(skill)
@@ -182,8 +228,8 @@ export default function SearchPage() {
                         key={skill}
                         onClick={() => toggleFormSkill(skill)}
                         className={`text-[10px] px-2 py-1 rounded border cursor-pointer transition-colors ${
-                          active 
-                            ? 'bg-electric/15 text-white border-electric' 
+                          active
+                            ? 'bg-electric/15 text-white border-electric'
                             : 'bg-slate-900/60 text-slate-400 border-white/5'
                         }`}
                       >
