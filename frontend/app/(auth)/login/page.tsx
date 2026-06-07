@@ -88,9 +88,11 @@ export default function LoginPage() {
           <div>
             {/* Header / Brand */}
             <Link href="/" className="flex items-center gap-2.5 mb-8 self-start group transition-all">
-              <div className="h-9 w-9 rounded-lg bg-electric flex items-center justify-center text-white shadow-lg shadow-electric/25 group-hover:scale-105 duration-200">
-                <Sparkles className="h-5 w-5" />
-              </div>
+              <img
+                src="/clearhire-logo-rremoveBG.png"
+                alt="CH Logo"
+                className="h-9 w-9 object-contain shrink-0 group-hover:scale-105 duration-200"
+              />
               <div>
                 <h1 className="text-white font-bold text-lg tracking-tight">ClearHire</h1>
                 <span className="text-[9px] text-electric font-mono tracking-widest font-semibold uppercase block -mt-1">AI Matchmaking</span>
