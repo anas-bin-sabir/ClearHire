@@ -30,7 +30,21 @@ SKILLS_LIST = [
     "Figma",
     "Node.js",
 ]
-LOCATIONS = ["San Francisco", "Berlin", "London", "Remote", "Tokyo", "Singapore"]
+PAKISTANI_FIRST_NAMES = [
+    "Muhammad", "Ahmad", "Ali", "Hamza", "Usman", "Bilal", "Zubair", "Saad", "Haris", "Fawad",
+    "Tariq", "Waseem", "Babar", "Shaheen", "Asif", "Shadab", "Yasir", "Hassan", "Farhan", "Faisal",
+    "Muneeb", "Asim", "Sheheryar", "Ayesha", "Zainab", "Fatima", "Sana", "Mariam", "Amna", "Hira",
+    "Nida", "Kiran", "Saba", "Mahira", "Sajal", "Amina", "Fiza", "Urwa", "Mawra", "Mehwish",
+    "Aiman", "Sanam", "Hania", "Maya", "Zara", "Iqra", "Zoya", "Alishba", "Laiba", "Eshal"
+]
+PAKISTANI_LAST_NAMES = [
+    "Khan", "Ali", "Ahmed", "Raza", "Shah", "Sheikh", "Bibi", "Zahra", "Minhas", "Nawaz",
+    "Rafique", "Mani", "Rauf", "Dar", "Alam", "Jameel", "Qamar", "Akram", "Azam", "Afridi",
+    "Bhutto", "Saeed", "Hocane", "Hayat", "Qureshi", "Butt", "Baloch", "Amir", "Azhar", "Munawar",
+    "Abbas", "Aziz", "Hussain", "Malik", "Iqbal", "Chaudhry", "Gill", "Lodhi", "Siddiqui", "Hashmi",
+    "Mughal", "Farooq", "Zaman", "Baig", "Latif", "Javed", "Rasheed", "Rehman", "Abid", "Wahid"
+]
+LOCATIONS = ["Karachi", "Lahore", "Islamabad", "Peshawar", "Faisalabad", "Multan", "Rawalpindi", "Remote"]
 PG_SKILL_RELATIONSHIPS = [
     ("Python", "FastAPI"),
     ("React", "JavaScript"),
@@ -121,8 +135,10 @@ class DatabaseSeeder:
                 name = "Ali Raza"
                 email = "freelancer@demo.com"
             else:
-                name = f"Freelancer {i + 1}"
-                email = f"freelancer{i + 1}@example.com"
+                first_name = PAKISTANI_FIRST_NAMES[i % len(PAKISTANI_FIRST_NAMES)]
+                last_name = PAKISTANI_LAST_NAMES[(i * 3) % len(PAKISTANI_LAST_NAMES)]
+                name = f"{first_name} {last_name}"
+                email = f"{first_name.lower()}.{last_name.lower()}{i}@example.com"
 
             user = await self._users.upsert(
                 name=name,

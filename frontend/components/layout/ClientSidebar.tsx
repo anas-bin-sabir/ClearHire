@@ -13,6 +13,7 @@ import {
   User as UserIcon,
   Sparkles
 } from 'lucide-react'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function ClientSidebar() {
   const pathname = usePathname()
@@ -74,13 +75,16 @@ export default function ClientSidebar() {
             <p className="text-[10px] text-slate-500 truncate">{session?.user?.email || 'client@demo.com'}</p>
           </div>
         </div>
-        <button 
-          onClick={() => signOut({ callbackUrl: '/login' })}
-          className="w-full btn btn-sm btn-ghost flex items-center justify-center gap-2"
-        >
-          <LogOut className="h-3.5 w-3.5" />
-          Sign Out
-        </button>
+        <div className="flex gap-2">
+          <button 
+            onClick={() => signOut({ callbackUrl: '/login' })}
+            className="flex-1 btn btn-sm btn-ghost flex items-center justify-center gap-2"
+          >
+            <LogOut className="h-3.5 w-3.5" />
+            Sign Out
+          </button>
+          <ThemeToggle />
+        </div>
       </div>
     </aside>
   )

@@ -7,6 +7,7 @@ import Link from 'next/link'
 import { DEMO_USERS, Role } from '@/lib/auth-users'
 import { Sparkles, ArrowRight, Lock, Mail, AlertCircle, Eye, EyeOff, ShieldCheck, UserCheck } from 'lucide-react'
 import { motion } from 'framer-motion'
+import ThemeToggle from '@/components/ThemeToggle'
 
 export default function LoginPage() {
   const router = useRouter()
@@ -66,7 +67,11 @@ export default function LoginPage() {
   }
 
   return (
-    <div className="min-h-screen flex items-center justify-center bg-radial from-slate-900 via-slate-950 to-ink p-4 md:p-8 relative overflow-hidden">
+    <div className="min-h-screen flex items-center justify-center bg-radial from-radial-from via-radial-via to-radial-to p-4 md:p-8 relative overflow-hidden">
+      {/* Theme Toggle */}
+      <div className="absolute top-6 right-6 z-50">
+        <ThemeToggle />
+      </div>
       {/* Background glow spheres */}
       <div className="absolute top-1/4 left-1/4 w-[500px] h-[500px] bg-electric/5 rounded-full blur-3xl pointer-events-none" />
       <div className="absolute bottom-1/4 right-1/4 w-[500px] h-[500px] bg-mint/5 rounded-full blur-3xl pointer-events-none" />
