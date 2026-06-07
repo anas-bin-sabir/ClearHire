@@ -1,4 +1,7 @@
+@import url('https://fonts.googleapis.com/css2?family=Sora:wght@300;400;500;600;700;800&family=JetBrains+Mono:wght@400;500&display=swap');
 @import "tailwindcss";
+
+@custom-variant dark (&:where(.dark, .dark *));
 
 :root {
   --slate-950: #f8fafc;
@@ -40,6 +43,16 @@
   
   --scrollbar-track: #f8fafc;
   --scrollbar-thumb: #e2e8f0;
+
+  --font-sora: 'Sora', system-ui, sans-serif;
+  --font-jetbrains: 'JetBrains Mono', monospace;
+
+  /* Light mode */
+  --bg-primary: #ffffff;
+  --bg-secondary: #f8fafc;
+  --text-primary: #0A0E1A;
+  --text-secondary: #475569;
+  --border: rgba(15, 22, 40, 0.1);
 }
 
 .dark {
@@ -82,6 +95,12 @@
 
   --scrollbar-track: #07090e;
   --scrollbar-thumb: #1a2336;
+
+  --bg-primary: #0A0E1A;
+  --bg-secondary: #0f1628;
+  --text-primary: #f1f5f9;
+  --text-secondary: #94a3b8;
+  --border: rgba(255, 255, 255, 0.08);
 }
 
 @theme {
@@ -102,9 +121,46 @@
   --color-radial-from: var(--radial-from);
   --color-radial-via: var(--radial-via);
   --color-radial-to: var(--radial-to);
+
+  --font-sans: var(--font-sora), system-ui, sans-serif;
+  --font-mono: var(--font-jetbrains), monospace;
+
+  --color-electric-50: #eef0fe;
+  --color-electric-100: #d5dafd;
+  --color-electric-300: #8d9bf8;
+  --color-electric-400: #4F6EF7;
+  --color-electric-500: #3451C7;
+  --color-electric-600: #2840a8;
+  --color-electric-700: #1e318a;
+
+  --color-navy-900: #0A0E1A;
+  --color-navy-800: #0f1628;
+  --color-navy-700: #151e38;
+  --color-navy-600: #1a2548;
+
+  --color-mint-400: #00D4A4;
+  --color-mint-500: #00b88d;
+  --color-mint-600: #009e79;
+
+  --color-violet: #7c3aed;
+  --color-tangerine: #f97316;
+
+  --background-image-hero-gradient: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #00d4a4 100%);
+  --background-image-card-gradient: linear-gradient(135deg, rgba(79, 110, 247, 0.15) 0%, rgba(124, 58, 237, 0.15) 100%);
+
+  --animate-float: float 6s ease-in-out infinite;
+  --animate-float-slow: float 9s ease-in-out infinite;
+  --animate-float-fast: float 4s ease-in-out infinite;
+  --animate-pulse2: pulse2 2s ease-in-out infinite;
+  --animate-fade-up: fadeUp 0.6s ease forwards;
+  --animate-typing: typing 3.5s steps(60) infinite;
+  --animate-draw-line: drawLine 1.5s ease forwards;
+  --animate-shimmer: shimmer 2.5s linear infinite;
+  --animate-orbit: orbit 12s linear infinite;
 }
 
 body {
+  font-family: var(--font-sans);
   background: var(--background);
   color: var(--foreground);
   font-feature-settings: "cv02", "cv03", "cv04", "cv11";
@@ -278,48 +334,230 @@ body {
 
 /* LIGHT THEME UTILITY ADAPTATIONS */
 .light {
-  /* White and slate text elements become readable dark shades */
-  & :not(.btn):not(.btn-primary):not(.badge):not(.status-badge):not(.bg-electric):not(.bg-mint):not(.bg-rose):not(.bg-amber) {
-    &.text-white, & .text-white {
-      color: var(--foreground) !important;
-    }
-    &.text-slate-100, & .text-slate-100 {
-      color: var(--foreground) !important;
-    }
-    &.text-slate-200, & .text-slate-200 {
-      color: #1e293b !important;
-    }
-    &.text-slate-300, & .text-slate-300 {
-      color: #334155 !important;
-    }
-    &.text-slate-400, & .text-slate-400 {
-      color: #475569 !important;
-    }
-    &.text-slate-500, & .text-slate-500 {
-      color: #64748b !important;
-    }
+  /* Scoped white and slate text elements become readable dark shades (excluding button and badge descendants) */
+  .text-white:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: var(--foreground) !important;
+  }
+  .text-slate-100:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: var(--foreground) !important;
+  }
+  .text-slate-200:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: #1e293b !important; /* slate-800 */
+  }
+  .text-slate-300:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: #334155 !important; /* slate-700 */
+  }
+  .text-slate-400:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: #475569 !important; /* slate-600 */
+  }
+  .text-slate-500:not(.btn *):not(.btn-primary *):not(.agent-badge *):not(.status-badge *) {
+    color: #64748b !important; /* slate-500 */
   }
 
   /* Solid overrides for light transparent dark backdrops and borders */
-  & .bg-white\/3 {
+  .bg-white\/3 {
     background-color: rgba(15, 23, 42, 0.03) !important;
   }
-  & .bg-white\/5 {
+  .bg-white\/5 {
     background-color: rgba(15, 23, 42, 0.05) !important;
   }
-  & .hover\:bg-white\/5:hover {
+  .hover\:bg-white\/5:hover {
     background-color: rgba(15, 23, 42, 0.05) !important;
   }
-  & .hover\:bg-white\/10:hover {
+  .hover\:bg-white\/10:hover {
     background-color: rgba(15, 23, 42, 0.08) !important;
   }
-  & .border-white\/5 {
+  .border-white\/5 {
     border-color: rgba(15, 23, 42, 0.06) !important;
   }
-  & .border-white\/10 {
+  .border-white\/10 {
     border-color: rgba(15, 23, 42, 0.09) !important;
   }
-  & .border-white\/20 {
+  .border-white\/20 {
     border-color: rgba(15, 23, 42, 0.15) !important;
   }
+
+  /* Dark transparent elements become readable soft dark overlays */
+  .bg-slate-950\/40 {
+    background-color: rgba(15, 23, 42, 0.04) !important;
+  }
+  .bg-slate-950\/60 {
+    background-color: rgba(15, 23, 42, 0.06) !important;
+  }
+  .bg-slate-950\/20 {
+    background-color: rgba(15, 23, 42, 0.02) !important;
+  }
+
+  /* Stat cards and badges utility colors readability fix */
+  .text-indigo-400 {
+    color: #4f46e5 !important; /* indigo-600 */
+  }
+  .text-emerald-400 {
+    color: #059669 !important; /* emerald-600 */
+  }
+  .text-rose-400 {
+    color: #dc2626 !important; /* rose-600 */
+  }
+  .text-amber-400 {
+    color: #d97706 !important; /* amber-600 */
+  }
+  .bg-indigo-500\/10 {
+    background-color: rgba(79, 70, 229, 0.08) !important;
+  }
+  .bg-emerald-500\/10 {
+    background-color: rgba(5, 150, 105, 0.08) !important;
+  }
+  .bg-rose-500\/10 {
+    background-color: rgba(220, 38, 38, 0.08) !important;
+  }
+  .bg-amber-500\/10 {
+    background-color: rgba(217, 119, 6, 0.08) !important;
+  }
+
+  /* Split layout right panel background colors overrides */
+  .from-indigo-950\/40 {
+    background-color: transparent !important;
+    --tw-gradient-from: rgba(99, 102, 241, 0.06) !important;
+  }
+  .to-slate-900\/60 {
+    --tw-gradient-to: rgba(148, 163, 184, 0.08) !important;
+  }
 }
+
+/* Premium Collapsed Sidebar Tooltips */
+.sidebar-tooltip {
+  position: absolute;
+  left: 4.5rem;
+  background-color: #0e131f; /* dark gray */
+  color: #ffffff;
+  font-size: 0.75rem;
+  font-weight: 600;
+  padding: 0.375rem 0.625rem;
+  border-radius: 0.375rem;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.2);
+  white-space: nowrap;
+  opacity: 0;
+  pointer-events: none;
+  transform: scale(0.9);
+  transform-origin: left;
+  transition: all 0.15s cubic-bezier(0.16, 1, 0.3, 1);
+  z-index: 50;
+}
+.group:hover .sidebar-tooltip {
+  opacity: 1;
+  transform: scale(1);
+}
+.light .sidebar-tooltip {
+  background-color: #ffffff;
+  color: #0f172a;
+  border: 1px solid rgba(15, 23, 42, 0.08);
+  box-shadow: 0 4px 12px rgba(15, 23, 42, 0.08);
+}
+
+/* ---------- Merged Landing Page Styles ---------- */
+html {
+  scroll-behavior: smooth;
+}
+
+/* ---------- Glassmorphism ---------- */
+.glass {
+  background: rgba(255, 255, 255, 0.12);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.2);
+}
+
+.glass-dark {
+  background: rgba(10, 14, 26, 0.7);
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+}
+
+/* ---------- Gradient text ---------- */
+.gradient-text {
+  background: linear-gradient(135deg, #4f46e5 0%, #6366f1 50%, #00d4a4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+.gradient-text-electric {
+  background: linear-gradient(90deg, #4F6EF7 0%, #00D4A4 100%);
+  -webkit-background-clip: text;
+  -webkit-text-fill-color: transparent;
+  background-clip: text;
+}
+
+/* ---------- Scroll reveal ---------- */
+.reveal {
+  opacity: 0;
+  transform: translateY(32px);
+  transition: opacity 0.7s ease, transform 0.7s ease;
+}
+
+.reveal.visible {
+  opacity: 1;
+  transform: translateY(0);
+}
+
+/* ---------- Timeline line ---------- */
+.timeline-line {
+  background: linear-gradient(to bottom, #4f46e5, #6366f1, #00d4a4);
+  transition: height 1.2s ease;
+}
+
+/* ---------- Typing cursor ---------- */
+.typing-cursor::after {
+  content: '|';
+  animation: blink 1s step-end infinite;
+}
+
+@keyframes blink {
+  50% { opacity: 0; }
+}
+
+/* ---------- Progress bar shimmer ---------- */
+.shimmer-bar {
+  background: linear-gradient(
+    90deg,
+    #4F6EF7 0%,
+    #00D4A4 50%,
+    #4F6EF7 100%
+  );
+  background-size: 200% 100%;
+  animation: shimmer 2.5s linear infinite;
+}
+
+/* ---------- Keyframe Animations ---------- */
+@keyframes float {
+  0%, 100% { transform: translateY(0px); }
+  50% { transform: translateY(-18px); }
+}
+@keyframes pulse2 {
+  0%, 100% { opacity: 1; transform: scale(1); }
+  50% { opacity: 0.5; transform: scale(0.95); }
+}
+@keyframes fadeUp {
+  from: { opacity: 0; transform: translateY(32px); }
+  to: { opacity: 1; transform: translateY(0); }
+}
+@keyframes typing {
+  0% { width: 0; }
+  60% { width: 100%; }
+  90% { width: 100%; }
+  100% { width: 0; }
+}
+@keyframes drawLine {
+  from: { stroke-dashoffset: 200; }
+  to: { stroke-dashoffset: 0; }
+}
+@keyframes shimmer {
+  0% { background-position: -200% 0; }
+  100% { background-position: 200% 0; }
+}
+@keyframes orbit {
+  from: { transform: rotate(0deg) translateX(80px) rotate(0deg); }
+  to: { transform: rotate(360deg) translateX(80px) rotate(-360deg); }
+}
+
