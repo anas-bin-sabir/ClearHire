@@ -1,55 +1,41 @@
-# Dependencies
-node_modules/
-.pnp
-.pnp.js
+# See https://help.github.com/articles/ignoring-files/ for more about ignoring files.
 
-# Environment variables
-.env.local
-.env.*.local
+# dependencies
+/node_modules
+/.pnp
+.pnp.*
+.yarn/*
+!.yarn/patches
+!.yarn/plugins
+!.yarn/releases
+!.yarn/versions
 
-# Build outputs
-.next/
-out/
-dist/
-build/
-*.tsbuildinfo
+# testing
+/coverage
 
-# IDE
-.vscode/
-.idea/
-*.swp
-*.swo
-*~
+# next.js
+/.next/
+/out/
+
+# production
+/build
+
+# misc
 .DS_Store
-*.iml
+*.pem
 
-# Testing
-coverage/
-.nyc_output/
-
-# Logs
-*.log
+# debug
 npm-debug.log*
 yarn-debug.log*
 yarn-error.log*
+.pnpm-debug.log*
 
-# OS
-Thumbs.db
-.DS_Store
+# env files (can opt-in for committing if needed)
+.env*
 
-# Next.js specific
-.vercel/
-# Ignore Python virtual environments
-.venv/
-venv/
-ENV/
+# vercel
+.vercel
 
-# Ignore frontend dependencies
-node_modules/
-dist/
-.next/
-
-# Ignore local environment variables and OS junk
-.env
-.DS_Store
-Thumbs.db
+# typescript
+*.tsbuildinfo
+next-env.d.ts

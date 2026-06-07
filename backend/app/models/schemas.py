@@ -151,6 +151,19 @@ class SeedResponse(BaseModel):
 
 # --- Freelancers / projects / stats ---
 
+class FreelancerUpdateRequest(BaseModel):
+    name: Optional[str] = None
+    skills: Optional[list[str]] = None
+    hourly_rate: Optional[float] = None
+    experience_years: Optional[int] = None
+    rating: Optional[float] = None
+    review_count: Optional[int] = None
+    account_age_days: Optional[int] = None
+    availability: Optional[bool] = None
+    portfolio_urls: Optional[list[str]] = None
+    bio: Optional[str] = None
+    location: Optional[str] = None
+
 
 class FreelancerRecord(BaseModel):
     id: int
@@ -195,6 +208,15 @@ class ProjectRecord(BaseModel):
 class ProjectListResponse(BaseModel):
     projects: list[ProjectRecord]
     total: int
+
+
+class ProjectUpdateRequest(BaseModel):
+    title: Optional[str] = None
+    description: Optional[str] = None
+    required_skills: Optional[list[str]] = None
+    budget: Optional[float] = None
+    deadline_days: Optional[int] = None
+    team_size: Optional[int] = None
 
 
 class PlatformStatsResponse(BaseModel):

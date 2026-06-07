@@ -15,6 +15,7 @@ from app.ai.agents.orchestrator import register_all_agents
 from app.routers import (
     activity,
     analytics,
+    auth,
     contracts,
     fraud,
     freelancers,
@@ -61,6 +62,7 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(search.router, prefix="/search", tags=["Search"])
 app.include_router(fraud.router, prefix="/fraud", tags=["Fraud"])
 app.include_router(team_builder.router, prefix="/team-builder", tags=["Team Builder"])

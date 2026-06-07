@@ -1,3 +1,4 @@
+from app.db.session import async_session_factory
 from typing import Any
 
 from sqlalchemy import delete, func, or_, select
@@ -137,3 +138,16 @@ class FreelancerRepository:
             c for c in filtered if float(c.get("fraud_score", 0)) <= max_fraud
         ]
         return filtered
+
+    async def update(self, freelancer_id: int, data: dict) -> Freelancer | None:
+        result = await self._session.execute(
+            select(Freelancer).where(Freelancer.id == freelancer_id)
+        )
+        freelancer = result.scalar_one_or_none()
+        if freelancer:
+            for key, value in data.items():
+                if hasattr(freelancer, key):
+                    setattr(freelancer, key, value)
+            await self._session.flush()
+            await self._session.refresh(freelancer)
+        return freelancer

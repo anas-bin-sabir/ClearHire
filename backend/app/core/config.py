@@ -28,7 +28,7 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+asyncpg://clearhire:clearhire123@localhost:5432/clearhire_db",
+        default="postgresql+asyncpg://clearhire:clearhire123@localhost:5435/clearhire_db",
         alias="DATABASE_URL",
     )
 

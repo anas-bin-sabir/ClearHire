@@ -10,6 +10,7 @@ from app.models.schemas import (
     ProjectCreateResponse,
     ProjectListResponse,
     ProjectRecord,
+    ProjectUpdateRequest,
 )
 
 router = APIRouter()
@@ -119,3 +120,18 @@ async def get_project(
         raise HTTPException(status_code=404, detail="Project not found")
     contracts = await contract_repo.list_by_project(project_id)
     return _record_from_project(project, contracts)
+
+
+@router.patch("/{project_id}", response_model=ProjectRecord)
+async def update_project(
+    project_id: int,
+    body: ProjectUpdateRequest,
+    project_repo: ProjectRepository = Depends(get_project_repo),
+    contract_repo: ContractRepository = Depends(get_contract_repo),
+) -> ProjectRecord:
+    project = await project_repo.get_by_id(project_id)
+    if not project:
+        raise HTTPException(status_code=404, detail="Project not found")
+    updated = await project_repo.update(project_id, body.model_dump(exclude_none=True))
+    contracts = await contract_repo.list_by_project(project_id)
+    return _record_from_project(updated, contracts)

@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.activity import log_activity
 from app.core.dependencies import get_contract_repo, get_freelancer_repo, get_project_repo
@@ -17,6 +17,16 @@ from app.models.schemas import (
 )
 
 router = APIRouter()
+
+
+@router.get("", response_model=ContractListResponse)
+async def list_all_contracts(
+    limit: int = Query(default=200, ge=1, le=500),
+    contract_repo: ContractRepository = Depends(get_contract_repo),
+) -> ContractListResponse:
+    contracts = await contract_repo.list_all(limit=limit)
+    records = [_to_record(c) for c in contracts]
+    return ContractListResponse(contracts=records, total=len(records))
 
 
 def _to_record(contract) -> ContractRecord:

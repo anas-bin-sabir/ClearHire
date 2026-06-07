@@ -14,6 +14,7 @@ from app.db.repositories.postgres import (
 from app.db.repositories.mongo import FreelancerMetaRepository
 from app.db.utils.embeddings import random_unit_embedding
 from app.models.orm import ContractStatus
+from app.core.security import get_password_hash
 
 SKILLS_LIST = [
     "Python",
@@ -84,10 +85,28 @@ class DatabaseSeeder:
                 except Exception:
                     pass
 
+        demo_pwd_hash = get_password_hash("demo")
+
         admin = await self._users.upsert(
             name="Admin System",
             email="admin@clearhire.ai",
             role="admin",
+            password_hash=demo_pwd_hash,
+        )
+
+        # Seed additional demo accounts
+        await self._users.upsert(
+            name="Admin",
+            email="admin@demo.com",
+            role="admin",
+            password_hash=demo_pwd_hash,
+        )
+
+        await self._users.upsert(
+            name="Sara Ahmed",
+            email="client@demo.com",
+            role="client",
+            password_hash=demo_pwd_hash,
         )
 
         created_freelancers: list = []
@@ -98,10 +117,19 @@ class DatabaseSeeder:
                 {random.choice(SKILLS_LIST) for _ in range(3 + random.randint(0, 3))}
             )
             is_suspicious = i < 5
-            name = f"Freelancer {i + 1}"
-            email = f"freelancer{i + 1}@example.com"
+            if i == 0:
+                name = "Ali Raza"
+                email = "freelancer@demo.com"
+            else:
+                name = f"Freelancer {i + 1}"
+                email = f"freelancer{i + 1}@example.com"
 
-            user = await self._users.upsert(name=name, email=email, role="freelancer")
+            user = await self._users.upsert(
+                name=name,
+                email=email,
+                role="freelancer",
+                password_hash=demo_pwd_hash,
+            )
 
             referred_by = referrer_id if i > 0 and i % 7 == 0 else None
             freelancer = await self._freelancers.create(

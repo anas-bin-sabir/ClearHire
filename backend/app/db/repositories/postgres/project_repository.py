@@ -27,5 +27,18 @@ class ProjectRepository:
         await self._session.refresh(project)
         return project
 
+    async def update(self, project_id: int, data: dict) -> Project | None:
+        result = await self._session.execute(
+            select(Project).where(Project.id == project_id)
+        )
+        project = result.scalar_one_or_none()
+        if project:
+            for key, value in data.items():
+                if hasattr(project, key):
+                    setattr(project, key, value)
+            await self._session.flush()
+            await self._session.refresh(project)
+        return project
+
     async def delete_all(self) -> None:
         await self._session.execute(delete(Project))

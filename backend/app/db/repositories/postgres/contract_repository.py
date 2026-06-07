@@ -84,5 +84,11 @@ class ContractRepository:
         await self._session.refresh(contract)
         return contract
 
+    async def list_all(self, limit: int = 200) -> list[Contract]:
+        result = await self._session.execute(
+            select(Contract).order_by(Contract.created_at.desc()).limit(limit)
+        )
+        return list(result.scalars().all())
+
     async def delete_all(self) -> None:
         await self._session.execute(delete(Contract))

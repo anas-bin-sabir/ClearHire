@@ -1,265 +1,190 @@
-@tailwind base;
-@tailwind components;
-@tailwind utilities;
+@import "tailwindcss";
 
-/* ═══════════════════════════════════════════════════════════════
-   CLEARHIRE DESIGN SYSTEM  —  60/30/10 Electric Indigo
-   60 % deep slate backgrounds · 30 % white/light text
-   10 % electric indigo accent (#6366F1)
-═══════════════════════════════════════════════════════════════ */
-
-:root,
-[data-theme="dark"] {
-  color-scheme: dark;
-
-  /* ── 60 % Backgrounds ── */
-  --background:            #07091A;
-  --background-rgb:        7, 9, 26;
-  --card:                  #111827;
-  --card-rgb:              17, 24, 39;
-  --card-elevated:         #1B2640;
-  --card-elevated-rgb:     27, 38, 64;
-
-  /* ── 30 % Text & Borders ── */
-  --foreground:            #EEF2FF;
-  --foreground-rgb:        238, 242, 255;
-  --muted:                 #7B8DB5;
-  --muted-rgb:             123, 141, 181;
-  --muted-foreground:      #47577A;
-  --border:                #2D3F5C;
-  --border-rgb:            45, 63, 92;
-  --ring:                  #6366F1;
-  --ring-rgb:              99, 102, 241;
-
-  /* ── 10 % Electric Indigo ── */
-  --primary:               #6366F1;
-  --primary-rgb:           99, 102, 241;
-  --secondary:             #818CF8;
-  --secondary-rgb:         129, 140, 248;
-
-  /* ── Semantic ── */
-  --success:               #10B981;
-  --success-rgb:           16, 185, 129;
-  --warning:               #F59E0B;
-  --warning-rgb:           245, 158, 11;
-  --danger:                #EF4444;
-  --danger-rgb:            239, 68, 68;
-
-  /* ── Elevation shadows — 1px white ring creates card outline on dark bg ── */
-  --shadow-sm:  0 1px 3px rgba(0,0,0,0.45), 0 0 0 1px rgba(255,255,255,0.05);
-  --shadow-md:  0 4px 16px rgba(0,0,0,0.55), 0 0 0 1px rgba(255,255,255,0.06);
-  --shadow-lg:  0 8px 32px rgba(0,0,0,0.65), 0 0 0 1px rgba(255,255,255,0.07);
-
-  /* ── Misc ── */
-  --scrollbar-thumb:       rgba(99, 102, 241, 0.22);
-  --select-bg:             var(--card);
-  --grid-line:             rgba(99, 102, 241, 0.05);
-
-  /* ── Legacy aliases — inline styles throughout pages auto-inherit ── */
-  --color-primary:         var(--primary);
-  --color-primary-rgb:     var(--primary-rgb);
-  --color-secondary:       var(--secondary);
-  --color-secondary-rgb:   var(--secondary-rgb);
-  --color-accent:          var(--primary);
-  --color-accent-rgb:      var(--primary-rgb);
-  --color-success:         var(--success);
-  --color-success-rgb:     var(--success-rgb);
-  --color-warning:         var(--warning);
-  --color-warning-rgb:     var(--warning-rgb);
-  --color-danger:          var(--danger);
-  --color-danger-rgb:      var(--danger-rgb);
-  --bg-primary:            var(--background);
-  --bg-primary-rgb:        var(--background-rgb);
-  --bg-secondary:          var(--card);
-  --bg-secondary-rgb:      var(--card-rgb);
-  --bg-surface:            var(--card-elevated);
-  --bg-surface-rgb:        var(--card-elevated-rgb);
-  --text-primary:          var(--foreground);
-  --text-secondary:        var(--muted);
-  --text-muted:            var(--muted-foreground);
-  --text-subtle:           var(--muted);
-  --border-base:           var(--border-rgb);
+@theme {
+  --color-ink: #07090e;
+  --color-ink-2: #0e131f;
+  --color-ink-3: #1a2336;
+  --color-electric: #6366f1;
+  --color-electric-hover: #4f46e5;
+  --color-mint: #00d4a4;
+  --color-rose: #f43f5e;
+  --color-amber: #f59e0b;
+  --color-mist: #94a3b8;
 }
 
-[data-theme="light"] {
-  color-scheme: light;
-
-  /* ── 60 % Backgrounds ── */
-  --background:            #F2F4FF;
-  --background-rgb:        242, 244, 255;
-  --card:                  #FFFFFF;
-  --card-rgb:              255, 255, 255;
-  --card-elevated:         #EBEEff;
-  --card-elevated-rgb:     235, 238, 255;
-
-  /* ── 30 % Text & Borders ── */
-  --foreground:            #07091A;
-  --foreground-rgb:        7, 9, 26;
-  --muted:                 #5A6A90;
-  --muted-rgb:             90, 106, 144;
-  --muted-foreground:      #8B9AB8;
-  --border:                #CDD3EC;
-  --border-rgb:            205, 211, 236;
-  --ring:                  #4F46E5;
-  --ring-rgb:              79, 70, 229;
-
-  /* ── 10 % Electric Indigo ── */
-  --primary:               #4F46E5;
-  --primary-rgb:           79, 70, 229;
-  --secondary:             #6366F1;
-  --secondary-rgb:         99, 102, 241;
-
-  /* ── Semantic ── */
-  --success:               #059669;
-  --success-rgb:           5, 150, 105;
-  --warning:               #D97706;
-  --warning-rgb:           217, 119, 6;
-  --danger:                #DC2626;
-  --danger-rgb:            220, 38, 38;
-
-  /* ── Elevation shadows ── */
-  --shadow-sm:  0 1px 3px rgba(7,9,26,0.08), 0 0 0 1px rgba(7,9,26,0.05);
-  --shadow-md:  0 4px 16px rgba(7,9,26,0.1),  0 0 0 1px rgba(7,9,26,0.06);
-  --shadow-lg:  0 16px 48px rgba(7,9,26,0.13), 0 0 0 1px rgba(7,9,26,0.07);
-
-  /* ── Misc ── */
-  --scrollbar-thumb:       rgba(79, 70, 229, 0.25);
-  --select-bg:             var(--card);
-  --grid-line:             rgba(79, 70, 229, 0.05);
-
-  /* ── Legacy aliases ── */
-  --color-primary:         var(--primary);
-  --color-primary-rgb:     var(--primary-rgb);
-  --color-secondary:       var(--secondary);
-  --color-secondary-rgb:   var(--secondary-rgb);
-  --color-accent:          var(--primary);
-  --color-accent-rgb:      var(--primary-rgb);
-  --color-success:         var(--success);
-  --color-success-rgb:     var(--success-rgb);
-  --color-warning:         var(--warning);
-  --color-warning-rgb:     var(--warning-rgb);
-  --color-danger:          var(--danger);
-  --color-danger-rgb:      var(--danger-rgb);
-  --bg-primary:            var(--background);
-  --bg-primary-rgb:        var(--background-rgb);
-  --bg-secondary:          var(--card);
-  --bg-secondary-rgb:      var(--card-rgb);
-  --bg-surface:            var(--card-elevated);
-  --bg-surface-rgb:        var(--card-elevated-rgb);
-  --text-primary:          var(--foreground);
-  --text-secondary:        var(--muted);
-  --text-muted:            var(--muted-foreground);
-  --text-subtle:           var(--muted);
-  --border-base:           var(--border-rgb);
+:root {
+  --background: #07090e;
+  --foreground: #f8fafc;
 }
 
-@layer base {
-  *,
-  *::before,
-  *::after {
-    box-sizing: border-box;
-  }
-
-  html {
-    scroll-behavior: smooth;
-  }
-
-  html.theme-transition,
-  html.theme-transition *,
-  html.theme-transition *::before,
-  html.theme-transition *::after {
-    transition:
-      background-color 0.2s ease,
-      border-color     0.2s ease,
-      color            0.15s ease,
-      box-shadow       0.2s ease !important;
-  }
-
-  body {
-    margin: 0;
-    font-family: var(--font-inter, "Inter"), system-ui, sans-serif;
-    background: var(--background);
-    color: var(--foreground);
-    -webkit-font-smoothing: antialiased;
-    -moz-osx-font-smoothing: grayscale;
-  }
-
-  input,
-  textarea,
-  select,
-  button {
-    @apply outline-none;
-  }
-
-  input:focus-visible,
-  textarea:focus-visible,
-  select:focus-visible,
-  button:focus-visible,
-  a:focus-visible {
-    outline: 2px solid rgb(var(--ring-rgb) / 0.5);
-    outline-offset: 2px;
-  }
-}
-
-/* Mono = Inter with tabular nums; no separate font family needed */
-.font-mono {
-  font-family: var(--font-inter, "Inter"), system-ui, sans-serif !important;
-  font-feature-settings: "tnum" 1;
-  letter-spacing: -0.01em;
-}
-
-@layer components {
-  /* Cards: no border — background elevation creates the separation */
-  .surface-card {
-    @apply rounded-xl bg-card shadow-sm;
-  }
-
-  .surface-card-hover {
-    @apply surface-card transition-all duration-200;
-  }
-
-  .surface-card-hover:hover {
-    @apply shadow-md -translate-y-0.5;
-  }
-
-  .text-meta    { @apply text-sm text-muted; }
-  .page-title   { @apply text-3xl font-bold tracking-tight text-foreground; }
-  .section-title { @apply text-xl font-semibold tracking-tight text-foreground; }
-}
-
-/* Subtle dual-tone glow backdrop — uses indigo only */
-.app-backdrop {
-  position: fixed;
-  inset: 0;
-  pointer-events: none;
-  z-index: 0;
-  background:
-    radial-gradient(ellipse 70% 45% at 50% -10%,  rgb(var(--primary-rgb) / 0.09), transparent),
-    radial-gradient(ellipse 50% 35% at 100% 110%, rgb(var(--primary-rgb) / 0.05), transparent);
-}
-
-/* Scrollbar */
-::-webkit-scrollbar          { width: 5px; height: 5px; }
-::-webkit-scrollbar-track    { background: transparent; }
-::-webkit-scrollbar-thumb    { background: var(--scrollbar-thumb); border-radius: 4px; }
-
-input[type="range"] { accent-color: var(--primary); }
-
-select option {
-  background: var(--card);
+body {
+  background: var(--background);
   color: var(--foreground);
+  font-feature-settings: "cv02", "cv03", "cv04", "cv11";
 }
 
-/* Sparkline bars (used by StatCard) */
-.sparkline {
-  display: flex;
-  align-items: flex-end;
-  gap: 2px;
-  height: 24px;
+/* Custom Scrollbar */
+::-webkit-scrollbar {
+  width: 6px;
+  height: 6px;
 }
-.sparkline-bar {
-  flex: 1;
-  border-radius: 2px;
-  background: rgb(var(--primary-rgb) / 0.22);
-  min-width: 3px;
+::-webkit-scrollbar-track {
+  background: #07090e;
+}
+::-webkit-scrollbar-thumb {
+  background: #1a2336;
+  border-radius: 3px;
+}
+::-webkit-scrollbar-thumb:hover {
+  background: #6366f1;
+}
+
+/* Premium Glassmorphic Cards & UI components */
+.glass-card {
+  background: rgba(14, 19, 31, 0.7);
+  backdrop-filter: blur(12px);
+  border: 1px solid rgba(255, 255, 255, 0.05);
+  box-shadow: 0 8px 32px 0 rgba(0, 0, 0, 0.37);
+  border-radius: 1rem;
+  transition: all 0.3s cubic-bezier(0.16, 1, 0.3, 1);
+}
+
+.glass-card:hover {
+  border-color: rgba(99, 102, 241, 0.2);
+  box-shadow: 0 12px 40px 0 rgba(99, 102, 241, 0.08);
+}
+
+/* Custom Buttons */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  font-weight: 500;
+  border-radius: 0.5rem;
+  transition: all 0.2s ease-in-out;
+  cursor: pointer;
+  font-family: inherit;
+}
+
+.btn-md {
+  padding: 0.625rem 1.25rem;
+  font-size: 0.875rem;
+}
+
+.btn-sm {
+  padding: 0.375rem 0.75rem;
+  font-size: 0.75rem;
+}
+
+.btn-primary {
+  background: #6366f1;
+  color: #ffffff;
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  box-shadow: 0 4px 14px 0 rgba(99, 102, 241, 0.3);
+}
+
+.btn-primary:hover:not(:disabled) {
+  background: #4f46e5;
+  box-shadow: 0 6px 20px 0 rgba(99, 102, 241, 0.4);
+}
+
+.btn-primary:disabled {
+  opacity: 0.5;
+  cursor: not-allowed;
+}
+
+.btn-ghost {
+  background: transparent;
+  color: #94a3b8;
+  border: 1px solid rgba(255, 255, 255, 0.05);
+}
+
+.btn-ghost:hover {
+  background: rgba(255, 255, 255, 0.05);
+  color: #ffffff;
+  border-color: rgba(255, 255, 255, 0.1);
+}
+
+.btn-danger {
+  background: rgba(244, 63, 94, 0.1);
+  color: #f43f5e;
+  border: 1px solid rgba(244, 63, 94, 0.2);
+}
+
+.btn-danger:hover {
+  background: #f43f5e;
+  color: #ffffff;
+}
+
+/* Agent Badge */
+.agent-badge {
+  display: inline-flex;
+  align-items: center;
+  gap: 0.5rem;
+  padding: 0.375rem 0.75rem;
+  border-radius: 9999px;
+  font-size: 0.75rem;
+  font-family: ui-monospace, SFMono-Regular, Menlo, Monaco, Consolas, "Liberation Mono", "Courier New", monospace;
+  background: rgba(99, 102, 241, 0.1);
+  color: #6366f1;
+  border: 1px solid rgba(99, 102, 241, 0.2);
+}
+
+.agent-badge.pending {
+  background: rgba(245, 158, 11, 0.08);
+  color: #f59e0b;
+  border-color: rgba(245, 158, 11, 0.2);
+}
+
+.agent-dot {
+  width: 6px;
+  height: 6px;
+  border-radius: 50%;
+  background-color: currentColor;
+  display: inline-block;
+  box-shadow: 0 0 8px currentColor;
+}
+
+.agent-badge.pending .agent-dot {
+  animation: pulse-dot 1.5s infinite ease-in-out;
+}
+
+@keyframes pulse-dot {
+  0%, 100% {
+    opacity: 0.3;
+  }
+  50% {
+    opacity: 1;
+  }
+}
+
+/* Inputs */
+.input-label {
+  display: block;
+  font-size: 0.875rem;
+  font-weight: 500;
+  color: #94a3b8;
+  margin-bottom: 0.375rem;
+}
+
+.input {
+  width: 100%;
+  background: rgba(14, 19, 31, 0.5);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  border-radius: 0.5rem;
+  padding: 0.625rem 0.875rem;
+  font-size: 0.875rem;
+  color: #ffffff;
+  outline: none;
+  transition: all 0.2s ease-in-out;
+}
+
+.input:focus {
+  border-color: #6366f1;
+  box-shadow: 0 0 0 2px rgba(99, 102, 241, 0.25);
+  background: rgba(14, 19, 31, 0.8);
+}
+
+.input-with-icon {
+  padding-left: 2.5rem !important;
 }
