@@ -3,16 +3,17 @@ from enum import Enum
 
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
-    ARRAY,
     Boolean,
     DateTime,
     Float,
     ForeignKey,
+    Index,
     Integer,
     String,
     Text,
     UniqueConstraint,
 )
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core.config import settings
@@ -20,6 +21,17 @@ from app.core.config import settings
 
 class Base(DeclarativeBase):
     pass
+
+
+def hnsw_index(table: str) -> Index:
+    """pgvector HNSW index for cosine-distance ANN search on ``embedding``."""
+    return Index(
+        f"{table}_embedding_hnsw",
+        "embedding",
+        postgresql_using="hnsw",
+        postgresql_with={"m": 16, "ef_construction": 64},
+        postgresql_ops={"embedding": "vector_cosine_ops"},
+    )
 
 
 class ContractStatus(str, Enum):
@@ -51,6 +63,7 @@ class User(Base):
 
 class Freelancer(Base):
     __tablename__ = "freelancers"
+    __table_args__ = (hnsw_index("freelancers"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(
@@ -86,6 +99,7 @@ class Freelancer(Base):
 
 class Project(Base):
     __tablename__ = "projects"
+    __table_args__ = (hnsw_index("projects"),)
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     client_id: Mapped[int | None] = mapped_column(
@@ -97,6 +111,18 @@ class Project(Base):
     budget: Mapped[float] = mapped_column(Float, default=0.0)
     deadline_days: Mapped[int] = mapped_column(Integer, default=30)
     team_size: Mapped[int] = mapped_column(Integer, default=1)
+    seniority_level: Mapped[str] = mapped_column(String(20), default="mid")
+    implicit_constraints: Mapped[list[str]] = mapped_column(ARRAY(String), default=list)
+    nice_to_have_skills: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list, server_default="{}"
+    )
+    budget_type: Mapped[str] = mapped_column(
+        String(10), default="fixed", server_default="fixed"
+    )
+    domain: Mapped[str | None] = mapped_column(String(100), nullable=True)
+    compliance: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list, server_default="{}"
+    )
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(settings.embedding_dimensions),
         nullable=True,
@@ -138,6 +164,23 @@ class Contract(Base):
     project: Mapped["Project"] = relationship(back_populates="contracts")
 
 
+class Skill(Base):
+    """Canonical skill taxonomy (mirrors app.ai.skill_taxonomy, plus embeddings)."""
+
+    __tablename__ = "skills"
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    name: Mapped[str] = mapped_column(String(100), unique=True, nullable=False)
+    category: Mapped[str] = mapped_column(String(50), nullable=False)
+    aliases: Mapped[list[str]] = mapped_column(
+        ARRAY(String), default=list, server_default="{}"
+    )
+    embedding: Mapped[list[float] | None] = mapped_column(
+        Vector(settings.embedding_dimensions),
+        nullable=True,
+    )
+
+
 class SkillRelationship(Base):
     __tablename__ = "skill_relationships"
     __table_args__ = (UniqueConstraint("skill_a", "skill_b", name="uq_skill_pair"),)
@@ -145,3 +188,44 @@ class SkillRelationship(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     skill_a: Mapped[str] = mapped_column(String(100), nullable=False)
     skill_b: Mapped[str] = mapped_column(String(100), nullable=False)
+
+
+class ActivityLog(Base):
+    __tablename__ = "activity_logs"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
+    method: Mapped[str] = mapped_column(String(10), nullable=False)
+    payload: Mapped[dict] = mapped_column(JSONB, default=dict)
+    response_summary: Mapped[dict] = mapped_column(JSONB, default=dict)
+    status: Mapped[str] = mapped_column(String(20), default="success")
+    error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    timestamp: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+class AIExplanation(Base):
+    __tablename__ = "ai_explanations"
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    endpoint: Mapped[str] = mapped_column(String(255), nullable=False)
+    entity_id: Mapped[int | None] = mapped_column(Integer, nullable=True)
+    entity_type: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    pipeline: Mapped[str | None] = mapped_column(String(50), nullable=True)
+    explanation: Mapped[str] = mapped_column(Text, nullable=False)
+    model: Mapped[str] = mapped_column(String(100), default="deterministic")
+    system_prompt: Mapped[str] = mapped_column(Text, default="")
+    user_prompt: Mapped[str] = mapped_column(Text, default="")
+    metadata_json: Mapped[dict] = mapped_column(JSONB, default=dict)
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+    ran_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+    )
+
+
+class UserSetting(Base):
+    __tablename__ = "user_settings"
+    user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
+    settings: Mapped[dict] = mapped_column(JSONB, default=dict)
+    updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
