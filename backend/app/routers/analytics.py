@@ -5,7 +5,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_activity_repo
 from app.core.rate_limit import enforce_public_rate_limit
-from app.db.repositories.mongo import ActivityLogRepository
+from app.db.repositories.postgres import ActivityLogRepository
 from app.models.schemas import DayMetrics, TimeSeriesResponse
 
 router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
@@ -14,35 +14,27 @@ router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 async def _get_metrics_for_date(
     repo: ActivityLogRepository, date: datetime, endpoint_filter: str = None
 ) -> dict[str, Any]:
-    """Get activity counts for a specific date"""
+    """Get activity counts for a specific date."""
     start_of_day = date.replace(hour=0, minute=0, second=0, microsecond=0)
     end_of_day = start_of_day + timedelta(days=1)
 
-    # Count searches
-    searches_count = await repo._collection.count_documents(
-        {
-            "endpoint": "/search",
-            "status": "success",
-            "timestamp": {"$gte": start_of_day, "$lt": end_of_day},
-        }
+    searches_count = await repo.count_by_window(
+        endpoint="/search",
+        start=start_of_day,
+        end=end_of_day,
+        status="success",
     )
-
-    # Count team builds
-    teams_count = await repo._collection.count_documents(
-        {
-            "endpoint": "/team-builder",
-            "status": "success",
-            "timestamp": {"$gte": start_of_day, "$lt": end_of_day},
-        }
+    teams_count = await repo.count_by_window(
+        endpoint="/team-builder",
+        start=start_of_day,
+        end=end_of_day,
+        status="success",
     )
-
-    # Count fraud checks
-    fraud_count = await repo._collection.count_documents(
-        {
-            "endpoint": "/fraud",
-            "status": "success",
-            "timestamp": {"$gte": start_of_day, "$lt": end_of_day},
-        }
+    fraud_count = await repo.count_by_window(
+        endpoint="/fraud",
+        start=start_of_day,
+        end=end_of_day,
+        status="success",
     )
 
     return {

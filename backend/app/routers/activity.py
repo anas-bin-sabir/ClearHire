@@ -4,7 +4,7 @@ from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_activity_repo, get_search_history_repo
 from app.core.rate_limit import enforce_public_rate_limit
-from app.db.repositories.mongo import ActivityLogRepository, SearchHistoryRepository
+from app.db.repositories.postgres import ActivityLogRepository, SearchHistoryRepository
 from app.models.schemas import (
     ActivityFeedItem,
     ActivityFeedResponse,
@@ -49,7 +49,7 @@ def _endpoint_to_text(endpoint: str, payload: dict, summary: dict) -> str:
             "result_count",
             summary.get("returned", summary.get("total_candidates", 0)),
         )
-        return f'A* search for "{query}" returned {count} matches'
+        return f'Semantic search for "{query}" returned {count} matches'
     if endpoint == "/fraud":
         name = summary.get("name") or payload.get("name") or "freelancer"
         score = summary.get("score", summary.get("fraud_score"))
