@@ -1,16 +1,13 @@
-from app.db.repositories.mongo import (
+from app.db.repositories.postgres import (
     ActivityLogRepository,
     AIExplanationRepository,
-    FreelancerMetaRepository,
-    SearchHistoryRepository,
-)
-from app.db.repositories.neo4j import GraphRepository
-from app.db.repositories.postgres import (
     ContractRepository,
     FreelancerRepository,
     ProjectRepository,
+    SearchHistoryRepository,
     SkillRelationshipRepository,
     UserRepository,
+    UserSettingsRepository,
 )
 
 __all__ = [
@@ -22,6 +19,5 @@ __all__ = [
     "ActivityLogRepository",
     "SearchHistoryRepository",
     "AIExplanationRepository",
-    "FreelancerMetaRepository",
-    "GraphRepository",
+    "UserSettingsRepository",
 ]
