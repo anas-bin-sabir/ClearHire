@@ -7,7 +7,10 @@ from app.db.repositories.postgres.platform_repository import (
     UserSettingsRepository,
 )
 from app.db.repositories.postgres.project_repository import ProjectRepository
-from app.db.repositories.postgres.skill_repository import SkillRelationshipRepository
+from app.db.repositories.postgres.skill_repository import (
+    SkillRelationshipRepository,
+    SkillRepository,
+)
 from app.db.repositories.postgres.user_repository import UserRepository
 
 __all__ = [
@@ -16,6 +19,7 @@ __all__ = [
     "ProjectRepository",
     "ContractRepository",
     "SkillRelationshipRepository",
+    "SkillRepository",
     "ActivityLogRepository",
     "SearchHistoryRepository",
     "AIExplanationRepository",
