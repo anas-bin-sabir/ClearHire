@@ -25,6 +25,7 @@ class FreelancerCandidate(BaseModel):
     account_age_days: int = 0
     fraud_score: float = 0.0
     embedding_similarity: float = Field(default=0.5, ge=0.0, le=1.0)
+    keyword_score: float = Field(default=0.0, ge=0.0, le=1.0)
     bio: str | None = None
     location: str | None = None
     availability: bool = True
@@ -44,28 +45,54 @@ class FreelancerCandidate(BaseModel):
         return cls.model_validate(payload)
 
 
+SeniorityLevel = Literal["junior", "mid", "senior", "lead"]
+
+
 class ProjectConstraints(BaseModel):
-    required_skills: list[str] = Field(default_factory=list)
+    required_skills: list[str] = Field(default_factory=list)  # must-haves
+    nice_to_have_skills: list[str] = Field(default_factory=list)
     budget: float = Field(gt=0)
+    # fixed: total for the engagement; hourly: max rate per member per hour.
+    budget_type: Literal["fixed", "hourly"] = "fixed"
     team_size: int = Field(default=1, ge=1)
     hours_per_engagement: float = Field(default=40.0, gt=0)
+    seniority_level: SeniorityLevel | None = None
+    # {skill_lower: {related_skill_lower: weight}} for partial skill credit.
+    related_skills: dict[str, dict[str, float]] = Field(default_factory=dict)
 
 
 class RankingWeights(BaseModel):
-    skill_gap: float = Field(default=0.35, ge=0.0)
-    budget: float = Field(default=0.25, ge=0.0)
-    fraud: float = Field(default=0.25, ge=0.0)
-    embedding: float = Field(default=0.15, ge=0.0)
+    semantic: float = Field(default=0.35, ge=0.0)
+    keyword: float = Field(default=0.0, ge=0.0)
+    skill: float = Field(default=0.25, ge=0.0)
+    experience: float = Field(default=0.10, ge=0.0)
+    rating: float = Field(default=0.10, ge=0.0)
+    budget: float = Field(default=0.10, ge=0.0)
+    availability: float = Field(default=0.05, ge=0.0)
+    fraud: float = Field(default=0.05, ge=0.0)
 
     def normalized(self) -> "RankingWeights":
-        total = self.skill_gap + self.budget + self.fraud + self.embedding
+        total = (
+            self.semantic
+            + self.keyword
+            + self.skill
+            + self.experience
+            + self.rating
+            + self.budget
+            + self.availability
+            + self.fraud
+        )
         if total <= 0:
             return RankingWeights()
         return RankingWeights(
-            skill_gap=self.skill_gap / total,
+            semantic=self.semantic / total,
+            keyword=self.keyword / total,
+            skill=self.skill / total,
+            experience=self.experience / total,
+            rating=self.rating / total,
             budget=self.budget / total,
+            availability=self.availability / total,
             fraud=self.fraud / total,
-            embedding=self.embedding / total,
         )
 
 
@@ -75,6 +102,20 @@ class ScoreBreakdown(BaseModel):
     fraud_penalty: float = Field(ge=0.0, le=1.0)
     embedding_distance: float = Field(ge=0.0, le=1.0)
     total_cost: float = Field(ge=0.0)
+    skill_coverage: float = Field(default=0.0, ge=0.0, le=1.0)
+    semantic_similarity: float = Field(default=0.0, ge=0.0, le=1.0)
+    experience: float = Field(default=0.0, ge=0.0, le=1.0)
+    rating: float = Field(default=0.0, ge=0.0, le=1.0)
+    budget_fit: float = Field(default=0.0, ge=0.0, le=1.0)
+    availability: float = Field(default=0.0, ge=0.0, le=1.0)
+    fraud_trust: float = Field(default=0.0, ge=0.0, le=1.0)
+    keyword_relevance: float = Field(default=0.0, ge=0.0, le=1.0)
+    must_have_coverage: float = Field(default=1.0, ge=0.0, le=1.0)
+    seniority_fit: float | None = Field(default=None, ge=0.0, le=1.0)
+    matched_skills: list[str] = Field(default_factory=list)
+    # required skill -> the candidate skill that earned partial credit for it
+    adjacent_skills: dict[str, str] = Field(default_factory=dict)
+    missing_skills: list[str] = Field(default_factory=list)
 
 
 class RankedFreelancer(BaseModel):
@@ -100,7 +141,7 @@ class RankedFreelancer(BaseModel):
         return data
 
 
-class AStarRankingResult(BaseModel):
+class RankingResult(BaseModel):
     ranked: list[RankedFreelancer]
     total_candidates: int
 
@@ -164,6 +205,11 @@ class StructuredExplanation(BaseModel):
     bullets: list[str] = Field(default_factory=list)
     confidence: ConfidenceLevel = ConfidenceLevel.MEDIUM
     source: Literal["claude", "deterministic"] = "deterministic"
+    usage: dict[str, Any] | None = None
+
+    @property
+    def model_name(self) -> str:
+        return (self.usage or {}).get("model", "deterministic")
 
     @property
     def text(self) -> str:
