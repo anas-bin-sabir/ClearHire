@@ -147,17 +147,3 @@ def assess_fraud(profile: FreelancerCandidate) -> FraudAssessment:
         contributions=contributions,
     )
 
-
-def compute_fraud_score(profile: dict) -> dict:
-    """Backward-compatible adapter for routers expecting dict output."""
-    assessment = assess_fraud(FreelancerCandidate.from_dict(profile))
-    return {
-        "score": assessment.score,
-        "confidence": assessment.confidence.value,
-        "signals": assessment.signals,
-        "risk_factors": assessment.risk_factors,
-        "is_flagged": assessment.is_flagged,
-        "prior_log_odds": assessment.prior_log_odds,
-        "posterior_log_odds": assessment.posterior_log_odds,
-        "contributions": [c.model_dump() for c in assessment.contributions],
-    }
