@@ -1,13 +1,15 @@
-from app.ai.astar import astar_rank_freelancers, rank_freelancers
-from app.ai.bayesian import assess_fraud, compute_fraud_score
-from app.ai.csp import solve_team, solve_team_csp
-from app.ai.explainer import explain_fraud, explain_search, explain_team, generate_explanation
+"""AI layer entry points: one module per capability."""
+
+from app.ai.explainer import explain_fraud, explain_search, explain_team
+from app.ai.fraud import score_fraud
+from app.ai.ranking import rank_freelancers
+from app.ai.team_solver import solve_team
 from app.ai.types import (
-    AStarRankingResult,
     FraudAssessment,
     FreelancerCandidate,
     ProjectConstraints,
     RankedFreelancer,
+    RankingResult,
     StructuredExplanation,
     TeamBuilderConstraints,
     TeamBuilderResult,
@@ -18,18 +20,14 @@ __all__ = [
     "ProjectConstraints",
     "TeamBuilderConstraints",
     "RankedFreelancer",
-    "AStarRankingResult",
+    "RankingResult",
     "FraudAssessment",
     "TeamBuilderResult",
     "StructuredExplanation",
     "rank_freelancers",
-    "astar_rank_freelancers",
-    "assess_fraud",
-    "compute_fraud_score",
+    "score_fraud",
     "solve_team",
-    "solve_team_csp",
     "explain_search",
     "explain_fraud",
     "explain_team",
-    "generate_explanation",
 ]
