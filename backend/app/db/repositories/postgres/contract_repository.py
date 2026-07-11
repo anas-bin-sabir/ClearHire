@@ -1,10 +1,22 @@
 from typing import Any
 
 from sqlalchemy import delete, select
-from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.models.orm import Contract, ContractStatus
+
+VALID_TRANSITIONS = {
+    ContractStatus.PENDING.value: {
+        ContractStatus.ACTIVE.value,
+        ContractStatus.CANCELLED.value,
+    },
+    ContractStatus.ACTIVE.value: {
+        ContractStatus.COMPLETED.value,
+        ContractStatus.CANCELLED.value,
+    },
+    ContractStatus.COMPLETED.value: set(),
+    ContractStatus.CANCELLED.value: set(),
+}
 
 
 
@@ -45,28 +57,19 @@ class ContractRepository:
         )
         return list(result.scalars().all())
 
-    async def upsert(
-        self,
-        *,
-        freelancer_id: int,
-        project_id: int,
-        status: str = ContractStatus.PENDING.value,
-    ) -> Contract:
-        stmt = (
-            insert(Contract)
-            .values(
-                freelancer_id=freelancer_id,
-                project_id=project_id,
-                status=status,
+    async def get_pair(self, freelancer_id: int, project_id: int) -> Contract | None:
+        result = await self._session.execute(
+            select(Contract).where(
+                Contract.freelancer_id == freelancer_id,
+                Contract.project_id == project_id,
             )
-            .on_conflict_do_update(
-                index_elements=["freelancer_id", "project_id"],
-                set_={"status": status},
-            )
-            .returning(Contract)
         )
-        result = await self._session.execute(stmt)
-        return result.scalar_one()
+        return result.scalar_one_or_none()
+
+    def can_transition(self, current: str, target: str) -> bool:
+        if current == target:
+            return True
+        return target in VALID_TRANSITIONS.get(current, set())
 
     async def create(self, **fields: Any) -> Contract:
         contract = Contract(**fields)

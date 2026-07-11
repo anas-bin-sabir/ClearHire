@@ -1,7 +1,13 @@
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.activity import log_activity
-from app.core.dependencies import get_contract_repo, get_freelancer_repo, get_project_repo
+from app.core.dependencies import (
+    get_contract_repo,
+    get_current_user,
+    get_freelancer_repo,
+    get_project_repo,
+    owns_project,
+)
 from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.postgres import (
     ContractRepository,
@@ -16,6 +22,7 @@ from app.models.schemas import (
     ContractRecord,
     ContractUpdateRequest,
 )
+from app.models.orm import ContractStatus, User
 
 router = APIRouter()
 
@@ -92,6 +99,7 @@ async def create_contract(
     contract_repo: ContractRepository = Depends(get_contract_repo),
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
     project_repo: ProjectRepository = Depends(get_project_repo),
+    user: User = Depends(get_current_user),
 ) -> ContractRecord:
     freelancer = await freelancer_repo.get_by_id(body.freelancer_id)
     if not freelancer:
@@ -99,8 +107,12 @@ async def create_contract(
     project = await project_repo.get_by_id(body.project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if not owns_project(user, project):
+        raise HTTPException(status_code=403, detail="Not your project")
 
-    contract = await contract_repo.upsert(
+    if await contract_repo.get_pair(body.freelancer_id, body.project_id):
+        raise HTTPException(status_code=409, detail="Freelancer already on this project")
+    contract = await contract_repo.create(
         freelancer_id=body.freelancer_id,
         project_id=body.project_id,
         status=body.status,
@@ -119,21 +131,27 @@ async def create_contracts_batch(
     contract_repo: ContractRepository = Depends(get_contract_repo),
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
     project_repo: ProjectRepository = Depends(get_project_repo),
+    user: User = Depends(get_current_user),
 ) -> ContractListResponse:
     project = await project_repo.get_by_id(body.project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if not owns_project(user, project):
+        raise HTTPException(status_code=403, detail="Not your project")
 
     records: list[ContractRecord] = []
     for freelancer_id in body.freelancer_ids:
         freelancer = await freelancer_repo.get_by_id(freelancer_id)
         if not freelancer:
             continue
-        contract = await contract_repo.upsert(
-            freelancer_id=freelancer_id,
-            project_id=body.project_id,
-            status=body.status,
-        )
+        # Re-hiring an existing member is idempotent: keep the current contract.
+        contract = await contract_repo.get_pair(freelancer_id, body.project_id)
+        if contract is None:
+            contract = await contract_repo.create(
+                freelancer_id=freelancer_id,
+                project_id=body.project_id,
+                status=body.status,
+            )
         records.append(_to_record(contract))
 
     await log_activity(
@@ -158,9 +176,27 @@ async def update_contract_status(
     contract_id: int,
     body: ContractUpdateRequest,
     contract_repo: ContractRepository = Depends(get_contract_repo),
+    freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
+    project_repo: ProjectRepository = Depends(get_project_repo),
+    user: User = Depends(get_current_user),
 ) -> ContractRecord:
     contract = await contract_repo.get_by_id(contract_id)
     if not contract:
         raise HTTPException(status_code=404, detail="Contract not found")
+    project = await project_repo.get_by_id(contract.project_id)
+    freelancer = await freelancer_repo.get_by_id(contract.freelancer_id)
+    is_party = (project is not None and owns_project(user, project)) or (
+        freelancer is not None and freelancer.user_id == user.id
+    )
+    if not is_party:
+        raise HTTPException(status_code=403, detail="Not a party to this contract")
+    if not contract_repo.can_transition(contract.status, body.status):
+        raise HTTPException(
+            status_code=409,
+            detail=f"Cannot move contract from {contract.status} to {body.status}",
+        )
     updated = await contract_repo.update_status(contract_id, body.status)
+    if updated.status == ContractStatus.COMPLETED.value and freelancer is not None:
+        # Completed work becomes part of the profile text that retrieval embeds.
+        await freelancer_repo.refresh_embedding(freelancer)
     return _to_record(updated)
