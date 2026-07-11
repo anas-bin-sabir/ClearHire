@@ -44,7 +44,11 @@ def _forward_check_feasible(
     pool: list[FreelancerCandidate],
     constraints: TeamBuilderConstraints,
 ) -> bool:
-    """Forward checking: can remaining slots cover budget and skills?"""
+    """Forward checking: can the remaining slots still satisfy budget and skills?
+
+    Every bound here must be optimistic (never prune a branch that has a valid
+    completion); one freelancer may cover several missing skills at once.
+    """
     hours = constraints.hours_per_member
     current_cost = _team_cost(team, hours)
     remaining_budget = constraints.budget - current_cost
@@ -52,42 +56,31 @@ def _forward_check_feasible(
         return False
 
     uncovered = _uncovered_skills(team, constraints.required_skills)
-    if not uncovered and len(team) >= constraints.team_size:
-        return True
-
-    # Cheapest trustworthy extension for each uncovered skill
-    trustworthy = [
-        f for f in pool if _trust_score(f, constraints.max_fraud_score)
-    ]
     if remaining_slots <= 0:
-        return len(uncovered) == 0 and current_cost <= constraints.budget
+        return not uncovered
 
-    min_extra_cost = 0.0
     assigned_ids = {m.id for m in team}
-
-    for skill in uncovered:
-        candidates_for_skill = [
-            f
-            for f in trustworthy
-            if f.id not in assigned_ids and skill in f.skills
-        ]
-        if not candidates_for_skill:
-            return False
-        cheapest = min(candidates_for_skill, key=lambda f: (f.hourly_rate, f.id))
-        min_extra_cost += _member_cost(cheapest, hours)
-        assigned_ids.add(cheapest.id)
-
-    if min_extra_cost > remaining_budget:
+    available = [
+        f
+        for f in pool
+        if f.id not in assigned_ids and _trust_score(f, constraints.max_fraud_score)
+    ]
+    if len(available) < remaining_slots:
         return False
 
-    max_possible_cost = current_cost + remaining_slots * max(
-        (_member_cost(f, hours) for f in trustworthy),
-        default=0.0,
-    )
-    if max_possible_cost < current_cost and len(team) < constraints.team_size:
-        return True
+    # Every slot must be filled: the cheapest possible fill is a lower bound on cost.
+    cheapest_fill = sorted(_member_cost(f, hours) for f in available)[:remaining_slots]
+    if sum(cheapest_fill) > remaining_budget:
+        return False
 
-    return min_extra_cost <= remaining_budget
+    # Each missing skill needs at least one available holder ...
+    if any(not any(skill in f.skills for f in available) for skill in uncovered):
+        return False
+    # ... and the open slots need enough combined skill capacity to cover them all.
+    capacity = sorted(
+        (len(set(f.skills) & set(uncovered)) for f in available), reverse=True
+    )[:remaining_slots]
+    return sum(capacity) >= len(uncovered)
 
 
 def _order_candidates(
@@ -195,37 +188,3 @@ def solve_team(
         stats=stats,
     )
 
-
-def solve_team_csp(
-    freelancers: list[dict],
-    budget: float,
-    required_skills: list[str],
-    team_size: int,
-    hours_per_member: int = 40,
-    min_trust_score: float = 0.0,
-    max_fraud_score: float | None = None,
-) -> dict:
-    """Backward-compatible adapter."""
-    if max_fraud_score is None:
-        max_fraud_score = (
-            round(1.0 - min_trust_score, 6) if min_trust_score > 0 else 0.6
-        )
-    constraints = TeamBuilderConstraints(
-        budget=budget,
-        required_skills=required_skills,
-        team_size=team_size,
-        hours_per_member=hours_per_member,
-        max_fraud_score=max_fraud_score,
-    )
-    typed = [FreelancerCandidate.from_dict(f) for f in freelancers]
-    result = solve_team(typed, constraints)
-    return {
-        "solved": result.solved,
-        "team": result.team_as_dicts(),
-        "total_cost": result.total_cost,
-        "backtracks": result.stats.backtracks,
-        "nodes_explored": result.stats.nodes_explored,
-        "forward_prunes": result.stats.forward_prunes,
-        "message": result.message,
-        "uncovered_skills": result.uncovered_skills,
-    }

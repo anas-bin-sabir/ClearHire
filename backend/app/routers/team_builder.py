@@ -2,16 +2,13 @@ from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.ai.csp import solve_team
+from app.ai.team_solver import solve_team
 from app.ai.explainer import explain_team
 from app.ai.types import FreelancerCandidate, TeamBuilderConstraints, TeamExplanationInput
 from app.core.activity import log_activity
-from app.core.config import settings
 from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
-from app.core.events import ClearHireEvent, emit
 from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
-from app.db.repositories.mongo import AIExplanationRepository
-from app.db.repositories.postgres import FreelancerRepository
+from app.db.repositories.postgres import AIExplanationRepository, FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
 from app.models.schemas import TeamBuilderRequest, TeamBuilderResponse
 
@@ -48,16 +45,6 @@ async def build_team(
 ) -> TeamBuilderResponse:
     endpoint = "/team-builder"
     try:
-        await emit(ClearHireEvent.TEAM_BUILD_REQUESTED, {
-            "project_id": body.project_id,
-            "required_skills": body.required_skills,
-            "budget": body.budget,
-            "deadline_days": body.deadline_days,
-            "team_size": body.team_size,
-            "hours_per_member": body.hours_per_member,
-            "max_fraud_score": body.max_fraud_score,
-        })
-
         freelancers_orm = await freelancer_repo.list_for_team_building(
             max_fraud_score=body.max_fraud_score
         )
@@ -104,13 +91,17 @@ async def build_team(
         await ai_explanation_repo.insert(
             endpoint=endpoint,
             explanation=explanation,
-            model=settings.anthropic_model,
+            model=explanation_struct.model_name,
             system_prompt="team-builder",
             user_prompt=",".join(body.required_skills),
+            entity_id=body.project_id,
+            entity_type="project",
+            pipeline="csp_team_builder",
             metadata={
                 "success": response.success,
                 "team_size": len(response.team),
                 "source": explanation_struct.source,
+                "usage": explanation_struct.usage,
             },
         )
 
