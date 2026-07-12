@@ -36,6 +36,12 @@ def project_to_dict(project: Project) -> dict[str, Any]:
         "budget": project.budget,
         "deadline_days": project.deadline_days,
         "team_size": project.team_size,
+        "nice_to_have_skills": list(project.nice_to_have_skills or []),
+        "seniority_level": project.seniority_level,
+        "budget_type": project.budget_type,
+        "domain": project.domain,
+        "compliance": list(project.compliance or []),
+        "implicit_constraints": list(project.implicit_constraints or []),
         "created_at": created.isoformat() if created else None,
     }
 

@@ -2,15 +2,13 @@ from typing import Any, Optional
 
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.ai.bayesian import assess_fraud
 from app.ai.explainer import explain_fraud
+from app.ai.fraud import score_fraud
 from app.ai.types import FraudExplanationInput, FreelancerCandidate
 from app.core.activity import log_activity
-from app.core.config import settings
 from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
 from app.core.rate_limit import enforce_public_rate_limit
-from app.db.repositories.mongo import AIExplanationRepository
-from app.db.repositories.postgres import FreelancerRepository
+from app.db.repositories.postgres import AIExplanationRepository, FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
 from app.models.schemas import FraudRequest, FraudResponse
 
@@ -118,7 +116,7 @@ async def analyze_fraud(
             }
 
         profile = FreelancerCandidate.from_dict(profile_dict)
-        assessment = assess_fraud(profile)
+        assessment = score_fraud(profile)
 
         explanation_struct = await explain_fraud(
             FraudExplanationInput(
@@ -131,14 +129,20 @@ async def analyze_fraud(
         await ai_explanation_repo.insert(
             endpoint=endpoint,
             explanation=explanation,
-            model=settings.anthropic_model,
+            model=explanation_struct.model_name,
             system_prompt="fraud",
             user_prompt=profile.name,
             freelancer_id=profile.id or None,
+            entity_type="freelancer",
+            pipeline="fraud_detection",
             metadata={
                 "score": assessment.score,
+                "confidence": assessment.confidence.value,
+                "signals": assessment.signals,
+                "risk_factors": assessment.risk_factors,
                 "is_flagged": assessment.is_flagged,
                 "source": explanation_struct.source,
+                "usage": explanation_struct.usage,
             },
         )
 
@@ -172,4 +176,4 @@ async def analyze_fraud(
             status="error",
             error=str(exc),
         )
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Fraud analysis failed") from exc

@@ -1,17 +1,15 @@
+import asyncio
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
-from sqlalchemy import text
+from fastapi.routing import APIRoute
 
+from app.ai.embeddings import warm_up
 from app.core.config import settings
-from app.db import close_mongodb, close_neo4j, close_postgres, init_mongodb, init_neo4j, init_postgres
-from app.db import mongodb as mongo_db
-from app.db.neo4j_client import get_neo4j_driver
-from app.db.repositories.neo4j import GraphRepository
+from app.db import close_postgres, init_postgres
+from app.db.repositories.postgres import SkillRepository
 from app.db.session import async_session_factory
-from app.models.schemas import HealthResponse
-from app.ai.agents.orchestrator import register_all_agents
 from app.routers import (
     activity,
     analytics,
@@ -20,30 +18,24 @@ from app.routers import (
     fraud,
     freelancers,
     graph,
+    health,
     projects,
     search,
     seed,
+    settings as settings_router,
     stats,
     team_builder,
-    user_settings,
 )
+
 
 @asynccontextmanager
 async def lifespan(app: FastAPI):
-    register_all_agents()
     await init_postgres()
-    await init_mongodb()
-    try:
-        await init_neo4j()
-        graph_repo = GraphRepository()
-        await graph_repo.ensure_constraints()
-        await graph_repo.seed_skill_ontology()
-    except Exception as exc:
-        if settings.debug:
-            print(f"Neo4j init warning (graph will use Postgres only): {exc}")
+    await asyncio.to_thread(warm_up)
+    async with async_session_factory() as session:
+        await SkillRepository(session).sync_taxonomy()
+        await session.commit()
     yield
-    await close_neo4j()
-    await close_mongodb()
     await close_postgres()
 
 
@@ -66,78 +58,24 @@ app.include_router(auth.router, prefix="/auth", tags=["Authentication"])
 app.include_router(search.router, prefix="/search", tags=["Search"])
 app.include_router(fraud.router, prefix="/fraud", tags=["Fraud"])
 app.include_router(team_builder.router, prefix="/team-builder", tags=["Team Builder"])
-app.include_router(graph.router, prefix="/graph", tags=["Graph"])
 app.include_router(seed.router, prefix="/seed", tags=["Seed"])
 app.include_router(freelancers.router, prefix="/freelancers", tags=["Freelancers"])
 app.include_router(projects.router, prefix="/projects", tags=["Projects"])
 app.include_router(contracts.router, prefix="/contracts", tags=["Contracts"])
+app.include_router(settings_router.router, prefix="/settings", tags=["Settings"])
 app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(activity.router, prefix="/activity", tags=["Activity"])
-app.include_router(user_settings.router, prefix="/settings", tags=["Settings"])
+app.include_router(graph.router, prefix="/graph", tags=["Graph"])
+app.include_router(health.router, tags=["Health"])
 
 
-@app.get("/")
+@app.get("/", include_in_schema=False)
 async def root():
-    return {
-        "status": "ClearHire API running",
-        "docs": "/docs",
-        "endpoints": [
-            "POST /search",
-            "POST /fraud",
-            "POST /team-builder",
-            "GET /graph",
-            "POST /seed",
-            "GET /freelancers",
-            "GET /projects",
-            "POST /projects",
-            "GET /contracts/project/{id}",
-            "POST /contracts",
-            "POST /contracts/batch",
-            "GET /stats",
-            "GET /analytics",
-            "GET /activity/feed",
-            "GET /activity/searches/recent",
-            "GET /settings/{user_id}",
-            "POST /settings/{user_id}",
-            "GET /health",
-        ],
-    }
-
-
-@app.get("/health", response_model=HealthResponse)
-async def health() -> HealthResponse:
-    postgres_status = "ok"
-    try:
-        async with async_session_factory() as session:
-            await session.execute(text("SELECT 1"))
-    except Exception as exc:
-        postgres_status = f"error: {exc}"
-
-    mongodb_status = "ok"
-    try:
-        await mongo_db.get_database().command("ping")
-    except Exception as exc:
-        mongodb_status = f"error: {exc}"
-
-    neo4j_status = "ok"
-    try:
-        driver = get_neo4j_driver()
-        async with driver.session() as session:
-            await session.run("RETURN 1")
-    except Exception as exc:
-        neo4j_status = f"error: {exc}"
-
-    overall = (
-        "ok"
-        if all(s == "ok" for s in (postgres_status, mongodb_status))
-        else "degraded"
+    endpoints = sorted(
+        f"{method} {route.path}"
+        for route in app.routes
+        if isinstance(route, APIRoute) and route.include_in_schema
+        for method in route.methods
     )
-
-    return HealthResponse(
-        status=overall,
-        postgres=postgres_status,
-        mongodb=mongodb_status,
-        neo4j=neo4j_status,
-        anthropic_configured=bool(settings.anthropic_api_key),
-    )
+    return {"status": "ClearHire API running", "docs": "/docs", "endpoints": endpoints}

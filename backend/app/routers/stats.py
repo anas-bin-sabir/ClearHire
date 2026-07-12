@@ -7,8 +7,8 @@ from app.core.dependencies import (
     get_project_repo,
 )
 from app.core.rate_limit import enforce_public_rate_limit
-from app.db.repositories.mongo import ActivityLogRepository
 from app.db.repositories.postgres import (
+    ActivityLogRepository,
     ContractRepository,
     FreelancerRepository,
     ProjectRepository,
