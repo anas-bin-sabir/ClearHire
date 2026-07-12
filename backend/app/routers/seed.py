@@ -2,12 +2,15 @@ from fastapi import APIRouter, Depends, HTTPException
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.activity import log_activity
-from app.core.dependencies import get_db_session
+from app.core.config import settings
+from app.core.dependencies import get_db_session, require_admin
 from app.core.rate_limit import enforce_user_action_rate_limit
 from app.db.seed import DatabaseSeeder
 from app.models.schemas import SeedRequest, SeedResponse
 
-router = APIRouter(dependencies=[Depends(enforce_user_action_rate_limit)])
+router = APIRouter(
+    dependencies=[Depends(enforce_user_action_rate_limit), Depends(require_admin)]
+)
 
 
 @router.post("", response_model=SeedResponse)
@@ -16,12 +19,13 @@ async def seed_database(
     session: AsyncSession = Depends(get_db_session),
 ) -> SeedResponse:
     endpoint = "/seed"
+    if not settings.seed_enabled:
+        raise HTTPException(status_code=403, detail="Seeding is disabled")
     try:
         seeder = DatabaseSeeder(session)
         result = await seeder.run(
             freelancer_count=body.freelancer_count,
             reset=body.reset,
-            sync_neo4j=True,
         )
 
         response = SeedResponse(
@@ -30,7 +34,6 @@ async def seed_database(
             freelancers_created=result.freelancers_created,
             projects_created=result.projects_created,
             contracts_created=result.contracts_created,
-            neo4j_synced=result.neo4j_synced,
         )
 
         await log_activity(
@@ -48,4 +51,4 @@ async def seed_database(
             status="error",
             error=str(exc),
         )
-        raise HTTPException(status_code=500, detail=str(exc)) from exc
+        raise HTTPException(status_code=500, detail="Seeding failed") from exc
