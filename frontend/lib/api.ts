@@ -1,3 +1,5 @@
+import { getSession } from 'next-auth/react'
+
 export interface FreelancerRecord {
   id: number
   name: string
@@ -63,7 +65,16 @@ export interface ProjectRecord {
   client?: string
   created?: string
   priority?: string
+  nice_to_have_skills?: string[]
+  seniority_level?: Seniority
+  budget_type?: BudgetType
+  domain?: string | null
+  compliance?: string[]
+  implicit_constraints?: string[]
 }
+
+export type Seniority = 'junior' | 'mid' | 'senior' | 'lead'
+export type BudgetType = 'fixed' | 'hourly'
 
 export interface ProjectListResponse {
   projects: ProjectRecord[]
@@ -75,9 +86,40 @@ export interface ProjectCreateRequest {
   description?: string
   client?: string
   required_skills?: string[]
+  nice_to_have_skills?: string[]
   budget: number
+  budget_type?: BudgetType
   deadline_days?: number
   team_size?: number
+  seniority_level?: Seniority
+  domain?: string | null
+  compliance?: string[]
+  implicit_constraints?: string[]
+}
+
+export interface GroundedSkill {
+  input: string
+  canonical: string | null
+  importance: 'must' | 'nice'
+  match: 'exact' | 'alias' | 'semantic' | 'none'
+  confidence: number
+  category: string | null
+}
+
+export interface ProjectExtractionResponse {
+  title: string
+  summary: string
+  skills: GroundedSkill[]
+  budget: number | null
+  budget_type: BudgetType
+  deadline_days: number | null
+  team_size: number
+  seniority_level: Seniority
+  domain: string | null
+  compliance: string[]
+  implicit_constraints: string[]
+  ambiguities: string[]
+  source: 'claude' | 'deterministic'
 }
 
 export interface ProjectCreateResponse {
@@ -141,12 +183,6 @@ export interface SearchResponse {
 export interface PrecomputedResult {
   precomputed: boolean
   results?: Array<FreelancerRecord & { match_score: number; rank_score: number }>
-}
-
-export interface AgentStatus {
-  ran: boolean
-  ran_at: string
-  pipeline?: string
 }
 
 export interface FraudRequest {
@@ -300,10 +336,30 @@ export interface UserSettingsResponse {
 
 const BASE = process.env.NEXT_PUBLIC_API_URL || 'http://localhost:8000'
 
+// Backend JWT from the NextAuth session. <ApiTokenSync> keeps it current; until it
+// has run (child effects fire before parent ones) we fall back to getSession().
+let apiToken: string | undefined
+
+export function setApiToken(token: string | undefined) {
+  apiToken = token
+}
+
+async function currentToken(): Promise<string | undefined> {
+  if (apiToken || typeof window === 'undefined') return apiToken
+  const session = await getSession()
+  apiToken = session?.accessToken
+  return apiToken
+}
+
 async function req<T>(path: string, opts?: RequestInit): Promise<T> {
+  const token = await currentToken()
   const res = await fetch(`${BASE}${path}`, {
-    headers: { 'Content-Type': 'application/json' },
     ...opts,
+    headers: {
+      'Content-Type': 'application/json',
+      ...(token ? { Authorization: `Bearer ${token}` } : {}),
+      ...opts?.headers,
+    },
   })
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
   return res.json()
@@ -333,6 +389,8 @@ export const api = {
     get:    (id: number) => req<ProjectRecord>(`/projects/${id}`),
     create: (body: ProjectCreateRequest) =>
       req<ProjectCreateResponse>('/projects', { method:'POST', body: JSON.stringify(body) }),
+    extract: (text: string) =>
+      req<ProjectExtractionResponse>('/projects/extract', { method:'POST', body: JSON.stringify({ text }) }),
     update: (id: number, body: Partial<ProjectUpdateRequest>) =>
       req<ProjectRecord>(`/projects/${id}`, { method:'PATCH', body: JSON.stringify(body) }),
   },
@@ -356,8 +414,6 @@ export const api = {
       req<SearchResponse>('/search', { method:'POST', body: JSON.stringify(body) }),
     precomputed:  (projectId: number) =>
       req<PrecomputedResult>(`/search/precomputed/${projectId}`),
-    agentStatus:  (type: 'freelancer'|'project', id: number) =>
-      req<AgentStatus>(`/search/agent-status/${type}/${id}`),
   },
 
   // ── FRAUD ────────────────────────────────────────────────

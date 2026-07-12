@@ -5,7 +5,6 @@ import { useSearchParams } from 'next/navigation'
 import { api, FreelancerRecord, ProjectRecord } from '@/lib/api'
 import { FreelancerCard } from '@/components/ui/FreelancerCard'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
-import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge'
 import { SkillBadge } from '@/components/ui/SkillBadge'
 import { Search, Filter, Sparkles, AlertCircle, RefreshCw, Plus } from 'lucide-react'
 import { motion } from 'framer-motion'
@@ -142,17 +141,10 @@ export default function SearchPage() {
           </h2>
           <p className="text-xs text-slate-400 mt-1">
             {project 
-              ? 'Displaying precalculated A* similarity rankings generated automatically by the ClearHire Matching Agent.'
+              ? 'Ranked by semantic similarity and project constraints.'
               : 'Search the talent pool using natural language, skill requirements, and trust criteria.'}
           </p>
         </div>
-        {project && (
-          <AgentStatusBadge 
-            entityType="project"
-            entityId={project.id}
-            pipeline="matching"
-          />
-        )}
       </div>
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
@@ -334,7 +326,7 @@ export default function SearchPage() {
           {loading ? (
             <div className="flex flex-col items-center justify-center py-24 gap-3 glass-card">
               <div className="h-8 w-8 border-2 border-electric border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Evaluating matches via A* Engine...</p>
+              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Ranking matches...</p>
             </div>
           ) : results.length === 0 ? (
             <div className="glass-card p-12 text-center text-slate-500 text-sm">

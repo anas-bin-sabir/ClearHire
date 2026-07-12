@@ -4,7 +4,6 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { api, FraudResponse } from '@/lib/api'
 import { FraudGauge } from '@/components/ui/FraudGauge'
-import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
 import { 
   ShieldCheck, 
@@ -75,11 +74,6 @@ export default function TrustScorePage() {
             Real-time audit log analyzing profile parameters to calculate platform risk ratings.
           </p>
         </div>
-        <AgentStatusBadge 
-          entityType="freelancer"
-          entityId={flId}
-          pipeline="fraud_detection"
-        />
       </div>
 
       {fraud?.is_flagged && (

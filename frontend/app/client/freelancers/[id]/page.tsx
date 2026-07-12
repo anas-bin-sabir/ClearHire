@@ -5,7 +5,6 @@ import { useParams, useRouter } from 'next/navigation'
 import { api, FreelancerRecord, FraudResponse } from '@/lib/api'
 import { FraudGauge } from '@/components/ui/FraudGauge'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
-import { AgentStatusBadge } from '@/components/ui/AgentStatusBadge'
 import { SkillBadge } from '@/components/ui/SkillBadge'
 import { HireModal } from '@/components/ui/HireModal'
 import { fmt } from '@/lib/utils'
@@ -124,7 +123,6 @@ export default function FreelancerDetailPage() {
           <div>
             <div className="flex flex-wrap items-center gap-3">
               <h2 className="text-2xl font-bold text-white tracking-tight">{freelancer.name}</h2>
-              <AgentStatusBadge entityType="freelancer" entityId={freelancer.id} pipeline="fraud_detection" />
             </div>
             <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-1.5 font-medium">
               <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {freelancer.location || 'Distributed'}</span>
