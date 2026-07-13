@@ -1,69 +1,57 @@
 # ClearHire Backend (FastAPI)
 
-## Database architecture
+See the [root README](../README.md) for setup. This file maps the code.
 
-| Store | Layer | Purpose |
-|-------|--------|---------|
-| PostgreSQL + pgvector | `app/db/repositories/postgres/` | Users, freelancers, projects, contracts, skill relationships, embeddings |
-| MongoDB (Motor) | `app/db/repositories/mongo/` | `activity_logs`, `search_history`, `ai_explanations`, `freelancer_meta` |
-| Neo4j | `app/db/repositories/neo4j/` | Freelancer, Skill, Project nodes; HAS_SKILL, WORKED_ON, RELATED_TO, REFERRED_BY |
+## Layout
 
-Routers call repositories only — no raw SQL in route handlers.
+| Path | Purpose |
+|---|---|
+| `app/main.py` | App factory, CORS, router mounting; migrations run in the lifespan |
+| `app/routers/` | HTTP handlers. They call repositories only, never raw SQL |
+| `app/db/repositories/postgres/` | One repository per aggregate (users, freelancers, projects, contracts, skills, activity/explanations/settings) |
+| `app/db/migrate.py`, `alembic/` | Alembic migrations; databases from the pre-Alembic `create_all` era are stamped at the baseline |
+| `app/ai/embeddings.py` | Profile/project embedding text + 384-d MiniLM vectors (`EMBEDDING_PROVIDER=hash` for tests) |
+| `app/ai/ranking.py` | Deterministic weighted ranking with per-feature breakdown (weights in config) |
+| `app/ai/team_solver.py` | Team CSP (`csp.py`) plus conflict diagnosis and relaxation hints |
+| `app/ai/fraud.py` | Bayesian log-odds fraud scoring (`bayesian.py`) with new-account dampening |
+| `app/ai/llm.py` | The only Claude client: structured outputs, typed errors → `LLMUnavailable`, usage metadata |
+| `app/ai/skill_taxonomy.py` | Canonical skills + aliases; every stored skill name goes through `canonicalize` |
+| `app/ai/project_parser.py` | Brief → `ParsedBrief` (Claude, or rule-based fallback) → grounded `ProjectExtractionResponse` |
+| `app/ai/explainer.py` | Claude explanations with deterministic fallbacks |
+| `scripts/eval_extraction.py` | Scores extraction on `tests/fixtures/briefs*.jsonl` |
+| `app/core/` | Settings, JWT auth dependencies, rate limiting, activity logging |
 
-## Quick start
+## Endpoints
+
+| Method | Path | Auth | Purpose |
+|---|---|---|---|
+| POST | `/auth/signup`, `/auth/login` | none | JWT issuance (client/freelancer signup only) |
+| POST | `/search` | none | Filtered pgvector shortlist → ranking → explanation |
+| POST | `/projects/extract` | client | NL brief → grounded constraints + ambiguities for review |
+| GET/POST/PATCH | `/projects` | client (write, owner only) | Projects |
+| GET/POST/PATCH | `/contracts` | project owner / contract party | Hiring & status |
+| POST | `/team-builder` | none | CSP team + explanation |
+| GET/POST | `/fraud` | none | Bayesian assessment + explanation |
+| GET/PATCH | `/freelancers` | owner/admin for writes | Profiles; `/flag` is admin-only |
+| GET | `/stats`, `/analytics`, `/activity/*` | none | Dashboards |
+| GET | `/graph` | admin | Freelancer→skill graph (PostgreSQL) |
+| GET/POST | `/settings/{user_id}` | self/admin | Preferences |
+| POST | `/seed` | admin | Demo data (`SEED_ENABLED`) |
+| GET | `/health` | none | Dependency status |
+
+## Migrations
 
 ```bash
-docker compose up -d
-cd backend
-python -m venv venv
-venv\Scripts\activate
-pip install -r requirements.txt
-copy .env.example .env
-uvicorn app.main:app --reload --port 8000
+alembic upgrade head                                  # apply
+alembic revision --autogenerate -m "describe change"  # after editing app/models/orm.py
 ```
 
-## Seed data
+`tests/test_migrations.py` fails if `orm.py` and the migrations drift apart.
+
+## Seeding
 
 ```bash
-# CLI (Postgres + Mongo meta + Neo4j when available)
 python -m scripts.seed_database --count 50 --reset
-
-# Or via API
-curl -X POST http://localhost:8000/seed -H "Content-Type: application/json" -d "{\"freelancer_count\": 50, \"reset\": true}"
 ```
 
-## API endpoints (frontend integration)
-
-| Method | Path | Purpose |
-|--------|------|---------|
-| GET | `/health` | Postgres, MongoDB, Neo4j, Claude key status |
-| GET | `/stats` | Dashboard counts |
-| GET | `/freelancers?q=&flagged_only=` | Fraud lab search, data manager |
-| GET | `/freelancers/{id}` | Profile page |
-| GET | `/projects` | Projects workspace |
-| POST | `/search` | A* ranked freelancers + Claude explanation |
-| POST | `/fraud` | Bayesian score + Claude explanation |
-| POST | `/team-builder` | CSP team + Claude explanation |
-| GET | `/graph` | Neo4j/Postgres skill graph (with fraud scores) |
-| POST | `/seed` | Populate all databases |
-
-## CORS
-
-Set `CORS_ORIGINS` and optional `CORS_ORIGIN_REGEX` in `.env` so the Next.js app origin is allowed (default includes `localhost:3000` and LAN IPs).
-
-## Claude explanations
-
-Set `ANTHROPIC_API_KEY` in `backend/.env`. Without it, deterministic fallbacks are used (`source: deterministic` in Mongo `ai_explanations`). With a valid key, responses use Claude at `temperature=0` (`source: claude`).
-
-## Repository map
-
-- `UserRepository` — upsert/get users
-- `FreelancerRepository` — CRUD, search filters, ranking dicts
-- `ProjectRepository` — projects with embeddings
-- `ContractRepository` — freelancer↔project contracts
-- `SkillRelationshipRepository` — Postgres skill graph edges
-- `ActivityLogRepository` — API activity in MongoDB
-- `SearchHistoryRepository` — search audit trail
-- `AIExplanationRepository` — stored LLM explanations
-- `FreelancerMetaRepository` — tags, links, verification metadata
-- `GraphRepository` — Neo4j schema, sync, graph queries
+Fraud scores of seeded profiles are computed by the fraud model; five profiles are generated with risky traits so the fraud views have data.

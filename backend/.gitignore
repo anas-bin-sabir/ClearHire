@@ -50,3 +50,6 @@ dmypy.json
 *.db
 *.sqlite
 *.sqlite3
+
+# fastembed model cache
+.cache/
