@@ -3,6 +3,8 @@ from typing import Any, Literal, Optional
 
 from pydantic import AnyUrl, BaseModel, Field, field_validator
 
+from app.ai.skill_taxonomy import canonicalize_all
+
 # --- Shared validation primitives ---
 #
 # These schemas reject malformed input outright (HTTP 422) rather than
@@ -11,7 +13,7 @@ from pydantic import AnyUrl, BaseModel, Field, field_validator
 # dropped.
 
 NAME_PATTERN = re.compile(r"^[A-Za-z0-9À-ÿ .,'\-]{1,255}$")
-SKILL_PATTERN = re.compile(r"^[A-Za-z0-9+#. \-]{1,50}$")
+SKILL_PATTERN = re.compile(r"^[A-Za-z0-9+#./ \-]{1,50}$")
 MAX_LIST_ITEMS = 50
 
 
@@ -33,10 +35,10 @@ def _validate_skills(skills: list[str]) -> list[str]:
         if not SKILL_PATTERN.match(skill):
             raise ValueError(
                 f"invalid skill {skill!r}: must be 1-50 chars of letters, numbers, "
-                "spaces, + # . -"
+                "spaces, + # . / -"
             )
         cleaned.append(skill)
-    return cleaned
+    return canonicalize_all(cleaned)
 
 
 def _validate_urls(urls: list[str]) -> list[str]:
@@ -55,8 +57,13 @@ def _validate_urls(urls: list[str]) -> list[str]:
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(default="", max_length=500, description="Natural language search criteria")
-    skills: list[str] = Field(default_factory=list)
+    query: str = Field(default="", max_length=2000, description="Natural language search criteria")
+    skills: list[str] = Field(default_factory=list, description="Must-have skills")
+    nice_to_have_skills: list[str] = Field(default_factory=list, alias="niceToHaveSkills")
+    seniority_level: Optional[Literal["junior", "mid", "senior", "lead"]] = Field(
+        default=None, alias="seniorityLevel"
+    )
+    budget_type: Literal["fixed", "hourly"] = Field(default="fixed", alias="budgetType")
     min_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="minRate")
     max_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="maxRate")
     min_rating: Optional[float] = Field(default=None, ge=0, le=5, alias="minRating")
@@ -67,7 +74,7 @@ class SearchRequest(BaseModel):
 
     model_config = {"populate_by_name": True, "extra": "forbid"}
 
-    @field_validator("skills")
+    @field_validator("skills", "nice_to_have_skills")
     @classmethod
     def _skills_valid(cls, v: list[str]) -> list[str]:
         return _validate_skills(v)
@@ -96,6 +103,39 @@ class SearchResponse(BaseModel):
     freelancers: list[dict[str, Any]]
     explanation: str
     total_candidates: int
+    retrieval: dict[str, Any] = Field(default_factory=dict)
+
+
+class ProjectExtractionRequest(BaseModel):
+    text: str = Field(min_length=10, max_length=10_000)
+    model_config = {"extra": "forbid"}
+
+
+class GroundedSkillOut(BaseModel):
+    input: str
+    canonical: Optional[str] = None
+    importance: Literal["must", "nice"]
+    match: Literal["exact", "alias", "semantic", "none"]
+    confidence: float = Field(ge=0.0, le=1.0)
+    category: Optional[str] = None
+
+
+class ProjectExtractionResponse(BaseModel):
+    """Extracted requirements for the client to review and edit before creating."""
+
+    title: str = Field(max_length=255)
+    summary: str = Field(max_length=5_000)
+    skills: list[GroundedSkillOut] = Field(default_factory=list)
+    budget: Optional[float] = Field(default=None, gt=0, le=100_000_000)
+    budget_type: Literal["fixed", "hourly"] = "fixed"
+    deadline_days: Optional[int] = Field(default=None, ge=1, le=3650)
+    team_size: int = Field(default=1, ge=1, le=50)
+    seniority_level: Literal["junior", "mid", "senior", "lead"] = "mid"
+    domain: Optional[str] = Field(default=None, max_length=100)
+    compliance: list[str] = Field(default_factory=list)
+    implicit_constraints: list[str] = Field(default_factory=list)
+    ambiguities: list[str] = Field(default_factory=list)
+    source: Literal["claude", "deterministic"]
 
 
 # --- Fraud ---
@@ -204,7 +244,7 @@ class GraphLink(BaseModel):
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     links: list[GraphLink]
-    source: str = Field(description="primary data source: postgres or neo4j")
+    source: str = Field(default="postgres", description="data source")
 
 
 # --- Seed ---
@@ -226,7 +266,6 @@ class SeedResponse(BaseModel):
     freelancers_created: int
     projects_created: int
     contracts_created: int = 0
-    neo4j_synced: bool = False
 
 
 # --- Freelancers / projects / stats ---
@@ -298,6 +337,12 @@ class ProjectRecord(BaseModel):
     client: Optional[str] = None
     created: Optional[str] = None
     priority: str = "medium"
+    nice_to_have_skills: list[str] = Field(default_factory=list)
+    seniority_level: str = "mid"
+    budget_type: str = "fixed"
+    domain: Optional[str] = None
+    compliance: list[str] = Field(default_factory=list)
+    implicit_constraints: list[str] = Field(default_factory=list)
 
     model_config = {"extra": "allow"}
 
@@ -311,13 +356,14 @@ class ProjectUpdateRequest(BaseModel):
     title: Optional[str] = Field(default=None, min_length=1, max_length=255)
     description: Optional[str] = Field(default=None, max_length=5000)
     required_skills: Optional[list[str]] = None
+    nice_to_have_skills: Optional[list[str]] = None
     budget: Optional[float] = Field(default=None, gt=0, le=100_000_000)
     deadline_days: Optional[int] = Field(default=None, ge=1, le=3650)
     team_size: Optional[int] = Field(default=None, ge=1, le=50)
 
     model_config = {"extra": "forbid"}
 
-    @field_validator("required_skills")
+    @field_validator("required_skills", "nice_to_have_skills")
     @classmethod
     def _skills_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
         return _validate_skills(v) if v is not None else v
@@ -334,8 +380,6 @@ class PlatformStatsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     postgres: str
-    mongodb: str
-    neo4j: str
     anthropic_configured: bool
 
 
@@ -368,13 +412,27 @@ class ProjectCreateRequest(BaseModel):
     budget: float = Field(gt=0, le=100_000_000)
     deadline_days: int = Field(default=30, ge=1, le=365)
     team_size: int = Field(default=1, ge=1, le=50)
+    seniority_level: Literal["junior", "mid", "senior", "lead"] = "mid"
+    implicit_constraints: list[str] = Field(default_factory=list, max_length=20)
+    nice_to_have_skills: list[str] = Field(default_factory=list)
+    budget_type: Literal["fixed", "hourly"] = "fixed"
+    domain: Optional[str] = Field(default=None, max_length=100)
+    compliance: list[str] = Field(default_factory=list, max_length=10)
 
     model_config = {"extra": "forbid"}
 
-    @field_validator("required_skills")
+    @field_validator("required_skills", "nice_to_have_skills")
     @classmethod
     def _skills_valid(cls, v: list[str]) -> list[str]:
         return _validate_skills(v)
+
+    @field_validator("implicit_constraints", "compliance")
+    @classmethod
+    def _short_items(cls, v: list[str]) -> list[str]:
+        cleaned = [item.strip() for item in v if item.strip()]
+        if any(len(item) > 300 for item in cleaned):
+            raise ValueError("items must be at most 300 characters")
+        return cleaned
 
 
 class ProjectCreateResponse(BaseModel):

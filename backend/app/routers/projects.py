@@ -1,20 +1,84 @@
 from fastapi import APIRouter, Depends, HTTPException
 
-from app.core.dependencies import get_contract_repo, get_project_repo
-from app.core.events import ClearHireEvent, emit
+from app.ai import llm
+from app.ai.project_parser import (
+    build_extraction_response,
+    extract_deterministic,
+    extract_with_llm,
+)
+from app.core.dependencies import (
+    get_ai_explanation_repo,
+    get_contract_repo,
+    get_project_repo,
+    get_skill_taxonomy_repo,
+    owns_project,
+    require_client,
+)
 from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
-from app.db.repositories.postgres import ContractRepository, ProjectRepository
+from app.db.repositories.postgres import (
+    AIExplanationRepository,
+    ContractRepository,
+    ProjectRepository,
+    SkillRepository,
+)
 from app.db.utils.serializers import project_to_dict
-from app.models.orm import ContractStatus
+from app.models.orm import ContractStatus, User
 from app.models.schemas import (
+    ProjectExtractionRequest,
     ProjectCreateRequest,
     ProjectCreateResponse,
+    ProjectExtractionResponse,
     ProjectListResponse,
     ProjectRecord,
     ProjectUpdateRequest,
 )
 
 router = APIRouter()
+
+
+@router.post(
+    "/extract",
+    response_model=ProjectExtractionResponse,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
+async def extract_requirements(
+    body: ProjectExtractionRequest,
+    user: User = Depends(require_client),
+    skill_repo: SkillRepository = Depends(get_skill_taxonomy_repo),
+    ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
+) -> ProjectExtractionResponse:
+    """Parse a raw brief; the client reviews and edits this before creating a project."""
+    usage: dict | None = None
+    fallback_reason: str | None = None
+    try:
+        result = await extract_with_llm(body.text)
+        parsed, source = result.value, "claude"
+        usage = result.usage.as_metadata()
+    except llm.LLMUnavailable as exc:
+        parsed, source = extract_deterministic(body.text), "deterministic"
+        fallback_reason = str(exc)
+
+    grounded = await skill_repo.ground([(s.name, s.importance) for s in parsed.skills])
+    response = build_extraction_response(parsed, grounded, source)
+
+    await ai_explanation_repo.insert(
+        endpoint="/projects/extract",
+        explanation=response.summary,
+        model=(usage or {}).get("model", "deterministic"),
+        system_prompt="project_extraction",
+        user_prompt=body.text[:2000],
+        entity_id=user.id,
+        entity_type="user",
+        pipeline="project_extraction",
+        metadata={
+            "source": source,
+            "usage": usage,
+            "fallback_reason": fallback_reason,
+            "skills": [s.canonical or s.input for s in response.skills],
+            "ambiguities": len(response.ambiguities),
+        },
+    )
+    return response
 
 
 def resolve_project_status(contracts: list) -> str:
@@ -62,6 +126,12 @@ def _record_from_project(project, contracts: list) -> ProjectRecord:
         team_members=team_members,
         client=_extract_client(base.get("description")),
         created=base.get("created_at"),
+        nice_to_have_skills=base.get("nice_to_have_skills") or [],
+        seniority_level=base.get("seniority_level") or "mid",
+        budget_type=base.get("budget_type") or "fixed",
+        domain=base.get("domain"),
+        compliance=base.get("compliance") or [],
+        implicit_constraints=base.get("implicit_constraints") or [],
     )
 
 
@@ -95,26 +165,24 @@ async def list_projects(
 async def create_project(
     body: ProjectCreateRequest,
     project_repo: ProjectRepository = Depends(get_project_repo),
+    user: User = Depends(require_client),
 ) -> ProjectCreateResponse:
     project = await project_repo.create(
+        client_id=user.id,
         title=body.title.strip(),
         description=_build_description(body),
         required_skills=body.required_skills,
         budget=body.budget,
         deadline_days=body.deadline_days,
         team_size=body.team_size,
+        seniority_level=body.seniority_level,
+        implicit_constraints=body.implicit_constraints,
+        nice_to_have_skills=body.nice_to_have_skills,
+        budget_type=body.budget_type,
+        domain=body.domain,
+        compliance=body.compliance,
     )
     record = _record_from_project(project, [])
-
-    await emit(ClearHireEvent.PROJECT_CREATED, {
-        "project_id": project.id,
-        "title": project.title or "",
-        "description": project.description or "",
-        "required_skills": list(project.required_skills or []),
-        "budget": float(project.budget or 0),
-        "deadline_days": int(project.deadline_days or 30),
-        "team_size": int(project.team_size or 1),
-    })
 
     return ProjectCreateResponse(project=record)
 
@@ -146,10 +214,13 @@ async def update_project(
     body: ProjectUpdateRequest,
     project_repo: ProjectRepository = Depends(get_project_repo),
     contract_repo: ContractRepository = Depends(get_contract_repo),
+    user: User = Depends(require_client),
 ) -> ProjectRecord:
     project = await project_repo.get_by_id(project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
+    if not owns_project(user, project):
+        raise HTTPException(status_code=403, detail="Not your project")
     updated = await project_repo.update(project_id, body.model_dump(exclude_none=True))
     contracts = await contract_repo.list_by_project(project_id)
     return _record_from_project(updated, contracts)
