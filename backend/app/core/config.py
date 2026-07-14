@@ -13,8 +13,11 @@ class Settings(BaseSettings):
     )
 
     app_name: str = Field(default="ClearHire API", alias="APP_NAME")
-    debug: bool = Field(default=True, alias="DEBUG")
-    secret_key: str = Field(default="dev-secret-key", alias="SECRET_KEY")
+    debug: bool = Field(default=False, alias="DEBUG")
+    secret_key: str = Field(default="dev-secret-key-change-me", alias="SECRET_KEY")
+    access_token_expire_minutes: int = Field(
+        default=60 * 24, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
+    )
     cors_origins: str = Field(
         default=(
             "http://localhost:3000,http://127.0.0.1:3000,"
@@ -28,51 +31,56 @@ class Settings(BaseSettings):
     )
 
     database_url: str = Field(
-        default="postgresql+asyncpg://clearhire:clearhire123@localhost:5435/clearhire_db",
+        default="postgresql+asyncpg://clearhire:clearhire123@localhost:5432/clearhire_db",
         alias="DATABASE_URL",
     )
-
-    mongodb_url: str = Field(default="mongodb://localhost:27017", alias="MONGODB_URL")
-    mongodb_db: str = Field(default="clearhire", alias="MONGODB_DB")
-
-    neo4j_uri: str = Field(default="bolt://localhost:7687", alias="NEO4J_URI")
-    neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
-    neo4j_password: str = Field(default="clearhire123", alias="NEO4J_PASSWORD")
+    auto_migrate: bool = Field(default=True, alias="AUTO_MIGRATE")
+    db_null_pool: bool = Field(default=False, alias="DB_NULL_POOL")
+    seed_enabled: bool = Field(default=True, alias="SEED_ENABLED")
 
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
-    anthropic_model: str = Field(
-        default="claude-3-5-haiku-latest",
-        alias="ANTHROPIC_MODEL",
+    anthropic_model: str = Field(default="claude-haiku-5-5", alias="ANTHROPIC_MODEL")
+    anthropic_timeout_seconds: float = Field(default=60.0, alias="ANTHROPIC_TIMEOUT_SECONDS")
+    skill_grounding_min_similarity: float = Field(
+        default=0.72, alias="SKILL_GROUNDING_MIN_SIMILARITY"
     )
 
     embedding_dimensions: int = Field(default=384, alias="EMBEDDING_DIMENSIONS")
+    embedding_model: str = Field(
+        default="sentence-transformers/all-MiniLM-L6-v2", alias="EMBEDDING_MODEL"
+    )
+    embedding_provider: str = Field(default="local", alias="EMBEDDING_PROVIDER")
+    # Where fastembed keeps the ONNX model; unset uses fastembed's temp-dir default.
+    embedding_cache_dir: str = Field(default="", alias="EMBEDDING_CACHE_DIR")
 
-    # --- Rate limiting ---
+    # Weight of the full-text channel relative to the vector channel in RRF fusion.
+    search_keyword_rrf_weight: float = Field(default=0.5, alias="SEARCH_KEYWORD_RRF_WEIGHT")
+
+    # Tuned on the dev queries of scripts/eval_retrieval.py (see docs/EVAL.md).
+    rank_semantic: float = Field(default=0.48, alias="RANK_WEIGHT_SEMANTIC")
+    rank_keyword: float = Field(default=0.12, alias="RANK_WEIGHT_KEYWORD")
+    rank_skill: float = Field(default=0.12, alias="RANK_WEIGHT_SKILL")
+    rank_experience: float = Field(default=0.08, alias="RANK_WEIGHT_EXPERIENCE")
+    rank_rating: float = Field(default=0.04, alias="RANK_WEIGHT_RATING")
+    rank_budget: float = Field(default=0.08, alias="RANK_WEIGHT_BUDGET")
+    rank_availability: float = Field(default=0.04, alias="RANK_WEIGHT_AVAILABILITY")
+    rank_fraud: float = Field(default=0.04, alias="RANK_WEIGHT_FRAUD")
+
     rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
-
-    # Moderate limits for public/read-heavy endpoints (search, graph, stats, list views, ...)
     rate_limit_public_max_requests: int = Field(
         default=60, alias="RATE_LIMIT_PUBLIC_MAX_REQUESTS"
     )
     rate_limit_public_window_seconds: int = Field(
         default=60, alias="RATE_LIMIT_PUBLIC_WINDOW_SECONDS"
     )
-
-    # Looser limits for authenticated-user actions (create/update freelancers,
-    # projects, contracts, team builds, settings, ...)
     rate_limit_user_max_requests: int = Field(
         default=300, alias="RATE_LIMIT_USER_MAX_REQUESTS"
     )
     rate_limit_user_window_seconds: int = Field(
         default=60, alias="RATE_LIMIT_USER_WINDOW_SECONDS"
     )
-
-    # Strict limits for /auth/login and /auth/signup: combined per-IP and
-    # per-account exponential backoff instead of a hard lockout.
     rate_limit_auth_free_attempts: int = Field(
-        default=3,
-        alias="RATE_LIMIT_AUTH_FREE_ATTEMPTS",
-        description="Failed attempts allowed before backoff delay kicks in",
+        default=3, alias="RATE_LIMIT_AUTH_FREE_ATTEMPTS"
     )
     rate_limit_auth_backoff_base_seconds: float = Field(
         default=1.0, alias="RATE_LIMIT_AUTH_BACKOFF_BASE_SECONDS"

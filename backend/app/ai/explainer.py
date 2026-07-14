@@ -10,7 +10,7 @@ from app.ai.types import (
     TeamBuilderResult,
     TeamExplanationInput,
 )
-from app.core.config import settings
+from app.ai import llm
 
 SEARCH_SYSTEM = (
     "You are ClearHire matching intelligence. Respond in under 120 words. "
@@ -55,7 +55,7 @@ def _deterministic_search_explanation(data: SearchExplanationInput) -> Structure
 
     summary = (
         f"Ranked {len(data.top_matches)} matches for query "
-        f"\"{data.query or 'general search'}\" using A* cost minimization."
+        f"\"{data.query or 'general search'}\" using semantic retrieval and constraint ranking."
     )
     return StructuredExplanation(
         summary=summary,
@@ -127,32 +127,17 @@ def _deterministic_team_explanation(data: TeamExplanationInput) -> StructuredExp
     )
 
 
-async def _call_claude(system: str, user: str, max_tokens: int = 256) -> str | None:
-    if not settings.anthropic_api_key:
-        return None
+async def _call_claude(system: str, user: str, max_tokens: int = 1000) -> llm.LLMResult[str] | None:
     try:
-        import anthropic
-
-        client = anthropic.AsyncAnthropic(api_key=settings.anthropic_api_key)
-        message = await client.messages.create(
-            model=settings.anthropic_model,
-            max_tokens=max_tokens,
-            temperature=0,
-            system=system,
-            messages=[{"role": "user", "content": user}],
-        )
-        parts: list[str] = []
-        for block in message.content:
-            if hasattr(block, "text"):
-                parts.append(block.text)
-        text = "".join(parts).strip()
-        return text or None
-    except Exception:
+        return await llm.complete(system=system, user=user, max_tokens=max_tokens)
+    except llm.LLMUnavailable:
         return None
 
 
-def _parse_claude_to_structured(text: str, fallback: StructuredExplanation) -> StructuredExplanation:
-    lines = [ln.strip() for ln in text.splitlines() if ln.strip()]
+def _parse_claude_to_structured(
+    result: llm.LLMResult[str], fallback: StructuredExplanation
+) -> StructuredExplanation:
+    lines = [ln.strip() for ln in result.value.splitlines() if ln.strip()]
     if not lines:
         return fallback
     summary = lines[0]
@@ -168,6 +153,7 @@ def _parse_claude_to_structured(text: str, fallback: StructuredExplanation) -> S
         bullets=bullets,
         confidence=fallback.confidence,
         source="claude",
+        usage=result.usage.as_metadata(),
     )
 
 
@@ -184,9 +170,9 @@ async def explain_search(data: SearchExplanationInput) -> StructuredExplanation:
         f"Budget: {data.budget} Team: {data.team_size}\n"
         f"Top matches:\n" + "\n".join(top_lines)
     )
-    claude_text = await _call_claude(SEARCH_SYSTEM, user)
-    if claude_text:
-        return _parse_claude_to_structured(claude_text, fallback)
+    result = await _call_claude(SEARCH_SYSTEM, user)
+    if result:
+        return _parse_claude_to_structured(result, fallback)
     return fallback
 
 
@@ -199,9 +185,9 @@ async def explain_fraud(data: FraudExplanationInput) -> StructuredExplanation:
         f"Active signals: {', '.join(a.signals) or 'none'}\n"
         f"Risk factors: {', '.join(a.risk_factors)}"
     )
-    claude_text = await _call_claude(FRAUD_SYSTEM, user)
-    if claude_text:
-        return _parse_claude_to_structured(claude_text, fallback)
+    result = await _call_claude(FRAUD_SYSTEM, user)
+    if result:
+        return _parse_claude_to_structured(result, fallback)
     return fallback
 
 
@@ -221,28 +207,8 @@ async def explain_team(data: TeamExplanationInput) -> StructuredExplanation:
             f"No team. Budget: {c.budget} Size: {c.team_size}\n"
             f"Skills: {', '.join(c.required_skills)}"
         )
-    claude_text = await _call_claude(TEAM_SYSTEM, user)
-    if claude_text:
-        return _parse_claude_to_structured(claude_text, fallback)
+    result = await _call_claude(TEAM_SYSTEM, user)
+    if result:
+        return _parse_claude_to_structured(result, fallback)
     return fallback
 
-
-async def generate_explanation(system_prompt: str, user_prompt: str, max_tokens: int = 512) -> str:
-    """Legacy string API — routes structured explainers when possible."""
-    claude_text = await _call_claude(system_prompt, user_prompt, max_tokens)
-    if claude_text:
-        return claude_text
-    if "fraud" in system_prompt.lower():
-        return (
-            "Fraud assessment uses log-likelihood ratios over verified signals. "
-            f"{user_prompt[:300]}"
-        )
-    if "team" in system_prompt.lower():
-        return (
-            "Team selection uses CSP backtracking with forward checking and budget pruning. "
-            f"{user_prompt[:300]}"
-        )
-    return (
-        "Matches ranked by A* over skill gap, budget deviation, fraud penalty, and embeddings. "
-        f"{user_prompt[:300]}"
-    )
