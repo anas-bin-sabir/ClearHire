@@ -1,0 +1,2111 @@
+{
+ "_about": "Offline relevance eval for /search (CURRENT.md Phase 2). Profiles are generated from expertise archetypes with a fixed seed; queries are hand-written client briefs. A profile's relevance to a query is the grade its archetype has in `relevant` (2 core fit, 1 adjacent, else 0). Labels are topical: they ignore budget, rating and seniority.",
+ "queries": [
+  {
+   "id": 1,
+   "set": "dev",
+   "query": "Need a web dashboard for our logistics startup: data tables, charts and user roles. Modern React stack preferred.",
+   "skills": [
+    "React"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "frontend_react": 2,
+    "vue_frontend": 1
+   }
+  },
+  {
+   "id": 2,
+   "set": "dev",
+   "query": "We want an iPhone and Android app for booking yoga classes with push notifications, ideally from one codebase.",
+   "skills": [],
+   "nice_to_have_skills": [
+    "React Native",
+    "Flutter"
+   ],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "mobile_cross": 2,
+    "ios_native": 1,
+    "android_native": 1
+   }
+  },
+  {
+   "id": 3,
+   "set": "dev",
+   "query": "Our AWS bill is out of control and deploys are manual. Looking for someone to containerise our services and set up proper pipelines.",
+   "skills": [
+    "Docker"
+   ],
+   "nice_to_have_skills": [
+    "Kubernetes",
+    "Terraform"
+   ],
+   "seniority_level": "senior",
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "devops_k8s": 2
+   }
+  },
+  {
+   "id": 4,
+   "set": "dev",
+   "query": "Build a support assistant that answers customer questions from our help-center articles.",
+   "skills": [
+    "LLM Integration"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "llm_rag": 2
+   }
+  },
+  {
+   "id": 5,
+   "set": "dev",
+   "query": "Python API for a multi-tenant SaaS with Postgres, background jobs and good test coverage.",
+   "skills": [
+    "Python"
+   ],
+   "nice_to_have_skills": [
+    "PostgreSQL"
+   ],
+   "seniority_level": "senior",
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "python_backend": 2,
+    "healthtech_backend": 1,
+    "fintech_payments": 1
+   }
+  },
+  {
+   "id": 6,
+   "set": "dev",
+   "query": "Need pipelines that pull data from Salesforce, HubSpot and Stripe into our warehouse, refreshed hourly.",
+   "skills": [
+    "Data Engineering"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "data_engineering": 2,
+    "data_analytics": 1
+   }
+  },
+  {
+   "id": 7,
+   "set": "dev",
+   "query": "Detect scratches and dents in car photos uploaded by insurance customers.",
+   "skills": [],
+   "nice_to_have_skills": [
+    "Computer Vision"
+   ],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "ml_cv": 2
+   }
+  },
+  {
+   "id": 8,
+   "set": "dev",
+   "query": "Redesign our onboarding flow; we need user research and clickable prototypes before development starts.",
+   "skills": [
+    "UI/UX Design"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "ui_ux": 2
+   }
+  },
+  {
+   "id": 9,
+   "set": "dev",
+   "query": "Penetration test our web app and help us get ready for a SOC 2 audit.",
+   "skills": [
+    "Penetration Testing"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "security": 2
+   }
+  },
+  {
+   "id": 10,
+   "set": "dev",
+   "query": "Set up a Shopify store with subscriptions and migrate our products over from WooCommerce.",
+   "skills": [
+    "Shopify"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "ecommerce": 2
+   }
+  },
+  {
+   "id": 11,
+   "set": "dev",
+   "query": "Telehealth backend: patient scheduling and visit records. It must handle PHI under HIPAA.",
+   "skills": [
+    "HIPAA Compliance"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "healthtech_backend": 2,
+    "python_backend": 1,
+    "node_backend": 1
+   }
+  },
+  {
+   "id": 12,
+   "set": "dev",
+   "query": "Automated end-to-end tests for our checkout so broken releases stop reaching production.",
+   "skills": [
+    "Testing"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "qa_automation": 2
+   }
+  },
+  {
+   "id": 13,
+   "set": "holdout",
+   "query": "GraphQL API in TypeScript for our marketplace, with realtime notifications.",
+   "skills": [
+    "Node.js"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": "mid",
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "node_backend": 2,
+    "python_backend": 1
+   }
+  },
+  {
+   "id": 14,
+   "set": "holdout",
+   "query": "Executive KPI dashboards on top of our sales database, with churn and retention views.",
+   "skills": [],
+   "nice_to_have_skills": [
+    "Power BI",
+    "Tableau",
+    "SQL"
+   ],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "data_analytics": 2,
+    "data_engineering": 1
+   }
+  },
+  {
+   "id": 15,
+   "set": "holdout",
+   "query": "Write and audit an ERC-20 token and a staking contract.",
+   "skills": [
+    "Solidity"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "blockchain": 2
+   }
+  },
+  {
+   "id": 16,
+   "set": "holdout",
+   "query": "Card payments, payouts and a double-entry ledger for our lending product.",
+   "skills": [],
+   "nice_to_have_skills": [
+    "Stripe",
+    "FinTech"
+   ],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "fintech_payments": 2,
+    "python_backend": 1,
+    "node_backend": 1
+   }
+  },
+  {
+   "id": 17,
+   "set": "holdout",
+   "query": "Customer portal in Vue with a booking widget we can embed on partner websites.",
+   "skills": [
+    "Vue.js"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "vue_frontend": 2,
+    "frontend_react": 1
+   }
+  },
+  {
+   "id": 18,
+   "set": "holdout",
+   "query": "Casual mobile puzzle game with in-app purchases.",
+   "skills": [
+    "Unity"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "game_dev": 2,
+    "mobile_cross": 1
+   }
+  },
+  {
+   "id": 19,
+   "set": "holdout",
+   "query": "Semantic search over thousands of legal contracts so lawyers can ask questions in plain English.",
+   "skills": [],
+   "nice_to_have_skills": [
+    "RAG",
+    "pgvector"
+   ],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "llm_rag": 2
+   }
+  },
+  {
+   "id": 20,
+   "set": "holdout",
+   "query": "Our Kubernetes clusters keep falling over during traffic spikes; we need autoscaling and alerting.",
+   "skills": [
+    "Kubernetes"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 10000.0,
+   "budget_type": "fixed",
+   "relevant": {
+    "devops_k8s": 2
+   }
+  }
+ ],
+ "profiles": [
+  {
+   "key": "frontend_react-0",
+   "archetype": "frontend_react",
+   "name": "Ayaan Qureshi",
+   "skills": [
+    "Redux",
+    "React",
+    "Tailwind CSS",
+    "Next.js",
+    "TypeScript"
+   ],
+   "bio": "Comfortable owning the browser layer end to end, from design tokens to Lighthouse scores. Shipped admin dashboards with complex data tables, charts and role-based views.",
+   "experience_years": 8,
+   "hourly_rate": 66.0,
+   "rating": 4.17
+  },
+  {
+   "key": "frontend_react-1",
+   "archetype": "frontend_react",
+   "name": "Noor Novak",
+   "skills": [
+    "React",
+    "Redux"
+   ],
+   "bio": "Migrated a large marketing site to a statically generated stack and cut load time by half. I build fast, accessible web front ends with server-side rendering.",
+   "experience_years": 2,
+   "hourly_rate": 74.0,
+   "rating": 4.17
+  },
+  {
+   "key": "frontend_react-2",
+   "archetype": "frontend_react",
+   "name": "Rohan Lindqvist",
+   "skills": [
+    "JavaScript"
+   ],
+   "bio": "Turned Figma mockups into pixel-perfect component libraries used by several product teams. Shipped admin dashboards with complex data tables, charts and role-based views.",
+   "experience_years": 3,
+   "hourly_rate": 34.0,
+   "rating": 3.77
+  },
+  {
+   "key": "frontend_react-3",
+   "archetype": "frontend_react",
+   "name": "Leila Ibrahim",
+   "skills": [
+    "React",
+    "JavaScript"
+   ],
+   "bio": "Comfortable owning the browser layer end to end, from design tokens to Lighthouse scores. Turned Figma mockups into pixel-perfect component libraries used by several product teams.",
+   "experience_years": 3,
+   "hourly_rate": 60.0,
+   "rating": 4.64
+  },
+  {
+   "key": "frontend_react-4",
+   "archetype": "frontend_react",
+   "name": "Omar Kovacs",
+   "skills": [
+    "Redux"
+   ],
+   "bio": "Migrated a large marketing site to a statically generated stack and cut load time by half. Turned Figma mockups into pixel-perfect component libraries used by several product teams.",
+   "experience_years": 5,
+   "hourly_rate": 82.0,
+   "rating": 3.75
+  },
+  {
+   "key": "frontend_react-5",
+   "archetype": "frontend_react",
+   "name": "Mina Rahman",
+   "skills": [
+    "Tailwind CSS"
+   ],
+   "bio": "I build fast, accessible web front ends with server-side rendering. Comfortable owning the browser layer end to end, from design tokens to Lighthouse scores.",
+   "experience_years": 12,
+   "hourly_rate": 42.0,
+   "rating": 4.39
+  },
+  {
+   "key": "frontend_react-6",
+   "archetype": "frontend_react",
+   "name": "Tariq Yilmaz",
+   "skills": [
+    "Tailwind CSS",
+    "Next.js",
+    "React",
+    "JavaScript",
+    "Redux"
+   ],
+   "bio": "Migrated a large marketing site to a statically generated stack and cut load time by half. Turned Figma mockups into pixel-perfect component libraries used by several product teams.",
+   "experience_years": 14,
+   "hourly_rate": 108.0,
+   "rating": 4.68
+  },
+  {
+   "key": "vue_frontend-0",
+   "archetype": "vue_frontend",
+   "name": "Sofia Haddad",
+   "skills": [
+    "JavaScript",
+    "Nuxt"
+   ],
+   "bio": "Care a lot about clean templates, transitions and responsive layouts. I maintain a reusable UI kit with composables and strict typing.",
+   "experience_years": 5,
+   "hourly_rate": 55.0,
+   "rating": 4.59
+  },
+  {
+   "key": "vue_frontend-1",
+   "archetype": "vue_frontend",
+   "name": "Daniyal Farooq",
+   "skills": [
+    "JavaScript"
+   ],
+   "bio": "I maintain a reusable UI kit with composables and strict typing. Front-end developer focused on the Vue ecosystem and progressive enhancement.",
+   "experience_years": 10,
+   "hourly_rate": 62.0,
+   "rating": 4.61
+  },
+  {
+   "key": "vue_frontend-2",
+   "archetype": "vue_frontend",
+   "name": "Hana Ansari",
+   "skills": [
+    "JavaScript",
+    "Nuxt",
+    "Vue.js"
+   ],
+   "bio": "Front-end developer focused on the Vue ecosystem and progressive enhancement. Care a lot about clean templates, transitions and responsive layouts.",
+   "experience_years": 10,
+   "hourly_rate": 74.0,
+   "rating": 3.91
+  },
+  {
+   "key": "vue_frontend-3",
+   "archetype": "vue_frontend",
+   "name": "Kamran Sato",
+   "skills": [
+    "Sass"
+   ],
+   "bio": "Moved a legacy jQuery storefront to a modern reactive SPA. I maintain a reusable UI kit with composables and strict typing.",
+   "experience_years": 3,
+   "hourly_rate": 86.0,
+   "rating": 4.03
+  },
+  {
+   "key": "vue_frontend-4",
+   "archetype": "vue_frontend",
+   "name": "Zara Nasser",
+   "skills": [
+    "TypeScript",
+    "JavaScript",
+    "Sass"
+   ],
+   "bio": "Moved a legacy jQuery storefront to a modern reactive SPA. Front-end developer focused on the Vue ecosystem and progressive enhancement.",
+   "experience_years": 3,
+   "hourly_rate": 64.0,
+   "rating": 3.95
+  },
+  {
+   "key": "vue_frontend-5",
+   "archetype": "vue_frontend",
+   "name": "Imran Okafor",
+   "skills": [
+    "JavaScript",
+    "TypeScript",
+    "Sass"
+   ],
+   "bio": "Front-end developer focused on the Vue ecosystem and progressive enhancement. I maintain a reusable UI kit with composables and strict typing.",
+   "experience_years": 8,
+   "hourly_rate": 98.0,
+   "rating": 4.06
+  },
+  {
+   "key": "vue_frontend-6",
+   "archetype": "vue_frontend",
+   "name": "Lina Haider",
+   "skills": [
+    "Vue.js",
+    "Nuxt",
+    "TypeScript",
+    "JavaScript"
+   ],
+   "bio": "Care a lot about clean templates, transitions and responsive layouts. Front-end developer focused on the Vue ecosystem and progressive enhancement.",
+   "experience_years": 10,
+   "hourly_rate": 114.0,
+   "rating": 4.66
+  },
+  {
+   "key": "node_backend-0",
+   "archetype": "node_backend",
+   "name": "Faris Mehta",
+   "skills": [
+    "REST APIs"
+   ],
+   "bio": "Designed GraphQL gateways stitching together a dozen internal services. Server-side JavaScript engineer building APIs and background workers.",
+   "experience_years": 5,
+   "hourly_rate": 20.0,
+   "rating": 4.32
+  },
+  {
+   "key": "node_backend-1",
+   "archetype": "node_backend",
+   "name": "Maha Silva",
+   "skills": [
+    "Node.js",
+    "REST APIs"
+   ],
+   "bio": "Own the backend for a marketplace app: auth, payments webhooks and search endpoints. Built real-time chat and notification services with queues and websockets.",
+   "experience_years": 12,
+   "hourly_rate": 63.0,
+   "rating": 4.06
+  },
+  {
+   "key": "node_backend-2",
+   "archetype": "node_backend",
+   "name": "Yusuf Qureshi",
+   "skills": [
+    "GraphQL",
+    "Node.js",
+    "REST APIs",
+    "NestJS"
+   ],
+   "bio": "Server-side JavaScript engineer building APIs and background workers. Own the backend for a marketplace app: auth, payments webhooks and search endpoints.",
+   "experience_years": 4,
+   "hourly_rate": 78.0,
+   "rating": 4.94
+  },
+  {
+   "key": "node_backend-3",
+   "archetype": "node_backend",
+   "name": "Rania Novak",
+   "skills": [
+    "Node.js",
+    "NestJS",
+    "MongoDB"
+   ],
+   "bio": "Own the backend for a marketplace app: auth, payments webhooks and search endpoints. Server-side JavaScript engineer building APIs and background workers.",
+   "experience_years": 2,
+   "hourly_rate": 30.0,
+   "rating": 3.78
+  },
+  {
+   "key": "node_backend-4",
+   "archetype": "node_backend",
+   "name": "Saif Lindqvist",
+   "skills": [
+    "Express"
+   ],
+   "bio": "Strong on API design, rate limiting, caching and observability for JS services. Designed GraphQL gateways stitching together a dozen internal services.",
+   "experience_years": 2,
+   "hourly_rate": 92.0,
+   "rating": 4.7
+  },
+  {
+   "key": "node_backend-5",
+   "archetype": "node_backend",
+   "name": "Aria Ibrahim",
+   "skills": [
+    "REST APIs",
+    "Node.js",
+    "NestJS"
+   ],
+   "bio": "Own the backend for a marketplace app: auth, payments webhooks and search endpoints. Designed GraphQL gateways stitching together a dozen internal services.",
+   "experience_years": 1,
+   "hourly_rate": 36.0,
+   "rating": 4.49
+  },
+  {
+   "key": "node_backend-6",
+   "archetype": "node_backend",
+   "name": "Bilal Kovacs",
+   "skills": [
+    "Express",
+    "TypeScript",
+    "REST APIs"
+   ],
+   "bio": "Designed GraphQL gateways stitching together a dozen internal services. Built real-time chat and notification services with queues and websockets.",
+   "experience_years": 2,
+   "hourly_rate": 98.0,
+   "rating": 3.81
+  },
+  {
+   "key": "python_backend-0",
+   "archetype": "python_backend",
+   "name": "Nadia Rahman",
+   "skills": [
+    "Python",
+    "Celery",
+    "PostgreSQL",
+    "FastAPI"
+   ],
+   "bio": "Integrated third-party APIs, background task queues and scheduled jobs. Designed schemas, migrations and query tuning for a multi-tenant SaaS.",
+   "experience_years": 7,
+   "hourly_rate": 92.0,
+   "rating": 3.7
+  },
+  {
+   "key": "python_backend-1",
+   "archetype": "python_backend",
+   "name": "Karim Yilmaz",
+   "skills": [
+    "PostgreSQL",
+    "Django",
+    "REST APIs",
+    "FastAPI"
+   ],
+   "bio": "I like boring, reliable server code: clear contracts, good logs, solid tests. Backend engineer writing typed, well-tested Python web services.",
+   "experience_years": 5,
+   "hourly_rate": 30.0,
+   "rating": 4.67
+  },
+  {
+   "key": "python_backend-2",
+   "archetype": "python_backend",
+   "name": "Selin Haddad",
+   "skills": [
+    "REST APIs",
+    "Django",
+    "Celery",
+    "Python",
+    "PostgreSQL"
+   ],
+   "bio": "I like boring, reliable server code: clear contracts, good logs, solid tests. Built async APIs serving millions of requests a day on a relational database.",
+   "experience_years": 14,
+   "hourly_rate": 116.0,
+   "rating": 4.33
+  },
+  {
+   "key": "python_backend-3",
+   "archetype": "python_backend",
+   "name": "Hamid Farooq",
+   "skills": [
+    "Redis",
+    "Python"
+   ],
+   "bio": "Integrated third-party APIs, background task queues and scheduled jobs. Built async APIs serving millions of requests a day on a relational database.",
+   "experience_years": 5,
+   "hourly_rate": 18.0,
+   "rating": 4.74
+  },
+  {
+   "key": "python_backend-4",
+   "archetype": "python_backend",
+   "name": "Eman Ansari",
+   "skills": [
+    "REST APIs",
+    "PostgreSQL"
+   ],
+   "bio": "Designed schemas, migrations and query tuning for a multi-tenant SaaS. I like boring, reliable server code: clear contracts, good logs, solid tests.",
+   "experience_years": 10,
+   "hourly_rate": 102.0,
+   "rating": 4.42
+  },
+  {
+   "key": "python_backend-5",
+   "archetype": "python_backend",
+   "name": "Ayaan Sato",
+   "skills": [
+    "FastAPI"
+   ],
+   "bio": "Designed schemas, migrations and query tuning for a multi-tenant SaaS. I like boring, reliable server code: clear contracts, good logs, solid tests.",
+   "experience_years": 2,
+   "hourly_rate": 84.0,
+   "rating": 4.3
+  },
+  {
+   "key": "python_backend-6",
+   "archetype": "python_backend",
+   "name": "Noor Nasser",
+   "skills": [
+    "REST APIs",
+    "PostgreSQL",
+    "FastAPI",
+    "Django"
+   ],
+   "bio": "I like boring, reliable server code: clear contracts, good logs, solid tests. Integrated third-party APIs, background task queues and scheduled jobs.",
+   "experience_years": 2,
+   "hourly_rate": 25.0,
+   "rating": 4.8
+  },
+  {
+   "key": "mobile_cross-0",
+   "archetype": "mobile_cross",
+   "name": "Rohan Okafor",
+   "skills": [
+    "Dart",
+    "React Native",
+    "TypeScript"
+   ],
+   "bio": "Published fitness and delivery apps with tens of thousands of installs. Built offline-first apps with push notifications and in-app purchases.",
+   "experience_years": 6,
+   "hourly_rate": 65.0,
+   "rating": 4.95
+  },
+  {
+   "key": "mobile_cross-1",
+   "archetype": "mobile_cross",
+   "name": "Leila Haider",
+   "skills": [
+    "Dart"
+   ],
+   "bio": "Published fitness and delivery apps with tens of thousands of installs. Experienced with native modules, deep links and app store review processes.",
+   "experience_years": 12,
+   "hourly_rate": 33.0,
+   "rating": 3.96
+  },
+  {
+   "key": "mobile_cross-2",
+   "archetype": "mobile_cross",
+   "name": "Omar Mehta",
+   "skills": [
+    "Flutter"
+   ],
+   "bio": "Built offline-first apps with push notifications and in-app purchases. Cross-platform mobile developer shipping one codebase to both app stores.",
+   "experience_years": 10,
+   "hourly_rate": 97.0,
+   "rating": 4.92
+  },
+  {
+   "key": "mobile_cross-3",
+   "archetype": "mobile_cross",
+   "name": "Mina Silva",
+   "skills": [
+    "React Native"
+   ],
+   "bio": "Cross-platform mobile developer shipping one codebase to both app stores. Published fitness and delivery apps with tens of thousands of installs.",
+   "experience_years": 12,
+   "hourly_rate": 73.0,
+   "rating": 4.37
+  },
+  {
+   "key": "mobile_cross-4",
+   "archetype": "mobile_cross",
+   "name": "Tariq Qureshi",
+   "skills": [
+    "Dart",
+    "Firebase",
+    "React Native",
+    "TypeScript",
+    "Flutter"
+   ],
+   "bio": "Published fitness and delivery apps with tens of thousands of installs. Handle the full mobile release cycle including beta testing and crash reporting.",
+   "experience_years": 3,
+   "hourly_rate": 70.0,
+   "rating": 4.43
+  },
+  {
+   "key": "mobile_cross-5",
+   "archetype": "mobile_cross",
+   "name": "Sofia Novak",
+   "skills": [
+    "Flutter",
+    "TypeScript",
+    "Firebase",
+    "Dart",
+    "React Native"
+   ],
+   "bio": "Built offline-first apps with push notifications and in-app purchases. Experienced with native modules, deep links and app store review processes.",
+   "experience_years": 5,
+   "hourly_rate": 83.0,
+   "rating": 4.76
+  },
+  {
+   "key": "mobile_cross-6",
+   "archetype": "mobile_cross",
+   "name": "Daniyal Lindqvist",
+   "skills": [
+    "Flutter",
+    "Dart",
+    "React Native"
+   ],
+   "bio": "Experienced with native modules, deep links and app store review processes. Cross-platform mobile developer shipping one codebase to both app stores.",
+   "experience_years": 2,
+   "hourly_rate": 96.0,
+   "rating": 4.99
+  },
+  {
+   "key": "ios_native-0",
+   "archetype": "ios_native",
+   "name": "Hana Ibrahim",
+   "skills": [
+    "Swift",
+    "iOS Development"
+   ],
+   "bio": "Built HealthKit and Apple Watch companion features. Rewrote a legacy Objective-C app into a modern declarative UI.",
+   "experience_years": 2,
+   "hourly_rate": 75.0,
+   "rating": 3.73
+  },
+  {
+   "key": "ios_native-1",
+   "archetype": "ios_native",
+   "name": "Kamran Kovacs",
+   "skills": [
+    "Firebase",
+    "Swift"
+   ],
+   "bio": "Experienced with Core Data, background refresh and App Store Connect. Built HealthKit and Apple Watch companion features.",
+   "experience_years": 1,
+   "hourly_rate": 119.0,
+   "rating": 4.83
+  },
+  {
+   "key": "ios_native-2",
+   "archetype": "ios_native",
+   "name": "Zara Rahman",
+   "skills": [
+    "Swift",
+    "Firebase",
+    "iOS Development"
+   ],
+   "bio": "Rewrote a legacy Objective-C app into a modern declarative UI. Native iPhone and iPad developer with a focus on polished interactions.",
+   "experience_years": 8,
+   "hourly_rate": 47.0,
+   "rating": 4.83
+  },
+  {
+   "key": "ios_native-3",
+   "archetype": "ios_native",
+   "name": "Imran Yilmaz",
+   "skills": [
+    "Firebase"
+   ],
+   "bio": "Built HealthKit and Apple Watch companion features. Native iPhone and iPad developer with a focus on polished interactions.",
+   "experience_years": 10,
+   "hourly_rate": 78.0,
+   "rating": 3.86
+  },
+  {
+   "key": "ios_native-4",
+   "archetype": "ios_native",
+   "name": "Lina Haddad",
+   "skills": [
+    "Firebase",
+    "iOS Development",
+    "Swift"
+   ],
+   "bio": "Rewrote a legacy Objective-C app into a modern declarative UI. Experienced with Core Data, background refresh and App Store Connect.",
+   "experience_years": 5,
+   "hourly_rate": 47.0,
+   "rating": 4.29
+  },
+  {
+   "key": "android_native-0",
+   "archetype": "android_native",
+   "name": "Faris Farooq",
+   "skills": [
+    "Kotlin",
+    "Android Development"
+   ],
+   "bio": "Worked on a banking app used by over a million Android users. Native Android engineer building Material Design apps.",
+   "experience_years": 2,
+   "hourly_rate": 57.0,
+   "rating": 4.33
+  },
+  {
+   "key": "android_native-1",
+   "archetype": "android_native",
+   "name": "Maha Ansari",
+   "skills": [
+    "Java",
+    "Kotlin"
+   ],
+   "bio": "Worked on a banking app used by over a million Android users. Experienced with Play Store releases, coroutines and offline sync.",
+   "experience_years": 14,
+   "hourly_rate": 36.0,
+   "rating": 4.47
+  },
+  {
+   "key": "android_native-2",
+   "archetype": "android_native",
+   "name": "Yusuf Sato",
+   "skills": [
+    "Android Development",
+    "Java"
+   ],
+   "bio": "Optimised startup time and battery usage on low-end devices. Experienced with Play Store releases, coroutines and offline sync.",
+   "experience_years": 5,
+   "hourly_rate": 81.0,
+   "rating": 4.32
+  },
+  {
+   "key": "android_native-3",
+   "archetype": "android_native",
+   "name": "Rania Nasser",
+   "skills": [
+    "Android Development",
+    "Java"
+   ],
+   "bio": "Worked on a banking app used by over a million Android users. Native Android engineer building Material Design apps.",
+   "experience_years": 8,
+   "hourly_rate": 77.0,
+   "rating": 4.95
+  },
+  {
+   "key": "android_native-4",
+   "archetype": "android_native",
+   "name": "Saif Okafor",
+   "skills": [
+    "Java"
+   ],
+   "bio": "Experienced with Play Store releases, coroutines and offline sync. Optimised startup time and battery usage on low-end devices.",
+   "experience_years": 1,
+   "hourly_rate": 41.0,
+   "rating": 3.88
+  },
+  {
+   "key": "devops_k8s-0",
+   "archetype": "devops_k8s",
+   "name": "Aria Haider",
+   "skills": [
+    "Kubernetes",
+    "CI/CD",
+    "AWS",
+    "Terraform"
+   ],
+   "bio": "Cut cloud spend by 40% by right-sizing workloads and adding spot capacity. Containerised a monolith and moved it onto a managed orchestration platform.",
+   "experience_years": 3,
+   "hourly_rate": 26.0,
+   "rating": 4.76
+  },
+  {
+   "key": "devops_k8s-1",
+   "archetype": "devops_k8s",
+   "name": "Bilal Mehta",
+   "skills": [
+    "Linux"
+   ],
+   "bio": "Platform engineer who automates infrastructure and deployment pipelines. Containerised a monolith and moved it onto a managed orchestration platform.",
+   "experience_years": 8,
+   "hourly_rate": 57.0,
+   "rating": 3.65
+  },
+  {
+   "key": "devops_k8s-2",
+   "archetype": "devops_k8s",
+   "name": "Nadia Silva",
+   "skills": [
+    "CI/CD"
+   ],
+   "bio": "Wrote infrastructure as code for multi-account cloud setups. Containerised a monolith and moved it onto a managed orchestration platform.",
+   "experience_years": 8,
+   "hourly_rate": 110.0,
+   "rating": 4.96
+  },
+  {
+   "key": "devops_k8s-3",
+   "archetype": "devops_k8s",
+   "name": "Karim Qureshi",
+   "skills": [
+    "Observability",
+    "Docker",
+    "Linux",
+    "DevOps"
+   ],
+   "bio": "Cut cloud spend by 40% by right-sizing workloads and adding spot capacity. Wrote infrastructure as code for multi-account cloud setups.",
+   "experience_years": 1,
+   "hourly_rate": 81.0,
+   "rating": 4.66
+  },
+  {
+   "key": "devops_k8s-4",
+   "archetype": "devops_k8s",
+   "name": "Selin Novak",
+   "skills": [
+    "Terraform",
+    "Observability",
+    "CI/CD",
+    "Linux",
+    "Docker"
+   ],
+   "bio": "Set up monitoring, alerting and dashboards so teams sleep through the night. Platform engineer who automates infrastructure and deployment pipelines.",
+   "experience_years": 6,
+   "hourly_rate": 110.0,
+   "rating": 4.22
+  },
+  {
+   "key": "devops_k8s-5",
+   "archetype": "devops_k8s",
+   "name": "Hamid Lindqvist",
+   "skills": [
+    "Terraform",
+    "DevOps",
+    "CI/CD",
+    "Observability"
+   ],
+   "bio": "Platform engineer who automates infrastructure and deployment pipelines. Wrote infrastructure as code for multi-account cloud setups.",
+   "experience_years": 3,
+   "hourly_rate": 82.0,
+   "rating": 4.29
+  },
+  {
+   "key": "devops_k8s-6",
+   "archetype": "devops_k8s",
+   "name": "Eman Ibrahim",
+   "skills": [
+    "Linux",
+    "DevOps",
+    "AWS",
+    "Kubernetes",
+    "CI/CD"
+   ],
+   "bio": "Platform engineer who automates infrastructure and deployment pipelines. Wrote infrastructure as code for multi-account cloud setups.",
+   "experience_years": 8,
+   "hourly_rate": 38.0,
+   "rating": 4.09
+  },
+  {
+   "key": "data_engineering-0",
+   "archetype": "data_engineering",
+   "name": "Ayaan Kovacs",
+   "skills": [
+    "Python",
+    "dbt"
+   ],
+   "bio": "Designed ELT models and orchestration DAGs feeding company-wide reporting. Moved nightly jobs to event streaming so analytics are minutes fresh.",
+   "experience_years": 12,
+   "hourly_rate": 32.0,
+   "rating": 3.8
+  },
+  {
+   "key": "data_engineering-1",
+   "archetype": "data_engineering",
+   "name": "Noor Rahman",
+   "skills": [
+    "Data Engineering",
+    "Snowflake",
+    "Apache Spark",
+    "dbt",
+    "Python"
+   ],
+   "bio": "Own data quality checks, lineage and warehouse cost control. Designed ELT models and orchestration DAGs feeding company-wide reporting.",
+   "experience_years": 14,
+   "hourly_rate": 113.0,
+   "rating": 4.01
+  },
+  {
+   "key": "data_engineering-2",
+   "archetype": "data_engineering",
+   "name": "Rohan Yilmaz",
+   "skills": [
+    "SQL",
+    "dbt"
+   ],
+   "bio": "Built ingestion from dozens of SaaS sources into a single analytics layer. Own data quality checks, lineage and warehouse cost control.",
+   "experience_years": 1,
+   "hourly_rate": 18.0,
+   "rating": 4.39
+  },
+  {
+   "key": "data_engineering-3",
+   "archetype": "data_engineering",
+   "name": "Leila Haddad",
+   "skills": [
+    "Snowflake",
+    "Apache Spark",
+    "dbt"
+   ],
+   "bio": "Data engineer building batch and streaming pipelines into a cloud warehouse. Built ingestion from dozens of SaaS sources into a single analytics layer.",
+   "experience_years": 12,
+   "hourly_rate": 46.0,
+   "rating": 4.13
+  },
+  {
+   "key": "data_engineering-4",
+   "archetype": "data_engineering",
+   "name": "Omar Farooq",
+   "skills": [
+    "Apache Spark",
+    "Snowflake",
+    "Airflow"
+   ],
+   "bio": "Own data quality checks, lineage and warehouse cost control. Data engineer building batch and streaming pipelines into a cloud warehouse.",
+   "experience_years": 2,
+   "hourly_rate": 45.0,
+   "rating": 3.67
+  },
+  {
+   "key": "data_engineering-5",
+   "archetype": "data_engineering",
+   "name": "Mina Ansari",
+   "skills": [
+    "Python"
+   ],
+   "bio": "Moved nightly jobs to event streaming so analytics are minutes fresh. Built ingestion from dozens of SaaS sources into a single analytics layer.",
+   "experience_years": 12,
+   "hourly_rate": 80.0,
+   "rating": 4.64
+  },
+  {
+   "key": "data_engineering-6",
+   "archetype": "data_engineering",
+   "name": "Tariq Sato",
+   "skills": [
+    "Airflow",
+    "SQL",
+    "Python"
+   ],
+   "bio": "Data engineer building batch and streaming pipelines into a cloud warehouse. Own data quality checks, lineage and warehouse cost control.",
+   "experience_years": 6,
+   "hourly_rate": 61.0,
+   "rating": 4.55
+  },
+  {
+   "key": "ml_cv-0",
+   "archetype": "ml_cv",
+   "name": "Sofia Nasser",
+   "skills": [
+    "Deep Learning",
+    "PyTorch",
+    "TensorFlow",
+    "Machine Learning"
+   ],
+   "bio": "Built object detection and segmentation pipelines and deployed them to edge devices. Trained defect-detection models for factory camera feeds.",
+   "experience_years": 6,
+   "hourly_rate": 68.0,
+   "rating": 4.63
+  },
+  {
+   "key": "ml_cv-1",
+   "archetype": "ml_cv",
+   "name": "Daniyal Okafor",
+   "skills": [
+    "Machine Learning",
+    "Python",
+    "PyTorch",
+    "Deep Learning",
+    "Computer Vision"
+   ],
+   "bio": "Machine learning engineer focused on image models. Trained defect-detection models for factory camera feeds.",
+   "experience_years": 12,
+   "hourly_rate": 48.0,
+   "rating": 4.6
+  },
+  {
+   "key": "ml_cv-2",
+   "archetype": "ml_cv",
+   "name": "Hana Haider",
+   "skills": [
+    "Machine Learning",
+    "PyTorch"
+   ],
+   "bio": "Machine learning engineer focused on image models. Trained defect-detection models for factory camera feeds.",
+   "experience_years": 4,
+   "hourly_rate": 50.0,
+   "rating": 4.75
+  },
+  {
+   "key": "ml_cv-3",
+   "archetype": "ml_cv",
+   "name": "Kamran Mehta",
+   "skills": [
+    "Machine Learning",
+    "TensorFlow"
+   ],
+   "bio": "Machine learning engineer focused on image models. Trained defect-detection models for factory camera feeds.",
+   "experience_years": 3,
+   "hourly_rate": 117.0,
+   "rating": 3.6
+  },
+  {
+   "key": "ml_cv-4",
+   "archetype": "ml_cv",
+   "name": "Zara Silva",
+   "skills": [
+    "PyTorch",
+    "Machine Learning",
+    "Computer Vision"
+   ],
+   "bio": "Machine learning engineer focused on image models. Experienced with dataset labelling workflows, augmentation and model evaluation.",
+   "experience_years": 4,
+   "hourly_rate": 29.0,
+   "rating": 3.89
+  },
+  {
+   "key": "ml_cv-5",
+   "archetype": "ml_cv",
+   "name": "Imran Qureshi",
+   "skills": [
+    "Computer Vision"
+   ],
+   "bio": "Published research on medical image classification. Machine learning engineer focused on image models.",
+   "experience_years": 3,
+   "hourly_rate": 19.0,
+   "rating": 3.94
+  },
+  {
+   "key": "ml_cv-6",
+   "archetype": "ml_cv",
+   "name": "Lina Novak",
+   "skills": [
+    "Python",
+    "PyTorch",
+    "TensorFlow",
+    "Deep Learning"
+   ],
+   "bio": "Published research on medical image classification. Built object detection and segmentation pipelines and deployed them to edge devices.",
+   "experience_years": 8,
+   "hourly_rate": 54.0,
+   "rating": 4.61
+  },
+  {
+   "key": "llm_rag-0",
+   "archetype": "llm_rag",
+   "name": "Faris Lindqvist",
+   "skills": [
+    "LangChain",
+    "Python",
+    "pgvector",
+    "RAG"
+   ],
+   "bio": "Evaluate model outputs with test sets and guardrails against hallucination. Designed retrieval pipelines with embeddings, chunking and re-ranking.",
+   "experience_years": 2,
+   "hourly_rate": 87.0,
+   "rating": 3.84
+  },
+  {
+   "key": "llm_rag-1",
+   "archetype": "llm_rag",
+   "name": "Maha Ibrahim",
+   "skills": [
+    "LangChain",
+    "pgvector",
+    "RAG"
+   ],
+   "bio": "I build chatbots and assistants grounded in company documents. Shipped AI copilots that answer support tickets using a knowledge base.",
+   "experience_years": 6,
+   "hourly_rate": 50.0,
+   "rating": 4.97
+  },
+  {
+   "key": "llm_rag-2",
+   "archetype": "llm_rag",
+   "name": "Yusuf Kovacs",
+   "skills": [
+    "Natural Language Processing",
+    "Python"
+   ],
+   "bio": "Integrated hosted language model APIs with tool use and structured outputs. Shipped AI copilots that answer support tickets using a knowledge base.",
+   "experience_years": 1,
+   "hourly_rate": 25.0,
+   "rating": 3.89
+  },
+  {
+   "key": "llm_rag-3",
+   "archetype": "llm_rag",
+   "name": "Rania Rahman",
+   "skills": [
+    "Python"
+   ],
+   "bio": "Integrated hosted language model APIs with tool use and structured outputs. Designed retrieval pipelines with embeddings, chunking and re-ranking.",
+   "experience_years": 6,
+   "hourly_rate": 45.0,
+   "rating": 3.99
+  },
+  {
+   "key": "llm_rag-4",
+   "archetype": "llm_rag",
+   "name": "Saif Yilmaz",
+   "skills": [
+    "pgvector"
+   ],
+   "bio": "Built semantic search over contracts and policies with a vector index. I build chatbots and assistants grounded in company documents.",
+   "experience_years": 3,
+   "hourly_rate": 54.0,
+   "rating": 3.99
+  },
+  {
+   "key": "llm_rag-5",
+   "archetype": "llm_rag",
+   "name": "Aria Haddad",
+   "skills": [
+    "Natural Language Processing",
+    "RAG",
+    "LangChain"
+   ],
+   "bio": "Built semantic search over contracts and policies with a vector index. I build chatbots and assistants grounded in company documents.",
+   "experience_years": 12,
+   "hourly_rate": 100.0,
+   "rating": 4.18
+  },
+  {
+   "key": "llm_rag-6",
+   "archetype": "llm_rag",
+   "name": "Bilal Farooq",
+   "skills": [
+    "Python",
+    "Natural Language Processing",
+    "LLM Integration",
+    "RAG",
+    "pgvector"
+   ],
+   "bio": "Designed retrieval pipelines with embeddings, chunking and re-ranking. Built semantic search over contracts and policies with a vector index.",
+   "experience_years": 10,
+   "hourly_rate": 41.0,
+   "rating": 4.87
+  },
+  {
+   "key": "data_analytics-0",
+   "archetype": "data_analytics",
+   "name": "Nadia Ansari",
+   "skills": [
+    "Tableau"
+   ],
+   "bio": "Help founders understand churn, retention and unit economics. Built sales and finance reporting with drill-downs and KPI tracking.",
+   "experience_years": 12,
+   "hourly_rate": 53.0,
+   "rating": 3.74
+  },
+  {
+   "key": "data_analytics-1",
+   "archetype": "data_analytics",
+   "name": "Karim Sato",
+   "skills": [
+    "Statistics"
+   ],
+   "bio": "Help founders understand churn, retention and unit economics. Strong SQL, cohort analysis and A/B test readouts.",
+   "experience_years": 3,
+   "hourly_rate": 48.0,
+   "rating": 4.8
+  },
+  {
+   "key": "data_analytics-2",
+   "archetype": "data_analytics",
+   "name": "Selin Nasser",
+   "skills": [
+    "Tableau",
+    "Statistics",
+    "Power BI",
+    "SQL",
+    "Data Analysis"
+   ],
+   "bio": "Analyst turning messy spreadsheets into clear executive dashboards. Strong SQL, cohort analysis and A/B test readouts.",
+   "experience_years": 1,
+   "hourly_rate": 119.0,
+   "rating": 3.89
+  },
+  {
+   "key": "data_analytics-3",
+   "archetype": "data_analytics",
+   "name": "Hamid Okafor",
+   "skills": [
+    "SQL"
+   ],
+   "bio": "Analyst turning messy spreadsheets into clear executive dashboards. Built sales and finance reporting with drill-downs and KPI tracking.",
+   "experience_years": 14,
+   "hourly_rate": 79.0,
+   "rating": 4.85
+  },
+  {
+   "key": "data_analytics-4",
+   "archetype": "data_analytics",
+   "name": "Eman Haider",
+   "skills": [
+    "SQL",
+    "Power BI",
+    "Statistics"
+   ],
+   "bio": "Built sales and finance reporting with drill-downs and KPI tracking. Help founders understand churn, retention and unit economics.",
+   "experience_years": 4,
+   "hourly_rate": 105.0,
+   "rating": 4.4
+  },
+  {
+   "key": "ui_ux-0",
+   "archetype": "ui_ux",
+   "name": "Ayaan Mehta",
+   "skills": [
+    "Adobe XD",
+    "UI/UX Design"
+   ],
+   "bio": "Design end-to-end flows, wireframes and interactive prototypes. Redesigned onboarding and lifted activation by 25%.",
+   "experience_years": 12,
+   "hourly_rate": 25.0,
+   "rating": 3.82
+  },
+  {
+   "key": "ui_ux-1",
+   "archetype": "ui_ux",
+   "name": "Noor Silva",
+   "skills": [
+    "Figma",
+    "UI/UX Design"
+   ],
+   "bio": "Design end-to-end flows, wireframes and interactive prototypes. Product designer running user research and usability testing.",
+   "experience_years": 5,
+   "hourly_rate": 61.0,
+   "rating": 4.59
+  },
+  {
+   "key": "ui_ux-2",
+   "archetype": "ui_ux",
+   "name": "Rohan Qureshi",
+   "skills": [
+    "Prototyping",
+    "Figma",
+    "Adobe XD"
+   ],
+   "bio": "Built design systems with tokens, components and documentation. Design end-to-end flows, wireframes and interactive prototypes.",
+   "experience_years": 14,
+   "hourly_rate": 71.0,
+   "rating": 4.0
+  },
+  {
+   "key": "ui_ux-3",
+   "archetype": "ui_ux",
+   "name": "Leila Novak",
+   "skills": [
+    "UI/UX Design",
+    "Prototyping",
+    "Figma",
+    "Adobe XD"
+   ],
+   "bio": "Design end-to-end flows, wireframes and interactive prototypes. Built design systems with tokens, components and documentation.",
+   "experience_years": 4,
+   "hourly_rate": 49.0,
+   "rating": 4.39
+  },
+  {
+   "key": "ui_ux-4",
+   "archetype": "ui_ux",
+   "name": "Omar Lindqvist",
+   "skills": [
+    "Adobe XD",
+    "Prototyping"
+   ],
+   "bio": "Product designer running user research and usability testing. I translate messy requirements into simple, accessible interfaces.",
+   "experience_years": 7,
+   "hourly_rate": 33.0,
+   "rating": 4.83
+  },
+  {
+   "key": "ui_ux-5",
+   "archetype": "ui_ux",
+   "name": "Mina Ibrahim",
+   "skills": [
+    "Adobe XD"
+   ],
+   "bio": "I translate messy requirements into simple, accessible interfaces. Redesigned onboarding and lifted activation by 25%.",
+   "experience_years": 6,
+   "hourly_rate": 63.0,
+   "rating": 3.66
+  },
+  {
+   "key": "ui_ux-6",
+   "archetype": "ui_ux",
+   "name": "Tariq Kovacs",
+   "skills": [
+    "Figma",
+    "Adobe XD",
+    "Prototyping",
+    "UI/UX Design"
+   ],
+   "bio": "I translate messy requirements into simple, accessible interfaces. Design end-to-end flows, wireframes and interactive prototypes.",
+   "experience_years": 14,
+   "hourly_rate": 93.0,
+   "rating": 5.0
+  },
+  {
+   "key": "ecommerce-0",
+   "archetype": "ecommerce",
+   "name": "Sofia Rahman",
+   "skills": [
+    "Stripe",
+    "WordPress",
+    "JavaScript"
+   ],
+   "bio": "Migrated shops between platforms without losing search rankings. Set up product catalogues, discounts, subscriptions and shipping rules.",
+   "experience_years": 7,
+   "hourly_rate": 40.0,
+   "rating": 4.99
+  },
+  {
+   "key": "ecommerce-1",
+   "archetype": "ecommerce",
+   "name": "Daniyal Yilmaz",
+   "skills": [
+    "Stripe",
+    "JavaScript",
+    "Shopify",
+    "WordPress"
+   ],
+   "bio": "Integrated payment gateways, inventory sync and email marketing tools. Set up product catalogues, discounts, subscriptions and shipping rules.",
+   "experience_years": 7,
+   "hourly_rate": 59.0,
+   "rating": 4.61
+  },
+  {
+   "key": "ecommerce-2",
+   "archetype": "ecommerce",
+   "name": "Hana Haddad",
+   "skills": [
+    "SEO"
+   ],
+   "bio": "I build and customise online stores, themes and checkout flows. Set up product catalogues, discounts, subscriptions and shipping rules.",
+   "experience_years": 10,
+   "hourly_rate": 118.0,
+   "rating": 4.52
+  },
+  {
+   "key": "ecommerce-3",
+   "archetype": "ecommerce",
+   "name": "Kamran Farooq",
+   "skills": [
+    "SEO",
+    "JavaScript",
+    "Stripe"
+   ],
+   "bio": "Migrated shops between platforms without losing search rankings. Integrated payment gateways, inventory sync and email marketing tools.",
+   "experience_years": 2,
+   "hourly_rate": 35.0,
+   "rating": 4.57
+  },
+  {
+   "key": "ecommerce-4",
+   "archetype": "ecommerce",
+   "name": "Zara Ansari",
+   "skills": [
+    "SEO",
+    "JavaScript",
+    "Stripe"
+   ],
+   "bio": "Migrated shops between platforms without losing search rankings. Set up product catalogues, discounts, subscriptions and shipping rules.",
+   "experience_years": 7,
+   "hourly_rate": 63.0,
+   "rating": 3.62
+  },
+  {
+   "key": "security-0",
+   "archetype": "security",
+   "name": "Imran Sato",
+   "skills": [
+    "Penetration Testing"
+   ],
+   "bio": "Security engineer doing web application and API penetration tests. Prepared startups for compliance audits and wrote their security policies.",
+   "experience_years": 3,
+   "hourly_rate": 81.0,
+   "rating": 4.15
+  },
+  {
+   "key": "security-1",
+   "archetype": "security",
+   "name": "Lina Nasser",
+   "skills": [
+    "OAuth",
+    "Penetration Testing",
+    "SOC 2"
+   ],
+   "bio": "Hardened authentication, secrets management and access control. Security engineer doing web application and API penetration tests.",
+   "experience_years": 6,
+   "hourly_rate": 119.0,
+   "rating": 3.72
+  },
+  {
+   "key": "security-2",
+   "archetype": "security",
+   "name": "Faris Okafor",
+   "skills": [
+    "Cryptography",
+    "OAuth"
+   ],
+   "bio": "Ran threat modelling workshops and fixed critical vulnerabilities. Hardened authentication, secrets management and access control.",
+   "experience_years": 7,
+   "hourly_rate": 82.0,
+   "rating": 4.25
+  },
+  {
+   "key": "security-3",
+   "archetype": "security",
+   "name": "Maha Haider",
+   "skills": [
+    "OAuth",
+    "Cybersecurity",
+    "SOC 2",
+    "Penetration Testing"
+   ],
+   "bio": "Prepared startups for compliance audits and wrote their security policies. Security engineer doing web application and API penetration tests.",
+   "experience_years": 2,
+   "hourly_rate": 25.0,
+   "rating": 4.65
+  },
+  {
+   "key": "security-4",
+   "archetype": "security",
+   "name": "Yusuf Mehta",
+   "skills": [
+    "OAuth",
+    "Cryptography",
+    "Cybersecurity",
+    "SOC 2",
+    "Penetration Testing"
+   ],
+   "bio": "Prepared startups for compliance audits and wrote their security policies. Ran threat modelling workshops and fixed critical vulnerabilities.",
+   "experience_years": 4,
+   "hourly_rate": 97.0,
+   "rating": 4.01
+  },
+  {
+   "key": "blockchain-0",
+   "archetype": "blockchain",
+   "name": "Rania Silva",
+   "skills": [
+    "JavaScript",
+    "Solidity",
+    "TypeScript"
+   ],
+   "bio": "Integrated decentralised apps with exchanges and oracles. Built DeFi staking dashboards connected to wallets.",
+   "experience_years": 14,
+   "hourly_rate": 38.0,
+   "rating": 4.91
+  },
+  {
+   "key": "blockchain-1",
+   "archetype": "blockchain",
+   "name": "Saif Qureshi",
+   "skills": [
+    "TypeScript",
+    "Solidity",
+    "JavaScript"
+   ],
+   "bio": "Smart contract developer writing audited token and NFT contracts. Integrated decentralised apps with exchanges and oracles.",
+   "experience_years": 4,
+   "hourly_rate": 101.0,
+   "rating": 4.25
+  },
+  {
+   "key": "blockchain-2",
+   "archetype": "blockchain",
+   "name": "Aria Novak",
+   "skills": [
+    "Solidity"
+   ],
+   "bio": "Smart contract developer writing audited token and NFT contracts. Experienced with gas optimisation and on-chain testing frameworks.",
+   "experience_years": 1,
+   "hourly_rate": 36.0,
+   "rating": 4.17
+  },
+  {
+   "key": "blockchain-3",
+   "archetype": "blockchain",
+   "name": "Bilal Lindqvist",
+   "skills": [
+    "TypeScript",
+    "JavaScript",
+    "Solidity",
+    "Blockchain"
+   ],
+   "bio": "Experienced with gas optimisation and on-chain testing frameworks. Integrated decentralised apps with exchanges and oracles.",
+   "experience_years": 8,
+   "hourly_rate": 18.0,
+   "rating": 4.35
+  },
+  {
+   "key": "blockchain-4",
+   "archetype": "blockchain",
+   "name": "Nadia Ibrahim",
+   "skills": [
+    "Blockchain",
+    "TypeScript",
+    "Solidity"
+   ],
+   "bio": "Built DeFi staking dashboards connected to wallets. Experienced with gas optimisation and on-chain testing frameworks.",
+   "experience_years": 2,
+   "hourly_rate": 63.0,
+   "rating": 4.15
+  },
+  {
+   "key": "healthtech_backend-0",
+   "archetype": "healthtech_backend",
+   "name": "Karim Kovacs",
+   "skills": [
+    "Node.js",
+    "Python",
+    "HealthTech"
+   ],
+   "bio": "Delivered a remote patient monitoring backend for a clinic network. Built systems handling protected health information with audit logs and encryption.",
+   "experience_years": 3,
+   "hourly_rate": 79.0,
+   "rating": 4.32
+  },
+  {
+   "key": "healthtech_backend-1",
+   "archetype": "healthtech_backend",
+   "name": "Selin Rahman",
+   "skills": [
+    "HealthTech",
+    "PostgreSQL",
+    "REST APIs"
+   ],
+   "bio": "Built systems handling protected health information with audit logs and encryption. Backend developer for telehealth and patient-scheduling platforms.",
+   "experience_years": 14,
+   "hourly_rate": 109.0,
+   "rating": 3.96
+  },
+  {
+   "key": "healthtech_backend-2",
+   "archetype": "healthtech_backend",
+   "name": "Hamid Yilmaz",
+   "skills": [
+    "PostgreSQL",
+    "HIPAA Compliance"
+   ],
+   "bio": "Integrated EHR systems over HL7 and FHIR interfaces. Delivered a remote patient monitoring backend for a clinic network.",
+   "experience_years": 7,
+   "hourly_rate": 26.0,
+   "rating": 3.92
+  },
+  {
+   "key": "healthtech_backend-3",
+   "archetype": "healthtech_backend",
+   "name": "Eman Haddad",
+   "skills": [
+    "PostgreSQL",
+    "REST APIs"
+   ],
+   "bio": "Integrated EHR systems over HL7 and FHIR interfaces. Delivered a remote patient monitoring backend for a clinic network.",
+   "experience_years": 12,
+   "hourly_rate": 30.0,
+   "rating": 4.22
+  },
+  {
+   "key": "healthtech_backend-4",
+   "archetype": "healthtech_backend",
+   "name": "Ayaan Farooq",
+   "skills": [
+    "HIPAA Compliance",
+    "Node.js",
+    "PostgreSQL",
+    "HealthTech",
+    "REST APIs"
+   ],
+   "bio": "Built systems handling protected health information with audit logs and encryption. Backend developer for telehealth and patient-scheduling platforms.",
+   "experience_years": 6,
+   "hourly_rate": 109.0,
+   "rating": 4.0
+  },
+  {
+   "key": "fintech_payments-0",
+   "archetype": "fintech_payments",
+   "name": "Noor Ansari",
+   "skills": [
+    "Node.js",
+    "Python"
+   ],
+   "bio": "Integrated card processing, payouts and subscription billing. Experienced with KYC flows and regulated financial products.",
+   "experience_years": 10,
+   "hourly_rate": 39.0,
+   "rating": 4.68
+  },
+  {
+   "key": "fintech_payments-1",
+   "archetype": "fintech_payments",
+   "name": "Rohan Sato",
+   "skills": [
+    "Python"
+   ],
+   "bio": "Engineer building payment, invoicing and ledger systems. Experienced with KYC flows and regulated financial products.",
+   "experience_years": 7,
+   "hourly_rate": 40.0,
+   "rating": 4.38
+  },
+  {
+   "key": "fintech_payments-2",
+   "archetype": "fintech_payments",
+   "name": "Leila Nasser",
+   "skills": [
+    "PCI DSS",
+    "FinTech"
+   ],
+   "bio": "Engineer building payment, invoicing and ledger systems. Integrated card processing, payouts and subscription billing.",
+   "experience_years": 10,
+   "hourly_rate": 104.0,
+   "rating": 4.18
+  },
+  {
+   "key": "fintech_payments-3",
+   "archetype": "fintech_payments",
+   "name": "Omar Okafor",
+   "skills": [
+    "FinTech",
+    "PCI DSS",
+    "PostgreSQL",
+    "Python",
+    "Node.js"
+   ],
+   "bio": "Integrated card processing, payouts and subscription billing. Engineer building payment, invoicing and ledger systems.",
+   "experience_years": 2,
+   "hourly_rate": 102.0,
+   "rating": 3.88
+  },
+  {
+   "key": "fintech_payments-4",
+   "archetype": "fintech_payments",
+   "name": "Mina Haider",
+   "skills": [
+    "PostgreSQL",
+    "Node.js",
+    "FinTech"
+   ],
+   "bio": "Built reconciliation and fraud checks for a lending startup. Engineer building payment, invoicing and ledger systems.",
+   "experience_years": 2,
+   "hourly_rate": 80.0,
+   "rating": 4.85
+  },
+  {
+   "key": "qa_automation-0",
+   "archetype": "qa_automation",
+   "name": "Tariq Mehta",
+   "skills": [
+    "Testing"
+   ],
+   "bio": "Set up test pipelines that block broken releases. Write test plans, bug reports and load tests for web apps.",
+   "experience_years": 7,
+   "hourly_rate": 68.0,
+   "rating": 3.64
+  },
+  {
+   "key": "qa_automation-1",
+   "archetype": "qa_automation",
+   "name": "Sofia Silva",
+   "skills": [
+    "Selenium",
+    "Jest",
+    "Testing"
+   ],
+   "bio": "Set up test pipelines that block broken releases. Write test plans, bug reports and load tests for web apps.",
+   "experience_years": 6,
+   "hourly_rate": 99.0,
+   "rating": 3.95
+  },
+  {
+   "key": "qa_automation-2",
+   "archetype": "qa_automation",
+   "name": "Daniyal Qureshi",
+   "skills": [
+    "Pytest",
+    "Cypress"
+   ],
+   "bio": "Set up test pipelines that block broken releases. QA automation engineer writing end-to-end and regression suites.",
+   "experience_years": 7,
+   "hourly_rate": 103.0,
+   "rating": 4.87
+  },
+  {
+   "key": "qa_automation-3",
+   "archetype": "qa_automation",
+   "name": "Hana Novak",
+   "skills": [
+    "Cypress",
+    "Testing"
+   ],
+   "bio": "Write test plans, bug reports and load tests for web apps. Reduced flaky tests and shortened the release cycle from weeks to days.",
+   "experience_years": 5,
+   "hourly_rate": 67.0,
+   "rating": 4.46
+  },
+  {
+   "key": "qa_automation-4",
+   "archetype": "qa_automation",
+   "name": "Kamran Lindqvist",
+   "skills": [
+    "Jest",
+    "CI/CD",
+    "Pytest",
+    "Selenium"
+   ],
+   "bio": "Write test plans, bug reports and load tests for web apps. QA automation engineer writing end-to-end and regression suites.",
+   "experience_years": 5,
+   "hourly_rate": 28.0,
+   "rating": 4.22
+  },
+  {
+   "key": "game_dev-0",
+   "archetype": "game_dev",
+   "name": "Zara Ibrahim",
+   "skills": [
+    "C#",
+    "Unity"
+   ],
+   "bio": "Optimised rendering to hit 60 fps on mid-range phones. Shipped casual puzzle games with in-app purchases and live events.",
+   "experience_years": 8,
+   "hourly_rate": 25.0,
+   "rating": 4.43
+  },
+  {
+   "key": "game_dev-1",
+   "archetype": "game_dev",
+   "name": "Imran Kovacs",
+   "skills": [
+    "Unreal Engine",
+    "Unity"
+   ],
+   "bio": "Shipped casual puzzle games with in-app purchases and live events. Implemented gameplay systems, physics and multiplayer networking.",
+   "experience_years": 7,
+   "hourly_rate": 57.0,
+   "rating": 4.96
+  },
+  {
+   "key": "game_dev-2",
+   "archetype": "game_dev",
+   "name": "Lina Rahman",
+   "skills": [
+    "C++",
+    "Unity",
+    "C#",
+    "Unreal Engine"
+   ],
+   "bio": "Shipped casual puzzle games with in-app purchases and live events. Implemented gameplay systems, physics and multiplayer networking.",
+   "experience_years": 6,
+   "hourly_rate": 119.0,
+   "rating": 4.47
+  },
+  {
+   "key": "game_dev-3",
+   "archetype": "game_dev",
+   "name": "Faris Yilmaz",
+   "skills": [
+    "C#",
+    "Unreal Engine"
+   ],
+   "bio": "Implemented gameplay systems, physics and multiplayer networking. Optimised rendering to hit 60 fps on mid-range phones.",
+   "experience_years": 4,
+   "hourly_rate": 102.0,
+   "rating": 3.75
+  },
+  {
+   "key": "game_dev-4",
+   "archetype": "game_dev",
+   "name": "Maha Haddad",
+   "skills": [
+    "Unity",
+    "C++",
+    "C#"
+   ],
+   "bio": "Game developer building mobile and PC titles. Optimised rendering to hit 60 fps on mid-range phones.",
+   "experience_years": 8,
+   "hourly_rate": 82.0,
+   "rating": 4.21
+  },
+  {
+   "key": "distractor-0",
+   "archetype": "distractor",
+   "name": "Yusuf Farooq",
+   "skills": [
+    "React",
+    "Python",
+    "Machine Learning",
+    "AWS",
+    "Kubernetes"
+   ],
+   "bio": "Virtual assistant offering data entry, inbox management and calendar scheduling.",
+   "experience_years": 4,
+   "hourly_rate": 28.0,
+   "rating": 4.43
+  },
+  {
+   "key": "distractor-1",
+   "archetype": "distractor",
+   "name": "Rania Ansari",
+   "skills": [
+    "Next.js",
+    "LLM Integration",
+    "Blockchain",
+    "Flutter"
+   ],
+   "bio": "I write blog posts and social media captions for small businesses.",
+   "experience_years": 5,
+   "hourly_rate": 38.0,
+   "rating": 4.93
+  },
+  {
+   "key": "distractor-2",
+   "archetype": "distractor",
+   "name": "Saif Sato",
+   "skills": [
+    "Docker",
+    "React Native",
+    "Figma"
+   ],
+   "bio": "Customer support specialist with experience in live chat and ticket triage.",
+   "experience_years": 5,
+   "hourly_rate": 23.0,
+   "rating": 4.4
+  },
+  {
+   "key": "distractor-3",
+   "archetype": "distractor",
+   "name": "Aria Nasser",
+   "skills": [
+    "Python",
+    "Data Science",
+    "Tableau"
+   ],
+   "bio": "Bookkeeper handling invoices, payroll and month-end close for agencies.",
+   "experience_years": 6,
+   "hourly_rate": 11.0,
+   "rating": 4.06
+  },
+  {
+   "key": "distractor-4",
+   "archetype": "distractor",
+   "name": "Bilal Okafor",
+   "skills": [
+    "Kubernetes",
+    "Terraform",
+    "Solidity"
+   ],
+   "bio": "Transcriptionist and translator for English and Urdu audio.",
+   "experience_years": 2,
+   "hourly_rate": 14.0,
+   "rating": 4.8
+  },
+  {
+   "key": "distractor-5",
+   "archetype": "distractor",
+   "name": "Nadia Haider",
+   "skills": [
+    "UI/UX Design",
+    "Shopify",
+    "Node.js"
+   ],
+   "bio": "Video editor producing YouTube content, thumbnails and short-form clips.",
+   "experience_years": 4,
+   "hourly_rate": 29.0,
+   "rating": 4.53
+  },
+  {
+   "key": "distractor-6",
+   "archetype": "distractor",
+   "name": "Karim Mehta",
+   "skills": [
+    "PyTorch",
+    "Computer Vision"
+   ],
+   "bio": "Photographer and photo retoucher for product catalogues.",
+   "experience_years": 3,
+   "hourly_rate": 15.0,
+   "rating": 4.09
+  },
+  {
+   "key": "distractor-7",
+   "archetype": "distractor",
+   "name": "Selin Silva",
+   "skills": [
+    "SQL",
+    "Power BI"
+   ],
+   "bio": "Recruiter sourcing candidates and scheduling interviews.",
+   "experience_years": 1,
+   "hourly_rate": 39.0,
+   "rating": 4.37
+  },
+  {
+   "key": "distractor-8",
+   "archetype": "distractor",
+   "name": "Hamid Qureshi",
+   "skills": [
+    "FastAPI",
+    "PostgreSQL",
+    "Stripe"
+   ],
+   "bio": "Generalist who has dabbled in a bit of everything and is eager to learn.",
+   "experience_years": 2,
+   "hourly_rate": 34.0,
+   "rating": 4.67
+  },
+  {
+   "key": "distractor-9",
+   "archetype": "distractor",
+   "name": "Eman Novak",
+   "skills": [
+    "Cybersecurity",
+    "OAuth"
+   ],
+   "bio": "IT helpdesk technician resetting passwords and setting up laptops.",
+   "experience_years": 5,
+   "hourly_rate": 35.0,
+   "rating": 4.91
+  }
+ ]
+}
