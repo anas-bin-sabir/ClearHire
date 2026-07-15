@@ -4,6 +4,7 @@ from enum import Enum
 from pgvector.sqlalchemy import Vector
 from sqlalchemy import (
     Boolean,
+    Computed,
     DateTime,
     Float,
     ForeignKey,
@@ -13,7 +14,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
 )
-from sqlalchemy.dialects.postgresql import ARRAY, JSONB
+from sqlalchemy.dialects.postgresql import ARRAY, JSONB, TSVECTOR
 from sqlalchemy.orm import DeclarativeBase, Mapped, mapped_column, relationship
 
 from app.core.config import settings
@@ -32,6 +33,16 @@ def hnsw_index(table: str) -> Index:
         postgresql_with={"m": 16, "ef_construction": 64},
         postgresql_ops={"embedding": "vector_cosine_ops"},
     )
+
+
+# Keyword channel for hybrid search: skills outweigh bio, bio outweighs name.
+# skills_to_text() is an IMMUTABLE wrapper (migration 0003) because array_to_string
+# itself is only STABLE and generated columns need immutable expressions.
+FREELANCER_SEARCH_VECTOR_SQL = (
+    "setweight(to_tsvector('english'::regconfig, skills_to_text(skills)), 'A') || "
+    "setweight(to_tsvector('english'::regconfig, coalesce(bio, '')), 'B') || "
+    "setweight(to_tsvector('simple'::regconfig, coalesce(name, '')), 'C')"
+)
 
 
 class ContractStatus(str, Enum):
@@ -63,7 +74,10 @@ class User(Base):
 
 class Freelancer(Base):
     __tablename__ = "freelancers"
-    __table_args__ = (hnsw_index("freelancers"),)
+    __table_args__ = (
+        hnsw_index("freelancers"),
+        Index("freelancers_search_vector_gin", "search_vector", postgresql_using="gin"),
+    )
 
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     user_id: Mapped[int | None] = mapped_column(
@@ -84,6 +98,9 @@ class Freelancer(Base):
     embedding: Mapped[list[float] | None] = mapped_column(
         Vector(settings.embedding_dimensions),
         nullable=True,
+    )
+    search_vector: Mapped[str | None] = mapped_column(
+        TSVECTOR, Computed(FREELANCER_SEARCH_VECTOR_SQL, persisted=True), nullable=True
     )
     referred_by_id: Mapped[int | None] = mapped_column(
         Integer, ForeignKey("freelancers.id"), nullable=True
@@ -188,6 +205,7 @@ class SkillRelationship(Base):
     id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
     skill_a: Mapped[str] = mapped_column(String(100), nullable=False)
     skill_b: Mapped[str] = mapped_column(String(100), nullable=False)
+    weight: Mapped[float] = mapped_column(Float, default=0.5, server_default="0.5")
 
 
 class ActivityLog(Base):
