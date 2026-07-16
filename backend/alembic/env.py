@@ -13,11 +13,16 @@ from sqlalchemy import pool
 from sqlalchemy.engine import Connection
 from sqlalchemy.ext.asyncio import create_async_engine
 
-from app.db.session import database_url
+from app.core.config import settings
+from app.db.url import database_config_from_settings
 from app.models.orm import Base
 
 config = context.config
 target_metadata = Base.metadata
+
+# Same URL normalisation / SSL / pooler handling as the app engine (app/db/session.py).
+db_config = database_config_from_settings(settings)
+database_url = db_config.url_string
 
 
 def do_run_migrations(connection: Connection) -> None:
@@ -42,7 +47,9 @@ def run_migrations_offline() -> None:
 
 
 async def run_async_migrations() -> None:
-    engine = create_async_engine(database_url, poolclass=pool.NullPool)
+    engine = create_async_engine(
+        database_url, poolclass=pool.NullPool, connect_args=db_config.connect_args
+    )
     async with engine.connect() as connection:
         await connection.run_sync(do_run_migrations)
     await engine.dispose()
