@@ -1,8 +1,11 @@
 from functools import lru_cache
-from typing import List
+from typing import List, Literal
 
-from pydantic import Field
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
+
+# Mirrors app.db.url.SSL_MODES (not imported: app.db imports this module).
+DB_SSL_MODES = ("disable", "allow", "prefer", "require", "verify-ca", "verify-full")
 
 
 class Settings(BaseSettings):
@@ -37,6 +40,16 @@ class Settings(BaseSettings):
     auto_migrate: bool = Field(default=True, alias="AUTO_MIGRATE")
     db_null_pool: bool = Field(default=False, alias="DB_NULL_POOL")
     seed_enabled: bool = Field(default=True, alias="SEED_ENABLED")
+    # libpq-style sslmode (disable/allow/prefer/require/verify-ca/verify-full). Empty =
+    # use ?sslmode= from DATABASE_URL, else "require" for Supabase hosts, else no SSL.
+    db_ssl_mode: str = Field(default="", alias="DB_SSL_MODE")
+    db_pool_size: int = Field(default=5, ge=1, alias="DB_POOL_SIZE")
+    db_max_overflow: int = Field(default=5, ge=0, alias="DB_MAX_OVERFLOW")
+    # asyncpg statement cache; 0 is required behind a transaction pooler (Supabase :6543).
+    # Unset = asyncpg default, or 0 automatically when DATABASE_URL uses port 6543.
+    db_statement_cache_size: int | None = Field(
+        default=None, ge=0, alias="DB_STATEMENT_CACHE_SIZE"
+    )
 
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-haiku-5-5", alias="ANTHROPIC_MODEL")
@@ -91,6 +104,21 @@ class Settings(BaseSettings):
     rate_limit_auth_backoff_max_seconds: float = Field(
         default=300.0, alias="RATE_LIMIT_AUTH_BACKOFF_MAX_SECONDS"
     )
+
+    @field_validator("db_ssl_mode", mode="before")
+    @classmethod
+    def _validate_ssl_mode(cls, value: object) -> str:
+        mode = "" if value is None else str(value).strip().lower()
+        if mode and mode not in DB_SSL_MODES:
+            raise ValueError(f"DB_SSL_MODE must be one of {', '.join(DB_SSL_MODES)}")
+        return mode
+
+    @field_validator("db_statement_cache_size", mode="before")
+    @classmethod
+    def _empty_cache_size_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     @property
     def cors_origin_list(self) -> List[str]:
