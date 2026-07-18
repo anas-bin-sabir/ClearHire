@@ -66,6 +66,13 @@ class Settings(BaseSettings):
     # Where fastembed keeps the ONNX model; unset uses fastembed's temp-dir default.
     embedding_cache_dir: str = Field(default="", alias="EMBEDDING_CACHE_DIR")
 
+    # LLM rerank of the top of the shortlist (falls back to deterministic reasoning).
+    rerank_enabled: bool = Field(default=True, alias="RERANK_ENABLED")
+    rerank_top_n: int = Field(default=10, ge=1, le=25, alias="RERANK_TOP_N")
+    # final = alpha * deterministic + (1 - alpha) * llm_fit
+    rerank_alpha: float = Field(default=0.6, ge=0.0, le=1.0, alias="RERANK_ALPHA")
+    rerank_effort: Literal["low", "medium", "high"] = Field(default="low", alias="RERANK_EFFORT")
+
     # Weight of the full-text channel relative to the vector channel in RRF fusion.
     search_keyword_rrf_weight: float = Field(default=0.5, alias="SEARCH_KEYWORD_RRF_WEIGHT")
 
