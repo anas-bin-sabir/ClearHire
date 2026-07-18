@@ -35,12 +35,16 @@ class LLMUsage:
     output_tokens: int
     latency_ms: int
     request_id: str | None
+    cache_read_input_tokens: int = 0
+    cache_creation_input_tokens: int = 0
 
     def as_metadata(self) -> dict:
         return {
             "model": self.model,
             "input_tokens": self.input_tokens,
             "output_tokens": self.output_tokens,
+            "cache_read_input_tokens": self.cache_read_input_tokens,
+            "cache_creation_input_tokens": self.cache_creation_input_tokens,
             "latency_ms": self.latency_ms,
             "request_id": self.request_id,
         }
@@ -76,6 +80,10 @@ def _usage(message, started: float) -> LLMUsage:
         output_tokens=message.usage.output_tokens,
         latency_ms=int((time.monotonic() - started) * 1000),
         request_id=getattr(message, "_request_id", None),
+        cache_read_input_tokens=getattr(message.usage, "cache_read_input_tokens", None) or 0,
+        cache_creation_input_tokens=(
+            getattr(message.usage, "cache_creation_input_tokens", None) or 0
+        ),
     )
 
 
@@ -112,16 +120,27 @@ async def parse(
     schema: type[T],
     effort: Effort = "low",
     max_tokens: int = 4000,
+    cache_system: bool = False,
 ) -> LLMResult[T]:
-    """Schema-validated structured output (Pydantic model) via ``messages.parse``."""
+    """Schema-validated structured output (Pydantic model) via ``messages.parse``.
+
+    ``cache_system`` marks the system prompt as a prompt-cache breakpoint. Keep that
+    prompt byte-stable; per-request data belongs in ``user``. Prefixes below the
+    model's minimum (512 tokens on current models) are silently not cached.
+    """
     client = get_client()
     started = time.monotonic()
+    system_param = (
+        [{"type": "text", "text": system, "cache_control": {"type": "ephemeral"}}]
+        if cache_system
+        else system
+    )
     message = await _call(
         "parse",
         lambda: client.messages.parse(
             model=settings.anthropic_model,
             max_tokens=max_tokens,
-            system=system,
+            system=system_param,
             messages=[{"role": "user", "content": user}],
             output_config={"effort": effort},
             output_format=schema,

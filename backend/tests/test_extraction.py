@@ -84,6 +84,7 @@ async def test_parse_returns_value_and_usage(fake_claude):
     assert result.value is brief
     assert result.usage.as_metadata() == {
         "model": "claude-haiku-5-5", "input_tokens": 1200, "output_tokens": 300,
+        "cache_read_input_tokens": 0, "cache_creation_input_tokens": 0,
         "latency_ms": result.usage.latency_ms, "request_id": "req_test123",
     }
     call = messages.calls[0]
