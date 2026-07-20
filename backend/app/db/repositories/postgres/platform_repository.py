@@ -104,6 +104,21 @@ class AIExplanationRepository:
         return {"pipeline": row.pipeline, "ran_at": row.ran_at.isoformat(), "metadata": row.metadata_json, "explanation": row.explanation}
 
 
+    async def find_cached(self, *, pipeline: str, cache_key: str) -> dict | None:
+        """Most recent row whose metadata carries this cache key."""
+        stmt = (
+            select(AIExplanation)
+            .where(
+                AIExplanation.pipeline == pipeline,
+                AIExplanation.metadata_json["cache_key"].astext == cache_key,
+            )
+            .order_by(AIExplanation.ran_at.desc())
+            .limit(1)
+        )
+        row = (await self.session.execute(stmt)).scalar_one_or_none()
+        return row.metadata_json if row else None
+
+
 class UserSettingsRepository:
     def __init__(self, session: AsyncSession): self.session = session
     async def get(self, user_id: int) -> dict:

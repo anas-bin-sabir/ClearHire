@@ -404,6 +404,28 @@ class FreelancerRepository:
         )
         return [title for title in result.scalars().all() if title]
 
+    async def completed_projects_for(
+        self, freelancer_ids: list[int], per_freelancer: int = 5
+    ) -> dict[int, list[tuple[int, str]]]:
+        """{freelancer id: [(project id, title)]} of completed work, newest first."""
+        projects: dict[int, list[tuple[int, str]]] = {fid: [] for fid in freelancer_ids}
+        if not freelancer_ids:
+            return projects
+        result = await self._session.execute(
+            select(Contract.freelancer_id, Project.id, Project.title)
+            .join(Project, Contract.project_id == Project.id)
+            .where(
+                Contract.freelancer_id.in_(freelancer_ids),
+                Contract.status == ContractStatus.COMPLETED.value,
+                Project.title.is_not(None),
+            )
+            .order_by(Contract.created_at.desc())
+        )
+        for fid, project_id, title in result.all():
+            if len(projects[fid]) < per_freelancer:
+                projects[fid].append((project_id, title))
+        return projects
+
     async def refresh_embedding(self, freelancer: Freelancer) -> None:
         """Re-embed profile text plus completed project titles."""
         freelancer.embedding = embed_text(
