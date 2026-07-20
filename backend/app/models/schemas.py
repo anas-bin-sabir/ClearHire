@@ -64,6 +64,7 @@ class SearchRequest(BaseModel):
         default=None, alias="seniorityLevel"
     )
     budget_type: Literal["fixed", "hourly"] = Field(default="fixed", alias="budgetType")
+    rerank: bool = Field(default=True, description="LLM rerank of the top candidates")
     min_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="minRate")
     max_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="maxRate")
     min_rating: Optional[float] = Field(default=None, ge=0, le=5, alias="minRating")
@@ -104,6 +105,7 @@ class SearchResponse(BaseModel):
     explanation: str
     total_candidates: int
     retrieval: dict[str, Any] = Field(default_factory=dict)
+    reranking: dict[str, Any] = Field(default_factory=dict)
 
 
 class ProjectExtractionRequest(BaseModel):

@@ -12,7 +12,12 @@ from app.core.dependencies import (
     get_skill_repo,
 )
 from app.core.rate_limit import enforce_public_rate_limit
-from app.core.search_pipeline import RESULT_LIMIT, run_search
+from app.core.search_pipeline import (
+    PRECOMPUTED_PIPELINE,
+    RESULT_LIMIT,
+    rerank_shortlist,
+    run_search,
+)
 from app.db.repositories.postgres import (
     AIExplanationRepository,
     FreelancerRepository,
@@ -38,7 +43,11 @@ async def search_freelancers(
     try:
         outcome = await run_search(body, freelancer_repo, skill_relationship_repo)
         retrieval, candidates = outcome.retrieval, outcome.candidates
-        top = outcome.ranked[:RESULT_LIMIT]
+        reranked = await rerank_shortlist(
+            outcome, body, freelancer_repo, ai_explanation_repo, use_llm=body.rerank
+        )
+        shown = reranked.candidates[:RESULT_LIMIT]
+        top = [c.ranked for c in shown]
 
         explanation_struct = await explain_search(
             SearchExplanationInput(
@@ -78,10 +87,11 @@ async def search_freelancers(
         )
 
         return SearchResponse(
-            freelancers=[m.to_api_dict() for m in top],
+            freelancers=[c.to_api_dict() for c in shown],
             explanation=explanation,
             total_candidates=len(candidates),
             retrieval={"mode": retrieval.mode, "skill_filter": retrieval.skill_filter},
+            reranking=reranked.meta(),
         )
     except Exception as exc:
         logger.exception("search failed")
@@ -96,11 +106,28 @@ async def search_freelancers(
 
 
 @router.get("/precomputed/{project_id}")
-async def get_precomputed_results(project_id: int):
-    """Placeholder until background matching lands (CURRENT.md Phase 3)."""
+async def get_precomputed_results(
+    project_id: int,
+    ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
+):
+    """Matches computed in the background when the project was created."""
+    latest = await ai_explanation_repo.get_latest(
+        entity_id=project_id, entity_type="project", pipeline=PRECOMPUTED_PIPELINE
+    )
+    if latest is None:
+        return {
+            "precomputed": False,
+            "project_id": project_id,
+            "ranked_freelancers": [],
+            "message": "No precomputed matches yet; run /search for live results.",
+        }
+    meta = latest["metadata"]
     return {
-        "precomputed": False,
+        "precomputed": True,
         "project_id": project_id,
-        "ranked_freelancers": [],
-        "message": "Run /search for live results.",
+        "computed_at": latest["ran_at"],
+        "ranked_freelancers": meta.get("freelancers", []),
+        "reranking": meta.get("reranking", {}),
+        "retrieval": meta.get("retrieval", {}),
+        "total_candidates": meta.get("total_candidates", 0),
     }

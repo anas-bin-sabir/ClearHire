@@ -1,4 +1,4 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, BackgroundTasks, Depends, HTTPException
 
 from app.ai import llm
 from app.ai.project_parser import (
@@ -15,6 +15,7 @@ from app.core.dependencies import (
     require_client,
 )
 from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
+from app.core.search_pipeline import precompute_project_matches
 from app.db.repositories.postgres import (
     AIExplanationRepository,
     ContractRepository,
@@ -164,6 +165,7 @@ async def list_projects(
 )
 async def create_project(
     body: ProjectCreateRequest,
+    background_tasks: BackgroundTasks,
     project_repo: ProjectRepository = Depends(get_project_repo),
     user: User = Depends(require_client),
 ) -> ProjectCreateResponse:
@@ -183,7 +185,8 @@ async def create_project(
         compliance=body.compliance,
     )
     record = _record_from_project(project, [])
-
+    # Runs after the response (and after the request session commits the project).
+    background_tasks.add_task(precompute_project_matches, project.id)
     return ProjectCreateResponse(project=record)
 
 
