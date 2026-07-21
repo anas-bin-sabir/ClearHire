@@ -5,6 +5,8 @@ Usage (from backend/):
   python -m scripts.eval_retrieval --set holdout    # queries never used for tuning
   python -m scripts.eval_retrieval --weight keyword=0.1 --weight semantic=0.25
   python -m scripts.eval_retrieval --verbose        # per-query nDCG
+  python -m scripts.eval_retrieval --rerank         # + LLM rerank row (needs ANTHROPIC_API_KEY;
+                                                    #   ~20 calls, cached in the eval DB per run)
 
 Loads tests/fixtures/retrieval_eval.json into EVAL_DATABASE_URL (its public schema is
 DROPPED and rebuilt) and runs each query through app.core.search_pipeline.run_search,
@@ -35,7 +37,6 @@ os.environ.update(
         # Pooled like production: one event loop, so connections can be reused.
         "DB_NULL_POOL": "false",
         "AUTO_MIGRATE": "true",
-        "ANTHROPIC_API_KEY": "",
     }
 )
 os.environ.setdefault("EMBEDDING_PROVIDER", "local")
@@ -45,8 +46,10 @@ from sqlalchemy import text  # noqa: E402
 from app.ai.embeddings import embed_texts, freelancer_embedding_text  # noqa: E402
 from app.ai.ranking import default_weights  # noqa: E402
 from app.core.config import settings  # noqa: E402
-from app.core.search_pipeline import run_search  # noqa: E402
+from app.ai import llm  # noqa: E402
+from app.core.search_pipeline import rerank_shortlist, run_search  # noqa: E402
 from app.db.repositories.postgres import (  # noqa: E402
+    AIExplanationRepository,
     FreelancerRepository,
     SkillRelationshipRepository,
     SkillRepository,
@@ -56,14 +59,15 @@ from app.models.schemas import SearchRequest  # noqa: E402
 
 FIXTURE = BACKEND_ROOT / "tests" / "fixtures" / "retrieval_eval.json"
 
-# (label, retrieval mode, apply deterministic ranking?)
+# (label, retrieval mode, apply deterministic ranking?, apply LLM rerank?)
 CONFIGS = [
-    ("keyword only", "keyword", False),
-    ("vector only", "vector", False),
-    ("hybrid (RRF)", "hybrid", False),
-    ("vector + ranking", "vector", True),
-    ("hybrid + ranking", "hybrid", True),
+    ("keyword only", "keyword", False, False),
+    ("vector only", "vector", False, False),
+    ("hybrid (RRF)", "hybrid", False, False),
+    ("vector + ranking", "vector", True, False),
+    ("hybrid + ranking", "hybrid", True, False),
 ]
+RERANK_CONFIG = ("hybrid + LLM rerank", "hybrid", True, True)
 
 
 async def _ensure_database() -> None:
@@ -141,8 +145,10 @@ def mrr(ranked_gains: list[int]) -> float:
     return 0.0
 
 
-async def evaluate(queries: list[dict], archetypes: dict[int, str], weights, verbose: bool):
-    results: dict[str, list[tuple[float, float, float]]] = {label: [] for label, _, _ in CONFIGS}
+async def evaluate(
+    queries: list[dict], archetypes: dict[int, str], weights, verbose: bool, configs=CONFIGS
+):
+    results: dict[str, list[tuple[float, float, float]]] = {c[0]: [] for c in configs}
     for query in queries:
         relevant: dict[str, int] = query["relevant"]
         all_gains = [relevant.get(a, 0) for a in archetypes.values()]
@@ -158,20 +164,28 @@ async def evaluate(queries: list[dict], archetypes: dict[int, str], weights, ver
             }
         )
         line = []
-        for label, mode, rank in CONFIGS:
+        for label, mode, rank, rerank in configs:
             async with async_session_factory() as session:
+                freelancers = FreelancerRepository(session)
                 outcome = await run_search(
                     body,
-                    FreelancerRepository(session),
+                    freelancers,
                     SkillRelationshipRepository(session),
                     mode=mode,
                     weights=weights,
                 )
-            ids = (
-                [r.candidate.id for r in outcome.ranked]
-                if rank
-                else [c.freelancer.id for c in outcome.retrieval.candidates]
-            )
+                if rerank:
+                    reranked = await rerank_shortlist(
+                        outcome, body, freelancers, AIExplanationRepository(session)
+                    )
+                    await session.commit()  # keep the rerank cache for this run
+                    if reranked.path != "llm":
+                        raise SystemExit(f"rerank fell back to deterministic: {reranked.error}")
+                    ids = [c.ranked.candidate.id for c in reranked.candidates]
+                elif rank:
+                    ids = [r.candidate.id for r in outcome.ranked]
+                else:
+                    ids = [c.freelancer.id for c in outcome.retrieval.candidates]
             gains = [relevant.get(archetypes[i], 0) for i in ids]
             scores = (
                 ndcg_at(gains, all_gains, 10),
@@ -191,10 +205,10 @@ def report(results, n_queries: int, set_name: str) -> None:
         f"\nset={set_name}  queries={n_queries}  embeddings={settings.embedding_provider}"
         f" ({settings.embedding_model})"
     )
-    print(f"{'config':<20} {'nDCG@10':>8} {'Recall@50':>10} {'MRR':>6}")
+    print(f"{'config':<22} {'nDCG@10':>8} {'Recall@50':>10} {'MRR':>6}")
     for label, rows in results.items():
         means = [sum(col) / len(col) for col in zip(*rows)]
-        print(f"{label:<20} {means[0]:>8.3f} {means[1]:>10.3f} {means[2]:>6.3f}")
+        print(f"{label:<22} {means[0]:>8.3f} {means[1]:>10.3f} {means[2]:>6.3f}")
 
 
 def _parse_weights(pairs: list[str]):
@@ -212,7 +226,13 @@ async def main() -> None:
     parser.add_argument("--set", choices=["dev", "holdout", "all"], default="all")
     parser.add_argument("--weight", action="append", default=[], metavar="NAME=VALUE")
     parser.add_argument("--verbose", action="store_true")
+    parser.add_argument("--rerank", action="store_true", help="add the LLM rerank row")
     args = parser.parse_args()
+    configs = list(CONFIGS)
+    if args.rerank:
+        if not llm.is_configured():
+            raise SystemExit("--rerank needs ANTHROPIC_API_KEY")
+        configs.append(RERANK_CONFIG)
 
     if settings.embedding_provider.lower() in {"hash", "test"}:
         print("warning: hash embeddings are not semantic; vector numbers are meaningless")
@@ -220,7 +240,7 @@ async def main() -> None:
     queries = [q for q in data["queries"] if args.set == "all" or q["set"] == args.set]
     weights = _parse_weights(args.weight)
     archetypes = await load_corpus(data["profiles"])
-    results = await evaluate(queries, archetypes, weights, args.verbose)
+    results = await evaluate(queries, archetypes, weights, args.verbose, configs)
     report(results, len(queries), args.set)
     print("weights:", {k: round(v, 3) for k, v in weights.model_dump().items()})
     await engine.dispose()
