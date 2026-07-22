@@ -2,11 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { api, FreelancerRecord, ProjectRecord } from '@/lib/api'
+import { api, FreelancerRecord, ProjectRecord, RankedMatch, RerankingInfo } from '@/lib/api'
 import { FreelancerCard } from '@/components/ui/FreelancerCard'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
+import { MatchReasoning } from '@/components/search/MatchReasoning'
+import { CompareDrawer } from '@/components/search/CompareDrawer'
 import { SkillBadge } from '@/components/ui/SkillBadge'
-import { Search, Filter, Sparkles, AlertCircle, RefreshCw, Plus } from 'lucide-react'
+import { Search, Filter, Sparkles, AlertCircle, RefreshCw, Plus, Scale } from 'lucide-react'
 import { motion } from 'framer-motion'
 
 export default function SearchPage() {
@@ -18,8 +20,10 @@ export default function SearchPage() {
   const [project, setProject] = useState<ProjectRecord | null>(null)
   
   // Results
-  const [results, setResults] = useState<any[]>([])
+  const [results, setResults] = useState<RankedMatch[]>([])
   const [explanation, setExplanation] = useState<string>('')
+  const [reranking, setReranking] = useState<RerankingInfo | undefined>()
+  const [compareOpen, setCompareOpen] = useState(false)
   
   // Search Form State
   const [query, setQuery] = useState('')
@@ -55,8 +59,9 @@ export default function SearchPage() {
         setProject(proj)
         
         // Map precomputed results to UI state
-        if (precomputed.precomputed && precomputed.results) {
-          setResults(precomputed.results)
+        if (precomputed.precomputed && precomputed.ranked_freelancers.length) {
+          setResults(precomputed.ranked_freelancers)
+          setReranking(precomputed.reranking)
         } else {
           // If no precomputed, pre-populate form and trigger search
           setQuery(proj.description || '')
@@ -94,6 +99,7 @@ export default function SearchPage() {
       const res = await api.search.run(body)
       setResults(res.freelancers || [])
       setExplanation(res.explanation || '')
+      setReranking(res.reranking)
       setLoading(false)
     } catch (err: any) {
       console.error(err)
@@ -338,11 +344,29 @@ export default function SearchPage() {
                 <h3 className="text-sm font-bold text-white uppercase tracking-wider">
                   Matches Found ({results.length})
                 </h3>
-                {project && (
-                  <span className="text-[10px] text-slate-400 font-mono">
-                    Project scope: {project.required_skills?.join(', ')}
-                  </span>
-                )}
+                <div className="flex items-center gap-3">
+                  {project && (
+                    <span className="text-[10px] text-slate-400 font-mono">
+                      Project scope: {project.required_skills?.join(', ')}
+                    </span>
+                  )}
+                  {reranking && (
+                    <span
+                      className="text-[10px] font-mono text-slate-400"
+                      title={reranking.error ?? undefined}
+                    >
+                      {reranking.path === 'llm' ? 'AI reranked' : 'Ranked deterministically'}
+                    </span>
+                  )}
+                  {results.length >= 2 && (
+                    <button
+                      onClick={() => setCompareOpen(true)}
+                      className="btn btn-sm btn-ghost flex items-center gap-1.5 cursor-pointer"
+                    >
+                      <Scale className="h-3.5 w-3.5" /> Compare top 2
+                    </button>
+                  )}
+                </div>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
@@ -361,7 +385,10 @@ export default function SearchPage() {
                         // Reload precomputed or search results on success
                         if (projectIdParam) {
                           api.search.precomputed(Number(projectIdParam))
-                            .then(r => setResults(r.results || []))
+                            .then(r => {
+                              setResults(r.ranked_freelancers || [])
+                              setReranking(r.reranking)
+                            })
                         } else {
                           const payload = {
                             query,
@@ -378,9 +405,22 @@ export default function SearchPage() {
                         }
                       }}
                     />
+                    {fl.reasoning && (
+                      <MatchReasoning
+                        reasoning={fl.reasoning}
+                        deterministicScore={fl.deterministic_match_score}
+                      />
+                    )}
                   </motion.div>
                 ))}
               </div>
+
+              <CompareDrawer
+                open={compareOpen}
+                onClose={() => setCompareOpen(false)}
+                matches={results.slice(0, 2)}
+                reranking={reranking}
+              />
 
               {explanation && (
                 <motion.div 
