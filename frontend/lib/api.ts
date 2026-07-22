@@ -172,17 +172,68 @@ export interface SearchRequest {
   maxFraud: number
   budget?: number
   team_size?: number
+  niceToHaveSkills?: string[]
+  seniorityLevel?: Seniority
+  budgetType?: BudgetType
+  rerank?: boolean
+}
+
+/** A claim about a candidate; evidence refs look like "f12.skills" or "f12.project:7". */
+export interface ReasoningClaim {
+  text: string
+  evidence: string[]
+}
+
+export interface CandidateReasoning {
+  /** LLM fit 0-100; null when the deterministic path produced the reasoning. */
+  fit_score: number | null
+  strengths: ReasoningClaim[]
+  risks: ReasoningClaim[]
+  biggest_gap: string | null
+}
+
+export interface RankedMatch extends FreelancerRecord {
+  /** Final score shown to users (blended with the LLM fit when it ran). */
+  match_score: number
+  deterministic_match_score?: number
+  rank_score: number
+  rank?: number
+  reasoning?: CandidateReasoning
+}
+
+export interface MatchComparison {
+  preferred_id: number
+  other_id: number
+  reason: string
+  evidence: string[]
+}
+
+export interface RerankingInfo {
+  path: 'llm' | 'deterministic'
+  alpha: number
+  top_n: number
+  stripped_claims: number
+  cached: boolean
+  comparisons: MatchComparison[]
+  error: string | null
 }
 
 export interface SearchResponse {
-  freelancers: Array<FreelancerRecord & { match_score: number; rank_score: number }>
+  freelancers: RankedMatch[]
   explanation: string
   total_candidates: number
+  retrieval?: { mode: string; skill_filter: 'strict' | 'relaxed' | 'none' }
+  reranking?: RerankingInfo
 }
 
 export interface PrecomputedResult {
   precomputed: boolean
-  results?: Array<FreelancerRecord & { match_score: number; rank_score: number }>
+  project_id: number
+  computed_at?: string
+  ranked_freelancers: RankedMatch[]
+  reranking?: RerankingInfo
+  total_candidates?: number
+  message?: string
 }
 
 export interface FraudRequest {
