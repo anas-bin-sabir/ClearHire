@@ -1,6 +1,6 @@
 # ClearHire — Current State & Gap-Closing Plan
 
-_Last audited: 2026-10-20, against the uncommitted working tree on `main` (after `fc7cd5a`)._
+_Last audited: 2026-07-22, against `main`._
 
 This document compares the codebase against the project's target description:
 
@@ -81,7 +81,7 @@ The alternative is to keep Postgres-only and change the description to "graph-au
 
 Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first bullet of the description and Phases 4–6 the second. Phase 7 makes the project "Live".
 
-### Phase 0 — Stabilize the baseline (≈2–3 days) — ✅ implemented 2026-10-20
+### Phase 0 — Stabilize the baseline (≈2–3 days) — ✅ implemented 2026-07-13
 
 > Also fixed during Phase 0: `/search` called a non-existent `filter_dicts` (failed on every request); seeder `NameError` on project creation; signup allowed `role: "admin"`; project PATCH and contract writes had no ownership checks; `/seed` was unauthenticated; the fraud router's error path raised `TypeError`; `render.yaml` didn't set `SECRET_KEY`; the agent-status badge polled a stub forever; `/search` activity was double-logged; `ContractRepository.upsert` no longer existed, so every hire and the seeder failed (now `get_pair`/`create`, with status transitions enforced); the generic `ARRAY` type lacked `overlap`, so multi-skill search failed; the CSP forward check over-estimated cost and pruned valid teams (caught by a brute-force test); `app.core` had a circular import that broke the seed CLI.
 >
@@ -101,7 +101,7 @@ Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first b
 
 ---
 
-### Phase 1 — Natural-language requirements → structured constraints (≈3–4 days) — ✅ implemented 2026-10-21
+### Phase 1 — Natural-language requirements → structured constraints (≈3–4 days) — ✅ implemented 2026-07-14
 
 > **Status.** `anthropic` 1.15 with `app/ai/llm.py` (structured outputs via `messages.parse`, typed errors, refusal/truncation handling, token usage logged per call). Default model `claude-haiku-5-5` (the project already used Haiku). Taxonomy of 143 skills in `app/ai/skill_taxonomy.py`, mirrored to a `skills` table with embeddings (migration `0002`, which also canonicalized existing data). The "Describe it" review flow is the default on `/client/projects/new`.
 >
@@ -142,7 +142,13 @@ Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first b
 
 ---
 
-### Phase 2 — Semantic retrieval & hybrid ranking (≈3 days)
+### Phase 2 — Semantic retrieval & hybrid ranking (≈3 days) — 🟡 implemented 2026-07-15, latency target open
+
+> **Status.** fastembed (ONNX) replaces sentence-transformers, with the same MiniLM vectors. A weighted `tsvector` keyword channel (migration `0003`) is fused with pgvector through Reciprocal Rank Fusion. Must-have skills are a SQL filter, with a relaxed pass when it leaves fewer than 20 candidates. Ranking adds must/nice weighting, partial credit from 135 curated adjacency edges, seniority fit, and hourly budgets. Completed project titles are embedded into profiles. Numbers are in [`EVAL.md`](./EVAL.md).
+>
+> **Relevance target: met.** On the holdout queries, hybrid + ranking scores nDCG@10 0.870 vs 0.839 for vector-only. RRF fusion on its own is *below* vector-only; the gain comes from the ranking stage.
+>
+> **Latency target: not met.** p95 was 547 ms on 10k profiles (target 300 ms). That run opened a new connection per search. With a pool, profiling attributes about 215 ms to retrieval, but the full benchmark hasn't been re-run. `EXPLAIN` shows both channels doing sequential scans, not HNSW or GIN. Next steps: make the planner use the indexes, skip the relaxed pass when the strict pass is enough, and stop loading embeddings in the final row fetch.
 
 **Goal:** fast, measurably relevant shortlist from Postgres.
 
@@ -160,7 +166,11 @@ Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first b
 
 ---
 
-### Phase 3 — LLM reasoning over the shortlist (≈3 days)
+### Phase 3 — LLM reasoning over the shortlist (≈3 days) — 🟡 implemented 2026-07-22, not yet measured with Claude
+
+> **Status.** `app/ai/rerank.py` sends the top 10 candidate cards to Claude (structured output: fit score, strengths, risks, biggest gap, and comparisons of #1 vs #2 and #2 vs #3). Every claim must cite `f<id>.<field>` or `f<id>.project:<id>` refs that exist on the card. Unresolvable claims are stripped server-side, and the response reports how many. The final score is `0.6·deterministic + 0.4·llm_fit` (`RERANK_ALPHA`), applied to the top 10 only. The stable system prompt is a cache breakpoint, and results are cached by (project, cards, model) in `ai_explanations`. Without a key, or when the call fails, a deterministic reasoning path returns the same shape in the same order, and `reranking.path` says which ran. Project creation precomputes matches in a background task, which replaces the `/search/precomputed` stub. The UI shows per-card reasoning with evidence chips and a "compare top 2" drawer.
+>
+> **Not measured:** no API key was available. Run `python -m scripts.eval_retrieval --rerank` (about 20 calls) for the nDCG check, then review 10 explanations by hand for the exit criterion. Unverified assumptions: the system prompt (~300 tokens) is probably under Claude Haiku 5.5's 512-token cache minimum, so it likely won't cache until it grows (check `cache_read_input_tokens` in `ai_explanations.metadata_json`). `/search` now makes up to two LLM calls (rerank plus the summary explainer), and the rerank latency at `RERANK_EFFORT=low` is unknown.
 
 **Goal:** the LLM evaluates candidates rather than summarizing a finished list.
 
@@ -236,6 +246,8 @@ Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first b
 ---
 
 ### Phase 7 — Go live & hardening (≈2–3 days)
+
+> **Status (2026-07-18).** Database target is Supabase Postgres, used only as hosted Postgres (pgvector ≥ 0.8, no Supabase auth or Data API). `render.yaml` no longer creates a Render database; `DATABASE_URL` is the session pooler URL set in the dashboard. Migration `0004` enables RLS and revokes the `anon`/`authenticated` grants. `DB_SSL_MODE` and `DB_POOL_SIZE`/`DB_MAX_OVERFLOW`/`DB_STATEMENT_CACHE_SIZE` tune the connection. Data moves with `backend/scripts/migrate_to_supabase.sh` (or `--reseed`). Runbook: [`SUPABASE.md`](SUPABASE.md).
 
 1. **Deploy.**
    - API on Render with a Dockerfile, the fastembed model baked into the image, and `alembic upgrade head` on release.
