@@ -1,6 +1,6 @@
 "use client";
 
-import { useState, useEffect } from "react";
+import { useState, useEffect, useRef } from "react";
 import { useTheme } from "@/app/ThemeContextHelper";
 import { Moon, Sun } from "lucide-react";
 
@@ -8,12 +8,72 @@ export default function Navbar() {
   const { dark, setDark } = useTheme();
   const [scrolled, setScrolled] = useState(false);
   const [mobileOpen, setMobileOpen] = useState(false);
+  const panelRef = useRef<HTMLDivElement>(null);
+  const hamburgerRef = useRef<HTMLButtonElement>(null);
 
   useEffect(() => {
     const onScroll = () => setScrolled(window.scrollY > 20);
     window.addEventListener("scroll", onScroll);
     return () => window.removeEventListener("scroll", onScroll);
   }, []);
+
+  // Close on outside click, Escape, lock scroll, and trap focus while open
+  useEffect(() => {
+    if (!mobileOpen) return;
+
+    const panel = panelRef.current;
+    const previouslyFocused = document.activeElement as HTMLElement | null;
+    const previousOverflow = document.body.style.overflow;
+    document.body.style.overflow = "hidden";
+
+    const getFocusable = () =>
+      panel
+        ? Array.from(
+            panel.querySelectorAll<HTMLElement>(
+              'a[href], button:not([disabled]), [tabindex]:not([tabindex="-1"])'
+            )
+          )
+        : [];
+
+    getFocusable()[0]?.focus();
+
+    const onPointerDown = (e: MouseEvent) => {
+      if (panel && !panel.contains(e.target as Node) && hamburgerRef.current !== e.target) {
+        setMobileOpen(false);
+      }
+    };
+
+    const onKeyDown = (e: KeyboardEvent) => {
+      if (e.key === "Escape") {
+        setMobileOpen(false);
+        return;
+      }
+      if (e.key !== "Tab") return;
+
+      const focusable = getFocusable();
+      if (focusable.length === 0) return;
+      const first = focusable[0];
+      const last = focusable[focusable.length - 1];
+
+      if (e.shiftKey && document.activeElement === first) {
+        e.preventDefault();
+        last.focus();
+      } else if (!e.shiftKey && document.activeElement === last) {
+        e.preventDefault();
+        first.focus();
+      }
+    };
+
+    document.addEventListener("mousedown", onPointerDown);
+    document.addEventListener("keydown", onKeyDown);
+
+    return () => {
+      document.body.style.overflow = previousOverflow;
+      document.removeEventListener("mousedown", onPointerDown);
+      document.removeEventListener("keydown", onKeyDown);
+      previouslyFocused?.focus();
+    };
+  }, [mobileOpen]);
 
   const links = [
     { label: "Features",     href: "#features" },
@@ -92,8 +152,12 @@ export default function Navbar() {
 
         {/* Mobile hamburger */}
         <button
+          ref={hamburgerRef}
           className="md:hidden p-2 rounded-lg dark:text-white"
           onClick={() => setMobileOpen(!mobileOpen)}
+          aria-label={mobileOpen ? "Close menu" : "Open menu"}
+          aria-expanded={mobileOpen}
+          aria-controls="mobile-nav-panel"
         >
           <div className={`w-5 h-0.5 bg-current mb-1 transition-transform ${mobileOpen ? "rotate-45 translate-y-1.5" : ""}`} />
           <div className={`w-5 h-0.5 bg-current mb-1 transition-opacity ${mobileOpen ? "opacity-0" : ""}`} />
@@ -101,25 +165,52 @@ export default function Navbar() {
         </button>
       </div>
 
-      {/* Mobile menu */}
-      {mobileOpen && (
-        <div className="md:hidden bg-white dark:bg-navy-900 border-t border-black/5 dark:border-white/5 px-6 py-4 flex flex-col gap-4">
-          {links.map((l) => (
-            <a
-              key={l.href}
-              href={l.href}
-              onClick={() => setMobileOpen(false)}
-              className="text-sm font-medium text-slate-600 dark:text-slate-400"
-            >
-              {l.label}
-            </a>
-          ))}
-          <a href="/login" className="text-sm font-medium text-slate-600 dark:text-slate-400">Login</a>
-          <a href="/signup" className="px-4 py-2 text-sm font-semibold text-center bg-mint-400 text-navy-900 rounded-lg">
-            Start Free →
+      {/* Mobile backdrop */}
+      <div
+        aria-hidden="true"
+        className={`md:hidden fixed inset-0 top-16 bg-black/40 transition-opacity duration-300 ${
+          mobileOpen ? "opacity-100 pointer-events-auto" : "opacity-0 pointer-events-none"
+        }`}
+        onClick={() => setMobileOpen(false)}
+      />
+
+      {/* Mobile slide-in panel */}
+      <div
+        id="mobile-nav-panel"
+        ref={panelRef}
+        role="dialog"
+        aria-modal="true"
+        aria-label="Mobile navigation"
+        className={`md:hidden fixed top-16 right-0 bottom-0 w-72 max-w-[85vw] bg-white dark:bg-navy-900 border-l border-black/5 dark:border-white/5 shadow-xl px-6 py-6 flex flex-col gap-4 transition-transform duration-300 ease-out ${
+          mobileOpen ? "translate-x-0" : "translate-x-full"
+        }`}
+      >
+        {links.map((l) => (
+          <a
+            key={l.href}
+            href={l.href}
+            onClick={() => setMobileOpen(false)}
+            className="text-sm font-medium text-slate-600 dark:text-slate-400 hover:text-electric-400 dark:hover:text-electric-300 transition-colors"
+          >
+            {l.label}
           </a>
-        </div>
-      )}
+        ))}
+        <div className="h-px bg-black/5 dark:bg-white/5 my-1" />
+        <a
+          href="/login"
+          onClick={() => setMobileOpen(false)}
+          className="text-sm font-medium text-slate-600 dark:text-slate-400"
+        >
+          Login
+        </a>
+        <a
+          href="/signup"
+          onClick={() => setMobileOpen(false)}
+          className="px-4 py-2 text-sm font-semibold text-center bg-mint-400 hover:bg-mint-500 text-navy-900 rounded-lg transition-colors"
+        >
+          Start Free →
+        </a>
+      </div>
     </nav>
   );
 }
