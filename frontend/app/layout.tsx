@@ -3,6 +3,7 @@ import { Sora, JetBrains_Mono } from "next/font/google";
 import "./globals.css";
 import { Providers } from "@/components/providers";
 import { ThemeContextProvider } from "./ThemeContextHelper";
+import { CookieConsentBanner } from "@/components/layout/CookieConsentBanner";
 
 const sora = Sora({
   variable: "--font-sora",
@@ -34,6 +35,7 @@ export default function RootLayout({
       <body className="min-h-full bg-background text-foreground flex flex-col transition-colors duration-300">
         <ThemeContextProvider>
           <Providers>{children}</Providers>
+          <CookieConsentBanner />
         </ThemeContextProvider>
       </body>
     </html>
