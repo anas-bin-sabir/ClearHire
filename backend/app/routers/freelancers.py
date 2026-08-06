@@ -1,5 +1,5 @@
 from typing import Optional
-from pydantic import BaseModel
+from pydantic import BaseModel, Field
 from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.dependencies import get_freelancer_repo
@@ -108,7 +108,9 @@ async def update_freelancer(
 
 class FlagUpdateRequest(BaseModel):
     is_flagged: bool
-    reason: Optional[str] = None
+    reason: Optional[str] = Field(default=None, max_length=1000)
+
+    model_config = {"extra": "forbid"}
 
 @router.patch("/{freelancer_id}/flag", response_model=FreelancerRecord)
 async def flag_freelancer(

@@ -1,5 +1,7 @@
+import re
+
 from fastapi import APIRouter, Depends, HTTPException, status
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Literal, Optional
@@ -14,12 +16,35 @@ from app.db.utils.embeddings import random_unit_embedding
 
 router = APIRouter()
 
+NAME_PATTERN = re.compile(r"^[A-Za-z0-9À-ÿ .,'\-]{1,255}$")
+PASSWORD_HAS_LETTER = re.compile(r"[A-Za-z]")
+PASSWORD_HAS_DIGIT = re.compile(r"\d")
+
 
 class UserSignupRequest(BaseModel):
     name: str = Field(..., min_length=1, max_length=255)
-    email: str = Field(..., min_length=3, max_length=255)
-    password: str = Field(..., min_length=4)
+    email: EmailStr = Field(..., max_length=255)
+    password: str = Field(..., min_length=8, max_length=128)
     role: Literal["client", "freelancer"] = "client"
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("name")
+    @classmethod
+    def _name_valid(cls, v: str) -> str:
+        v = v.strip()
+        if not NAME_PATTERN.match(v):
+            raise ValueError(
+                "must be 1-255 characters using letters, numbers, spaces, and . , ' - only"
+            )
+        return v
+
+    @field_validator("password")
+    @classmethod
+    def _password_valid(cls, v: str) -> str:
+        if not PASSWORD_HAS_LETTER.search(v) or not PASSWORD_HAS_DIGIT.search(v):
+            raise ValueError("must contain at least one letter and one digit")
+        return v
 
 
 class UserSignupResponse(BaseModel):
@@ -32,8 +57,10 @@ class UserSignupResponse(BaseModel):
 
 
 class UserLoginRequest(BaseModel):
-    email: str
-    password: str
+    email: EmailStr = Field(..., max_length=255)
+    password: str = Field(..., min_length=1, max_length=128)
+
+    model_config = {"extra": "forbid"}
 
 
 class UserLoginResponse(BaseModel):

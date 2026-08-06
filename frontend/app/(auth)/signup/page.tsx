@@ -36,8 +36,8 @@ export default function SignupPage() {
       return
     }
 
-    if (password.length < 4) {
-      setError('Password must be at least 4 characters long.')
+    if (password.length < 8 || !/[A-Za-z]/.test(password) || !/\d/.test(password)) {
+      setError('Password must be at least 8 characters and include a letter and a number.')
       setLoading(false)
       return
     }

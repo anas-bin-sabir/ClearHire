@@ -1,23 +1,76 @@
+import re
 from typing import Any, Literal, Optional
 
-from pydantic import BaseModel, Field
+from pydantic import AnyUrl, BaseModel, Field, field_validator
+
+# --- Shared validation primitives ---
+#
+# These schemas reject malformed input outright (HTTP 422) rather than
+# silently sanitizing/escaping it. Every request model below is
+# `extra="forbid"`: unrecognized fields fail validation instead of being
+# dropped.
+
+NAME_PATTERN = re.compile(r"^[A-Za-z0-9À-ÿ .,'\-]{1,255}$")
+SKILL_PATTERN = re.compile(r"^[A-Za-z0-9+#. \-]{1,50}$")
+MAX_LIST_ITEMS = 50
+
+
+def _validate_name(value: str) -> str:
+    value = value.strip()
+    if not NAME_PATTERN.match(value):
+        raise ValueError(
+            "must be 1-255 characters using letters, numbers, spaces, and . , ' - only"
+        )
+    return value
+
+
+def _validate_skills(skills: list[str]) -> list[str]:
+    if len(skills) > MAX_LIST_ITEMS:
+        raise ValueError(f"at most {MAX_LIST_ITEMS} skills allowed")
+    cleaned = []
+    for skill in skills:
+        skill = skill.strip()
+        if not SKILL_PATTERN.match(skill):
+            raise ValueError(
+                f"invalid skill {skill!r}: must be 1-50 chars of letters, numbers, "
+                "spaces, + # . -"
+            )
+        cleaned.append(skill)
+    return cleaned
+
+
+def _validate_urls(urls: list[str]) -> list[str]:
+    if len(urls) > MAX_LIST_ITEMS:
+        raise ValueError(f"at most {MAX_LIST_ITEMS} URLs allowed")
+    validated = []
+    for url in urls:
+        parsed = AnyUrl(url)
+        if parsed.scheme not in ("http", "https"):
+            raise ValueError(f"invalid URL {url!r}: only http/https allowed")
+        validated.append(str(parsed))
+    return validated
 
 
 # --- Search ---
 
 
 class SearchRequest(BaseModel):
-    query: str = Field(default="", description="Natural language search criteria")
+    query: str = Field(default="", max_length=500, description="Natural language search criteria")
     skills: list[str] = Field(default_factory=list)
-    min_rate: Optional[float] = Field(default=None, alias="minRate")
-    max_rate: Optional[float] = Field(default=None, alias="maxRate")
-    min_rating: Optional[float] = Field(default=None, alias="minRating")
+    min_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="minRate")
+    max_rate: Optional[float] = Field(default=None, ge=0, le=100_000, alias="maxRate")
+    min_rating: Optional[float] = Field(default=None, ge=0, le=5, alias="minRating")
     available_only: bool = Field(default=False, alias="availableOnly")
     max_fraud: float = Field(default=1.0, ge=0.0, le=1.0, alias="maxFraud")
-    budget: float = Field(default=10000.0)
-    team_size: int = Field(default=1, ge=1)
+    budget: float = Field(default=10000.0, gt=0, le=100_000_000)
+    team_size: int = Field(default=1, ge=1, le=50)
 
-    model_config = {"populate_by_name": True}
+    model_config = {"populate_by_name": True, "extra": "forbid"}
+
+    @field_validator("skills")
+    @classmethod
+    def _skills_valid(cls, v: list[str]) -> list[str]:
+        return _validate_skills(v)
 
 
 class RankedFreelancer(BaseModel):
@@ -49,15 +102,32 @@ class SearchResponse(BaseModel):
 
 
 class FraudRequest(BaseModel):
-    freelancer_id: Optional[int] = None
-    name: Optional[str] = None
-    account_age_days: Optional[int] = None
-    rating: Optional[float] = None
-    hourly_rate: Optional[float] = None
-    experience_years: Optional[int] = None
-    review_count: Optional[int] = None
+    freelancer_id: Optional[int] = Field(default=None, gt=0)
+    name: Optional[str] = Field(default=None, max_length=255)
+    account_age_days: Optional[int] = Field(default=None, ge=0, le=36_500)
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+    hourly_rate: Optional[float] = Field(default=None, ge=0, le=100_000)
+    experience_years: Optional[int] = Field(default=None, ge=0, le=80)
+    review_count: Optional[int] = Field(default=None, ge=0, le=1_000_000)
     portfolio_urls: Optional[list[str]] = None
     skills: Optional[list[str]] = None
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("name")
+    @classmethod
+    def _name_valid(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_name(v) if v is not None else v
+
+    @field_validator("skills")
+    @classmethod
+    def _skills_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_skills(v) if v is not None else v
+
+    @field_validator("portfolio_urls")
+    @classmethod
+    def _urls_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_urls(v) if v is not None else v
 
 
 class FraudResponse(BaseModel):
@@ -77,10 +147,10 @@ class FraudResponse(BaseModel):
 
 
 class TeamBuilderRequest(BaseModel):
-    budget: float = Field(gt=0)
-    required_skills: list[str] = Field(min_length=1)
+    budget: float = Field(gt=0, le=100_000_000)
+    required_skills: list[str] = Field(min_length=1, max_length=MAX_LIST_ITEMS)
     team_size: int = Field(ge=1, le=20)
-    hours_per_member: int = Field(default=40, ge=1)
+    hours_per_member: int = Field(default=40, ge=1, le=200)
     max_fraud_score: float = Field(
         default=0.6,
         ge=0.0,
@@ -89,9 +159,17 @@ class TeamBuilderRequest(BaseModel):
     )
     project_id: Optional[int] = Field(
         default=None,
+        gt=0,
         description="Optional project to associate with background CSP agent run",
     )
-    deadline_days: Optional[int] = Field(default=30, ge=1)
+    deadline_days: Optional[int] = Field(default=30, ge=1, le=3650)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("required_skills")
+    @classmethod
+    def _skills_valid(cls, v: list[str]) -> list[str]:
+        return _validate_skills(v)
 
 
 class TeamBuilderResponse(BaseModel):
@@ -139,6 +217,8 @@ class SeedRequest(BaseModel):
         description="If true, clears freelancers/projects before seeding",
     )
 
+    model_config = {"extra": "forbid"}
+
 
 class SeedResponse(BaseModel):
     success: bool
@@ -152,17 +232,34 @@ class SeedResponse(BaseModel):
 # --- Freelancers / projects / stats ---
 
 class FreelancerUpdateRequest(BaseModel):
-    name: Optional[str] = None
+    name: Optional[str] = Field(default=None, max_length=255)
     skills: Optional[list[str]] = None
-    hourly_rate: Optional[float] = None
-    experience_years: Optional[int] = None
-    rating: Optional[float] = None
-    review_count: Optional[int] = None
-    account_age_days: Optional[int] = None
+    hourly_rate: Optional[float] = Field(default=None, ge=0, le=100_000)
+    experience_years: Optional[int] = Field(default=None, ge=0, le=80)
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+    review_count: Optional[int] = Field(default=None, ge=0, le=1_000_000)
+    account_age_days: Optional[int] = Field(default=None, ge=0, le=36_500)
     availability: Optional[bool] = None
     portfolio_urls: Optional[list[str]] = None
-    bio: Optional[str] = None
-    location: Optional[str] = None
+    bio: Optional[str] = Field(default=None, max_length=2000)
+    location: Optional[str] = Field(default=None, max_length=255)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("name")
+    @classmethod
+    def _name_valid(cls, v: Optional[str]) -> Optional[str]:
+        return _validate_name(v) if v is not None else v
+
+    @field_validator("skills")
+    @classmethod
+    def _skills_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_skills(v) if v is not None else v
+
+    @field_validator("portfolio_urls")
+    @classmethod
+    def _urls_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_urls(v) if v is not None else v
 
 
 class FreelancerRecord(BaseModel):
@@ -211,12 +308,19 @@ class ProjectListResponse(BaseModel):
 
 
 class ProjectUpdateRequest(BaseModel):
-    title: Optional[str] = None
-    description: Optional[str] = None
+    title: Optional[str] = Field(default=None, min_length=1, max_length=255)
+    description: Optional[str] = Field(default=None, max_length=5000)
     required_skills: Optional[list[str]] = None
-    budget: Optional[float] = None
-    deadline_days: Optional[int] = None
-    team_size: Optional[int] = None
+    budget: Optional[float] = Field(default=None, gt=0, le=100_000_000)
+    deadline_days: Optional[int] = Field(default=None, ge=1, le=3650)
+    team_size: Optional[int] = Field(default=None, ge=1, le=50)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("required_skills")
+    @classmethod
+    def _skills_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_skills(v) if v is not None else v
 
 
 class PlatformStatsResponse(BaseModel):
@@ -258,12 +362,19 @@ class TimeSeriesResponse(BaseModel):
 
 class ProjectCreateRequest(BaseModel):
     title: str = Field(min_length=1, max_length=255)
-    description: Optional[str] = None
-    client: Optional[str] = None
+    description: Optional[str] = Field(default=None, max_length=5000)
+    client: Optional[str] = Field(default=None, max_length=255)
     required_skills: list[str] = Field(default_factory=list)
-    budget: float = Field(gt=0)
+    budget: float = Field(gt=0, le=100_000_000)
     deadline_days: int = Field(default=30, ge=1, le=365)
     team_size: int = Field(default=1, ge=1, le=50)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("required_skills")
+    @classmethod
+    def _skills_valid(cls, v: list[str]) -> list[str]:
+        return _validate_skills(v)
 
 
 class ProjectCreateResponse(BaseModel):
@@ -271,6 +382,8 @@ class ProjectCreateResponse(BaseModel):
 
 
 # --- Contracts ---
+
+CONTRACT_STATUS_PATTERN = r"^(pending|active|completed|cancelled)$"
 
 
 class ContractRecord(BaseModel):
@@ -287,19 +400,33 @@ class ContractListResponse(BaseModel):
 
 
 class ContractCreateRequest(BaseModel):
-    freelancer_id: int
-    project_id: int
-    status: str = Field(default="active", pattern=r"^(pending|active|completed|cancelled)$")
+    freelancer_id: int = Field(gt=0)
+    project_id: int = Field(gt=0)
+    status: str = Field(default="active", pattern=CONTRACT_STATUS_PATTERN)
+
+    model_config = {"extra": "forbid"}
 
 
 class ContractUpdateRequest(BaseModel):
-    status: str = Field(pattern=r"^(pending|active|completed|cancelled)$")
+    status: str = Field(pattern=CONTRACT_STATUS_PATTERN)
+
+    model_config = {"extra": "forbid"}
 
 
 class ContractBatchRequest(BaseModel):
-    project_id: int
-    freelancer_ids: list[int] = Field(default_factory=list)
-    status: str = Field(default="active", pattern=r"^(pending|active|completed|cancelled)$")
+    project_id: int = Field(gt=0)
+    freelancer_ids: list[int] = Field(default_factory=list, max_length=MAX_LIST_ITEMS)
+    status: str = Field(default="active", pattern=CONTRACT_STATUS_PATTERN)
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("freelancer_ids")
+    @classmethod
+    def _ids_valid(cls, v: list[int]) -> list[int]:
+        for fid in v:
+            if fid <= 0:
+                raise ValueError("freelancer_ids must be positive integers")
+        return v
 
 
 class ActivityFeedItem(BaseModel):
@@ -331,11 +458,24 @@ class SkillListResponse(BaseModel):
 
 
 class UserPreferences(BaseModel):
+    """Also used to reconstruct preferences from stored documents, so it
+    tolerates unknown/legacy fields on read. `UserPreferencesUpdate` is the
+    strict variant used to validate incoming write requests."""
+
     notifications_enabled: bool = True
     email_alerts: bool = True
     fraud_sensitivity: float = Field(default=0.6, ge=0.0, le=1.0)
-    preferred_skills: list[str] = Field(default_factory=list)
-    theme: str = "dark"
+    preferred_skills: list[str] = Field(default_factory=list, max_length=MAX_LIST_ITEMS)
+    theme: Literal["dark", "light"] = "dark"
+
+    @field_validator("preferred_skills")
+    @classmethod
+    def _skills_valid(cls, v: list[str]) -> list[str]:
+        return _validate_skills(v)
+
+
+class UserPreferencesUpdate(UserPreferences):
+    model_config = {"extra": "forbid"}
 
 
 class UserSettingsResponse(BaseModel):
@@ -344,15 +484,32 @@ class UserSettingsResponse(BaseModel):
 
 
 class FreelancerCreateRequest(BaseModel):
-    name: str
-    skills: list[str] = []
-    hourly_rate: float = 0.0
-    experience_years: int = 0
-    rating: float | None = None
-    review_count: int | None = None
-    account_age_days: int | None = None
-    availability: bool | None = None
-    portfolio_urls: list[str] | None = None
+    name: str = Field(max_length=255)
+    skills: list[str] = Field(default_factory=list)
+    hourly_rate: float = Field(default=0.0, ge=0, le=100_000)
+    experience_years: int = Field(default=0, ge=0, le=80)
+    rating: Optional[float] = Field(default=None, ge=0, le=5)
+    review_count: Optional[int] = Field(default=None, ge=0, le=1_000_000)
+    account_age_days: Optional[int] = Field(default=None, ge=0, le=36_500)
+    availability: Optional[bool] = None
+    portfolio_urls: Optional[list[str]] = None
+
+    model_config = {"extra": "forbid"}
+
+    @field_validator("name")
+    @classmethod
+    def _name_valid(cls, v: str) -> str:
+        return _validate_name(v)
+
+    @field_validator("skills")
+    @classmethod
+    def _skills_valid(cls, v: list[str]) -> list[str]:
+        return _validate_skills(v)
+
+    @field_validator("portfolio_urls")
+    @classmethod
+    def _urls_valid(cls, v: Optional[list[str]]) -> Optional[list[str]]:
+        return _validate_urls(v) if v is not None else v
 
 
 class FreelancerCreateResponse(BaseModel):

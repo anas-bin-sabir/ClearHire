@@ -3,7 +3,7 @@ from fastapi import APIRouter, Depends, Header
 from app.core.dependencies import get_user_repo
 from app.db import mongodb as mongo_db
 from app.db.repositories.postgres import UserRepository
-from app.models.schemas import UserPreferences, UserSettingsResponse
+from app.models.schemas import UserPreferences, UserPreferencesUpdate, UserSettingsResponse
 
 router = APIRouter()
 
@@ -44,7 +44,7 @@ async def get_user_settings(
 @router.post("/{user_id}", response_model=UserSettingsResponse)
 async def update_user_settings(
     user_id: int,
-    preferences: UserPreferences,
+    preferences: UserPreferencesUpdate,
     user_repo: UserRepository = Depends(get_user_repo),
 ) -> UserSettingsResponse:
     """Update user preferences/settings"""
