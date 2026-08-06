@@ -1,11 +1,12 @@
 from fastapi import APIRouter, Depends, Header
 
 from app.core.dependencies import get_user_repo
+from app.core.rate_limit import enforce_user_action_rate_limit
 from app.db import mongodb as mongo_db
 from app.db.repositories.postgres import UserRepository
 from app.models.schemas import UserPreferences, UserPreferencesUpdate, UserSettingsResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_user_action_rate_limit)])
 
 
 def _get_settings_collection():

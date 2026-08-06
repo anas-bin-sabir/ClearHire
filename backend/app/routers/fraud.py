@@ -8,12 +8,13 @@ from app.ai.types import FraudExplanationInput, FreelancerCandidate
 from app.core.activity import log_activity
 from app.core.config import settings
 from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.mongo import AIExplanationRepository
 from app.db.repositories.postgres import FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
 from app.models.schemas import FraudRequest, FraudResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 def _fraud_response_from_cache(

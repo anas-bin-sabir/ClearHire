@@ -1,12 +1,13 @@
 import re
 
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Request, status
 from pydantic import BaseModel, EmailStr, Field, field_validator
 from sqlalchemy.ext.asyncio import AsyncSession
 from sqlalchemy import select
 from typing import Literal, Optional
 
 from app.core.dependencies import get_db_session
+from app.core.rate_limit import enforce_auth_rate_limit, record_auth_failure, record_auth_success
 from app.db.repositories.postgres import UserRepository, FreelancerRepository
 from app.db.repositories.mongo import FreelancerMetaRepository
 from app.db.repositories.neo4j import GraphRepository
@@ -73,12 +74,16 @@ class UserLoginResponse(BaseModel):
 
 @router.post("/signup", response_model=UserSignupResponse, status_code=status.HTTP_201_CREATED)
 async def signup(
+    request: Request,
     body: UserSignupRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> UserSignupResponse:
+    enforce_auth_rate_limit(request, body.email)
+
     user_repo = UserRepository(session)
     existing_user = await user_repo.get_by_email(body.email)
     if existing_user:
+        record_auth_failure(request, body.email)
         raise HTTPException(
             status_code=status.HTTP_400_BAD_REQUEST,
             detail="Email address already registered",
@@ -140,6 +145,8 @@ async def signup(
         except Exception:
             pass
 
+    record_auth_success(request, body.email)
+
     return UserSignupResponse(
         id=user.id,
         name=user.name,
@@ -152,22 +159,29 @@ async def signup(
 
 @router.post("/login", response_model=UserLoginResponse)
 async def login(
+    request: Request,
     body: UserLoginRequest,
     session: AsyncSession = Depends(get_db_session),
 ) -> UserLoginResponse:
+    enforce_auth_rate_limit(request, body.email)
+
     user_repo = UserRepository(session)
     user = await user_repo.get_by_email(body.email)
     if not user:
+        record_auth_failure(request, body.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
 
     if not verify_password(body.password, user.password_hash):
+        record_auth_failure(request, body.email)
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,
             detail="Invalid email or password",
         )
+
+    record_auth_success(request, body.email)
 
     freelancer_id = None
     if user.role == "freelancer":

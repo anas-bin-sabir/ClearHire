@@ -10,11 +10,12 @@ from app.core.dependencies import (
     get_freelancer_repo,
     get_search_history_repo,
 )
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.mongo import AIExplanationRepository, SearchHistoryRepository
 from app.db.repositories.postgres import FreelancerRepository
 from app.models.schemas import SearchRequest, SearchResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 @router.post("", response_model=SearchResponse)

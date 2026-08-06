@@ -4,10 +4,11 @@ from typing import Any
 from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_activity_repo
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.mongo import ActivityLogRepository
 from app.models.schemas import DayMetrics, TimeSeriesResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 async def _get_metrics_for_date(

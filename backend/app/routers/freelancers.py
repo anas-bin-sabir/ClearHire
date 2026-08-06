@@ -4,14 +4,19 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.dependencies import get_freelancer_repo
 from app.core.events import ClearHireEvent, emit
+from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.postgres import FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
-from app.models.schemas import FreelancerCreateRequest, FreelancerCreateResponse, FreelancerListResponse, FreelancerRecord, SkillListResponse, FreelancerUpdateRequest  
+from app.models.schemas import FreelancerCreateRequest, FreelancerCreateResponse, FreelancerListResponse, FreelancerRecord, SkillListResponse, FreelancerUpdateRequest
 
 router = APIRouter()
 
 
-@router.get("", response_model=FreelancerListResponse)
+@router.get(
+    "",
+    response_model=FreelancerListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_freelancers(
     q: str | None = Query(default=None, description="Name or numeric ID"),
     limit: int = Query(default=50, ge=1, le=200),
@@ -25,7 +30,11 @@ async def list_freelancers(
     )
 
 
-@router.get("/skills/list", response_model=SkillListResponse)
+@router.get(
+    "/skills/list",
+    response_model=SkillListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_skills(
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
 ) -> SkillListResponse:
@@ -33,7 +42,12 @@ async def list_skills(
     return SkillListResponse(skills=skills)
 
 
-@router.post("", response_model=FreelancerCreateResponse, status_code=201)
+@router.post(
+    "",
+    response_model=FreelancerCreateResponse,
+    status_code=201,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def create_freelancer(
     body: FreelancerCreateRequest,
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
@@ -72,7 +86,11 @@ async def create_freelancer(
     )
 
 
-@router.get("/{freelancer_id}", response_model=FreelancerRecord)
+@router.get(
+    "/{freelancer_id}",
+    response_model=FreelancerRecord,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def get_freelancer(
     freelancer_id: int,
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
@@ -83,7 +101,11 @@ async def get_freelancer(
     return FreelancerRecord.model_validate(freelancer_to_dict(freelancer))
 
 
-@router.patch("/{freelancer_id}", response_model=FreelancerRecord)
+@router.patch(
+    "/{freelancer_id}",
+    response_model=FreelancerRecord,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def update_freelancer(
     freelancer_id: int,
     body: FreelancerUpdateRequest,
@@ -112,7 +134,11 @@ class FlagUpdateRequest(BaseModel):
 
     model_config = {"extra": "forbid"}
 
-@router.patch("/{freelancer_id}/flag", response_model=FreelancerRecord)
+@router.patch(
+    "/{freelancer_id}/flag",
+    response_model=FreelancerRecord,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def flag_freelancer(
     freelancer_id: int,
     body: FlagUpdateRequest,

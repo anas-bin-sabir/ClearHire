@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.dependencies import get_contract_repo, get_project_repo
 from app.core.events import ClearHireEvent, emit
+from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.postgres import ContractRepository, ProjectRepository
 from app.db.utils.serializers import project_to_dict
 from app.models.orm import ContractStatus
@@ -64,7 +65,11 @@ def _record_from_project(project, contracts: list) -> ProjectRecord:
     )
 
 
-@router.get("", response_model=ProjectListResponse)
+@router.get(
+    "",
+    response_model=ProjectListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_projects(
     project_repo: ProjectRepository = Depends(get_project_repo),
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -81,7 +86,12 @@ async def list_projects(
     return ProjectListResponse(projects=records, total=len(records))
 
 
-@router.post("", response_model=ProjectCreateResponse, status_code=201)
+@router.post(
+    "",
+    response_model=ProjectCreateResponse,
+    status_code=201,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def create_project(
     body: ProjectCreateRequest,
     project_repo: ProjectRepository = Depends(get_project_repo),
@@ -109,7 +119,11 @@ async def create_project(
     return ProjectCreateResponse(project=record)
 
 
-@router.get("/{project_id}", response_model=ProjectRecord)
+@router.get(
+    "/{project_id}",
+    response_model=ProjectRecord,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def get_project(
     project_id: int,
     project_repo: ProjectRepository = Depends(get_project_repo),
@@ -122,7 +136,11 @@ async def get_project(
     return _record_from_project(project, contracts)
 
 
-@router.patch("/{project_id}", response_model=ProjectRecord)
+@router.patch(
+    "/{project_id}",
+    response_model=ProjectRecord,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def update_project(
     project_id: int,
     body: ProjectUpdateRequest,

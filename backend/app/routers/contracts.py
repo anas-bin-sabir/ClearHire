@@ -2,6 +2,7 @@ from fastapi import APIRouter, Depends, HTTPException, Query
 
 from app.core.activity import log_activity
 from app.core.dependencies import get_contract_repo, get_freelancer_repo, get_project_repo
+from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.postgres import (
     ContractRepository,
     FreelancerRepository,
@@ -19,7 +20,11 @@ from app.models.schemas import (
 router = APIRouter()
 
 
-@router.get("", response_model=ContractListResponse)
+@router.get(
+    "",
+    response_model=ContractListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_all_contracts(
     limit: int = Query(default=200, ge=1, le=500),
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -40,7 +45,11 @@ def _to_record(contract) -> ContractRecord:
     )
 
 
-@router.get("/freelancer/{freelancer_id}", response_model=ContractListResponse)
+@router.get(
+    "/freelancer/{freelancer_id}",
+    response_model=ContractListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_contracts_by_freelancer(
     freelancer_id: int,
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -54,7 +63,11 @@ async def list_contracts_by_freelancer(
     return ContractListResponse(contracts=records, total=len(records))
 
 
-@router.get("/project/{project_id}", response_model=ContractListResponse)
+@router.get(
+    "/project/{project_id}",
+    response_model=ContractListResponse,
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def list_contracts_by_project(
     project_id: int,
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -68,7 +81,12 @@ async def list_contracts_by_project(
     return ContractListResponse(contracts=records, total=len(records))
 
 
-@router.post("", response_model=ContractRecord, status_code=201)
+@router.post(
+    "",
+    response_model=ContractRecord,
+    status_code=201,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def create_contract(
     body: ContractCreateRequest,
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -90,7 +108,12 @@ async def create_contract(
     return _to_record(contract)
 
 
-@router.post("/batch", response_model=ContractListResponse, status_code=201)
+@router.post(
+    "/batch",
+    response_model=ContractListResponse,
+    status_code=201,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def create_contracts_batch(
     body: ContractBatchRequest,
     contract_repo: ContractRepository = Depends(get_contract_repo),
@@ -126,7 +149,11 @@ async def create_contracts_batch(
     return ContractListResponse(contracts=records, total=len(records))
 
 
-@router.patch("/{contract_id}", response_model=ContractRecord)
+@router.patch(
+    "/{contract_id}",
+    response_model=ContractRecord,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def update_contract_status(
     contract_id: int,
     body: ContractUpdateRequest,

@@ -6,6 +6,7 @@ from app.core.dependencies import (
     get_freelancer_repo,
     get_project_repo,
 )
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.mongo import ActivityLogRepository
 from app.db.repositories.postgres import (
     ContractRepository,
@@ -15,7 +16,7 @@ from app.db.repositories.postgres import (
 from app.models.schemas import PlatformStatsResponse
 from app.routers.projects import resolve_project_status
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 @router.get("", response_model=PlatformStatsResponse)

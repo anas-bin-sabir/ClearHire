@@ -2,11 +2,12 @@ from fastapi import APIRouter, Depends, HTTPException
 
 from app.core.activity import log_activity
 from app.core.dependencies import get_freelancer_repo, get_graph_repo, get_skill_repo
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.neo4j import GraphRepository
 from app.db.repositories.postgres import FreelancerRepository, SkillRelationshipRepository
 from app.models.schemas import GraphNode, GraphResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 def _enrich_fraud_scores(

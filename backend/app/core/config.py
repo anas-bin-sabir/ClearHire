@@ -47,6 +47,43 @@ class Settings(BaseSettings):
 
     embedding_dimensions: int = Field(default=384, alias="EMBEDDING_DIMENSIONS")
 
+    # --- Rate limiting ---
+    rate_limit_enabled: bool = Field(default=True, alias="RATE_LIMIT_ENABLED")
+
+    # Moderate limits for public/read-heavy endpoints (search, graph, stats, list views, ...)
+    rate_limit_public_max_requests: int = Field(
+        default=60, alias="RATE_LIMIT_PUBLIC_MAX_REQUESTS"
+    )
+    rate_limit_public_window_seconds: int = Field(
+        default=60, alias="RATE_LIMIT_PUBLIC_WINDOW_SECONDS"
+    )
+
+    # Looser limits for authenticated-user actions (create/update freelancers,
+    # projects, contracts, team builds, settings, ...)
+    rate_limit_user_max_requests: int = Field(
+        default=300, alias="RATE_LIMIT_USER_MAX_REQUESTS"
+    )
+    rate_limit_user_window_seconds: int = Field(
+        default=60, alias="RATE_LIMIT_USER_WINDOW_SECONDS"
+    )
+
+    # Strict limits for /auth/login and /auth/signup: combined per-IP and
+    # per-account exponential backoff instead of a hard lockout.
+    rate_limit_auth_free_attempts: int = Field(
+        default=3,
+        alias="RATE_LIMIT_AUTH_FREE_ATTEMPTS",
+        description="Failed attempts allowed before backoff delay kicks in",
+    )
+    rate_limit_auth_backoff_base_seconds: float = Field(
+        default=1.0, alias="RATE_LIMIT_AUTH_BACKOFF_BASE_SECONDS"
+    )
+    rate_limit_auth_backoff_multiplier: float = Field(
+        default=2.0, alias="RATE_LIMIT_AUTH_BACKOFF_MULTIPLIER"
+    )
+    rate_limit_auth_backoff_max_seconds: float = Field(
+        default=300.0, alias="RATE_LIMIT_AUTH_BACKOFF_MAX_SECONDS"
+    )
+
     @property
     def cors_origin_list(self) -> List[str]:
         return [o.strip() for o in self.cors_origins.split(",") if o.strip()]

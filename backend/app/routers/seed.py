@@ -3,10 +3,11 @@ from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.core.activity import log_activity
 from app.core.dependencies import get_db_session
+from app.core.rate_limit import enforce_user_action_rate_limit
 from app.db.seed import DatabaseSeeder
 from app.models.schemas import SeedRequest, SeedResponse
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_user_action_rate_limit)])
 
 
 @router.post("", response_model=SeedResponse)

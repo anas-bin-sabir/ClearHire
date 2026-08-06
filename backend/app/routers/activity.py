@@ -3,6 +3,7 @@ from datetime import datetime, timezone
 from fastapi import APIRouter, Depends
 
 from app.core.dependencies import get_activity_repo, get_search_history_repo
+from app.core.rate_limit import enforce_public_rate_limit
 from app.db.repositories.mongo import ActivityLogRepository, SearchHistoryRepository
 from app.models.schemas import (
     ActivityFeedItem,
@@ -11,7 +12,7 @@ from app.models.schemas import (
     RecentSearchResponse,
 )
 
-router = APIRouter()
+router = APIRouter(dependencies=[Depends(enforce_public_rate_limit)])
 
 
 def _relative_time(ts: datetime) -> str:

@@ -9,6 +9,7 @@ from app.core.activity import log_activity
 from app.core.config import settings
 from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
 from app.core.events import ClearHireEvent, emit
+from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.mongo import AIExplanationRepository
 from app.db.repositories.postgres import FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
@@ -17,7 +18,10 @@ from app.models.schemas import TeamBuilderRequest, TeamBuilderResponse
 router = APIRouter()
 
 
-@router.get("/status/{project_id}")
+@router.get(
+    "/status/{project_id}",
+    dependencies=[Depends(enforce_public_rate_limit)],
+)
 async def get_team_build_status(
     project_id: int,
     ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
@@ -32,7 +36,11 @@ async def get_team_build_status(
     return {"status": "complete", "project_id": project_id, **cached}
 
 
-@router.post("", response_model=TeamBuilderResponse)
+@router.post(
+    "",
+    response_model=TeamBuilderResponse,
+    dependencies=[Depends(enforce_user_action_rate_limit)],
+)
 async def build_team(
     body: TeamBuilderRequest,
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
