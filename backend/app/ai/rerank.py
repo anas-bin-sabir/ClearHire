@@ -2,7 +2,8 @@
 
 The LLM judges the top candidates against the project and every claim it makes
 must cite evidence refs that point at a field of the candidate card it was shown
-(``f12.skills``, ``f12.project:7``). Claims whose refs don't resolve are stripped
+(``f12.skills``, ``f12.project:7``) or at a graph fact on it (``f12.graph:path:Kubernetes``,
+``f12.graph:collab:31``). Claims whose refs don't resolve are stripped
 server-side. The final score blends the deterministic score with the LLM fit:
 ``alpha * deterministic + (1 - alpha) * fit``. Without an API key, or when the call
 fails, a deterministic reasoning path produces the same response shape and the
@@ -39,7 +40,11 @@ CITABLE_FIELDS = (
     "fraud_score",
 )
 BIO_CHARS = 600
-_REF = re.compile(r"^f(\d+)\.(?:(" + "|".join(CITABLE_FIELDS) + r")|project:(\d+))$")
+# f<id>.<field> | f<id>.project:<id> | f<id>.graph:path:<required skill> | f<id>.graph:collab:<id>
+_REF = re.compile(
+    r"^f(\d+)\.(?:(" + "|".join(CITABLE_FIELDS) + r")|project:(\d+)"
+    r"|graph:path:(.+)|graph:collab:(\d+))$"
+)
 
 RERANK_SYSTEM = """You are ClearHire's candidate evaluator. A client described a project; \
 you receive it with a shortlist of freelancer cards that a deterministic ranker already \
@@ -52,8 +57,19 @@ bio and completed projects, then seniority, budget fit and trust signals.
 - strengths and risks: short, specific claims. Each claim needs evidence: refs to the card \
 fields that support it, written as f<id>.<field> (fields: skills, bio, experience_years, \
 hourly_rate, rating, review_count, availability, location, fraud_score) or \
-f<id>.project:<project id> for a listed completed project. Only cite the card the claim is \
-about. A claim you cannot support from the card does not belong in the answer.
+f<id>.project:<project id> for a project listed in completed_projects or \
+graph.past_projects. Only cite the card the claim is about. A claim you cannot support from \
+the card does not belong in the answer.
+- Use the card's graph facts (from the skill/collaboration graph) where they matter:
+  * graph.skill_paths: how the candidate's own skills reach a required skill \
+(path [have, ..., required], hops, weight). Cite as f<id>.graph:path:<required skill>, \
+e.g. "has Docker, one hop from Kubernetes". A 2-hop path is weak evidence; say so.
+  * graph.collaborations: other shortlisted candidates this person completed projects with \
+(project ids, count, average rating). Cite as f<id>.graph:collab:<other id>, plus \
+f<id>.project:<project id> when that project is on the card, e.g. "shipped project X with \
+#31 (4.8 stars)". This matters when the client needs a team.
+  * graph.past_projects: completed projects that needed this search's skills; cite as \
+f<id>.project:<project id>.
 - biggest_gap: the single most important thing this candidate lacks for the project \
 (for example "missing Kubernetes; has Docker"), or null if nothing material is missing.
 
@@ -119,12 +135,17 @@ class RerankedCandidate(BaseModel):
     ranked: RankedFreelancer
     final_score: float  # 0..1
     reasoning: Reasoning
+    # subgraph_to_prompt() facts shown to the reasoner (top_n only), so the UI can
+    # render graph evidence refs such as f12.graph:path:Kubernetes.
+    graph: dict[str, Any] | None = None
 
     def to_api_dict(self) -> dict[str, Any]:
         data = self.ranked.to_api_dict()
         data["deterministic_match_score"] = data["match_score"]
         data["match_score"] = round(self.final_score * 100.0, 2)
         data["reasoning"] = self.reasoning.model_dump()
+        if self.graph is not None:
+            data["graph"] = self.graph
         return data
 
 
@@ -165,10 +186,13 @@ class ProjectContext(BaseModel):
 
 
 def candidate_card(
-    item: RankedFreelancer, past_projects: list[tuple[int, str]] | None = None
+    item: RankedFreelancer,
+    past_projects: list[tuple[int, str]] | None = None,
+    graph: dict[str, Any] | None = None,
 ) -> dict[str, Any]:
+    """Compact card for the LLM; ``graph`` is ``subgraph_to_prompt()`` output."""
     c, b = item.candidate, item.breakdown
-    return {
+    card = {
         "id": c.id,
         "name": c.name,
         "skills": c.skills,
@@ -191,6 +215,28 @@ def candidate_card(
             "seniority_fit": b.seniority_fit,
         },
     }
+    if graph is not None:
+        card["graph"] = graph
+    return card
+
+
+def card_project_titles(cards: list[dict]) -> dict[int, str]:
+    """{project id: title} for every project named on the cards."""
+    titles: dict[int, str] = {}
+    for card in cards:
+        for p in card.get("completed_projects", []):
+            titles[p["id"]] = p["title"]
+        for p in (card.get("graph") or {}).get("past_projects", []):
+            titles[p["id"]] = p["title"]
+    return titles
+
+
+def _card_project_ids(card: dict) -> set[int]:
+    ids = {p["id"] for p in card.get("completed_projects", [])}
+    ids.update(p["id"] for p in (card.get("graph") or {}).get("past_projects", []))
+    for collab in (card.get("graph") or {}).get("collaborations", []):
+        ids.update(collab.get("project_ids", []))
+    return ids
 
 
 def _valid_ref(ref: str, cards: dict[int, dict], allowed_ids: set[int]) -> bool:
@@ -200,9 +246,16 @@ def _valid_ref(ref: str, cards: dict[int, dict], allowed_ids: set[int]) -> bool:
     fid = int(match.group(1))
     if fid not in allowed_ids or fid not in cards:
         return False
+    card = cards[fid]
+    graph = card.get("graph") or {}
     if match.group(3) is not None:
-        project_id = int(match.group(3))
-        return any(p["id"] == project_id for p in cards[fid]["completed_projects"])
+        return int(match.group(3)) in _card_project_ids(card)
+    if match.group(4) is not None:
+        required = match.group(4).strip().lower()
+        return any(p["required"].lower() == required for p in graph.get("skill_paths", []))
+    if match.group(5) is not None:
+        other = int(match.group(5))
+        return any(c["other_id"] == other for c in graph.get("collaborations", []))
     return True
 
 
@@ -263,17 +316,108 @@ def ground_output(
 # --- Deterministic reasoning -------------------------------------------------
 
 
-def deterministic_reasoning(item: RankedFreelancer, project: ProjectContext) -> Reasoning:
+def _path_text(path: dict[str, Any]) -> str:
+    hops = path["hops"]
+    return (
+        f"{' → '.join(path['path'])} "
+        f"({hops} hop{'s' if hops != 1 else ''} in the skill graph)"
+    )
+
+
+def graph_claims(
+    fid: int,
+    graph: dict[str, Any] | None,
+    project_titles: dict[int, str] | None = None,
+    *,
+    skip_paths_for: set[str] | None = None,
+) -> list[Claim]:
+    """Strengths grounded in the candidate's graph facts (subgraph_to_prompt shape).
+
+    * adjacency paths (hops >= 1) to required skills the candidate lacks
+    * collaborations with other shortlisted candidates
+    * completed projects that needed this search's skills
+    """
+    if not graph:
+        return []
+    ref = f"f{fid}"
+    titles = dict(project_titles or {})
+    titles.update({p["id"]: p["title"] for p in graph.get("past_projects", [])})
+    skip = {s.lower() for s in skip_paths_for or set()}
+    claims: list[Claim] = []
+    for path in graph.get("skill_paths", []):
+        if path["hops"] < 1 or path["required"].lower() in skip:
+            continue
+        claims.append(
+            Claim(
+                text=_path_text(path),
+                evidence=[f"{ref}.skills", f"{ref}.graph:path:{path['required']}"],
+            )
+        )
+    for collab in graph.get("collaborations", []):
+        known = [pid for pid in collab["project_ids"] if pid in titles]
+        where = (
+            f" on {', '.join(repr(titles[pid]) for pid in known[:2])}"
+            if known
+            else f" on {collab['count']} completed project{'s' if collab['count'] != 1 else ''}"
+        )
+        rating = (
+            f" (avg {collab['avg_rating']:.1f}★)" if collab.get("avg_rating") is not None else ""
+        )
+        claims.append(
+            Claim(
+                text=f"Worked with {collab['other_name']} (#{collab['other_id']}){where}{rating}",
+                evidence=[f"{ref}.graph:collab:{collab['other_id']}"]
+                + [f"{ref}.project:{pid}" for pid in known[:2]],
+            )
+        )
+    for past in graph.get("past_projects", [])[:2]:
+        if not past.get("shared_skills"):
+            continue
+        claims.append(
+            Claim(
+                text=f"Completed {past['title']!r} needing {', '.join(past['shared_skills'])}",
+                evidence=[f"{ref}.project:{past['id']}"],
+            )
+        )
+    return claims
+
+
+def deterministic_reasoning(
+    item: RankedFreelancer,
+    project: ProjectContext,
+    graph: dict[str, Any] | None = None,
+    project_titles: dict[int, str] | None = None,
+) -> Reasoning:
     c, b = item.candidate, item.breakdown
     ref = f"f{c.id}"
     strengths: list[Claim] = []
     risks: list[Claim] = []
     if b.matched_skills:
         strengths.append(Claim(text=f"Has {', '.join(b.matched_skills)}", evidence=[f"{ref}.skills"]))
+    graph_paths = {
+        p["required"].lower(): p
+        for p in (graph or {}).get("skill_paths", [])
+        if p["hops"] >= 1
+    }
     for required, via in b.adjacent_skills.items():
-        strengths.append(
-            Claim(text=f"{via} is adjacent to {required}", evidence=[f"{ref}.skills"])
+        path = graph_paths.get(required.lower())
+        if path:
+            strengths.append(
+                Claim(
+                    text=f"{via} is adjacent to {required}: {_path_text(path)}",
+                    evidence=[f"{ref}.skills", f"{ref}.graph:path:{path['required']}"],
+                )
+            )
+        else:
+            strengths.append(
+                Claim(text=f"{via} is adjacent to {required}", evidence=[f"{ref}.skills"])
+            )
+    strengths.extend(
+        graph_claims(
+            c.id, graph, project_titles,
+            skip_paths_for=set(b.adjacent_skills) | set(b.matched_skills),
         )
+    )
     if c.rating >= 4.5 and c.review_count >= 3:
         strengths.append(
             Claim(
@@ -388,19 +532,26 @@ def blend(
     reasoning: dict[int, Reasoning],
     alpha: float,
     top_n: int,
+    graphs: dict[int, dict[str, Any]] | None = None,
 ) -> list[RerankedCandidate]:
     """Re-order the top ``top_n`` by the blended score; the tail keeps its order.
 
     Candidates in the head without an LLM fit keep their deterministic score.
     """
     head, tail = ranked[:top_n], ranked[top_n:]
+    graphs = graphs or {}
     blended: list[RerankedCandidate] = []
     for item in head:
         r = reasoning.get(item.candidate.id) or Reasoning()
         final = item.rank_score
         if r.fit_score is not None:
             final = alpha * item.rank_score + (1.0 - alpha) * (r.fit_score / 100.0)
-        blended.append(RerankedCandidate(ranked=item, final_score=round(final, 6), reasoning=r))
+        blended.append(
+            RerankedCandidate(
+                ranked=item, final_score=round(final, 6), reasoning=r,
+                graph=graphs.get(item.candidate.id),
+            )
+        )
     blended.sort(key=lambda c: (-c.final_score, c.ranked.candidate.id))
     for item in tail:
         blended.append(
@@ -416,6 +567,8 @@ def blend(
 
 
 def cache_key(project: ProjectContext, cards: list[dict]) -> str:
+    """Hash of everything the LLM sees. Cards carry their ``graph`` facts, so a new
+    collaboration or skill edge changes the key and invalidates cached reranks."""
     payload = json.dumps(
         {"project": project.model_dump(), "cards": cards, "model": settings.anthropic_model},
         sort_keys=True,
@@ -449,13 +602,19 @@ def deterministic_result(
     alpha: float,
     top_n: int,
     error: str | None = None,
+    graphs: dict[int, dict[str, Any]] | None = None,
+    project_titles: dict[int, str] | None = None,
 ) -> RerankResult:
+    graphs = graphs or {}
     reasoning = {
-        item.candidate.id: deterministic_reasoning(item, project) for item in ranked[:top_n]
+        item.candidate.id: deterministic_reasoning(
+            item, project, graphs.get(item.candidate.id), project_titles
+        )
+        for item in ranked[:top_n]
     }
     return RerankResult(
         path="deterministic",
-        candidates=blend(ranked, reasoning, alpha, top_n),
+        candidates=blend(ranked, reasoning, alpha, top_n, graphs),
         comparisons=deterministic_comparisons(ranked[:top_n]),
         alpha=alpha,
         top_n=top_n,
@@ -475,14 +634,18 @@ def llm_result(
     cached: bool,
 ) -> RerankResult:
     by_id = {card["id"]: card for card in cards}
+    graphs = {card["id"]: card["graph"] for card in cards if card.get("graph") is not None}
+    titles = card_project_titles(cards)
     reasoning, comparisons, stripped = ground_output(output, by_id)
     # Candidates the model skipped still get deterministic reasoning text.
     for item in ranked[:top_n]:
         if item.candidate.id not in reasoning:
-            reasoning[item.candidate.id] = deterministic_reasoning(item, project)
+            reasoning[item.candidate.id] = deterministic_reasoning(
+                item, project, graphs.get(item.candidate.id), titles
+            )
     return RerankResult(
         path="llm",
-        candidates=blend(ranked, reasoning, alpha, top_n),
+        candidates=blend(ranked, reasoning, alpha, top_n, graphs),
         comparisons=comparisons,
         alpha=alpha,
         top_n=top_n,

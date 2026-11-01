@@ -7,6 +7,12 @@ Usage (from backend/):
   python -m scripts.eval_retrieval --verbose        # per-query nDCG
   python -m scripts.eval_retrieval --rerank         # + LLM rerank row (needs ANTHROPIC_API_KEY;
                                                     #   ~20 calls, cached in the eval DB per run)
+  python -m scripts.eval_retrieval --set rare       # rare-skill subset (Phase 4), graph off vs on
+  python -m scripts.eval_retrieval --retrieval-limit 30   # smaller shortlist (simulates scale)
+
+The "+ graph" row runs the same pipeline with a GraphContext (Postgres recursive CTEs
+over skill_relationships; GRAPH_EXPANSION_HOPS/DECAY from settings): multi-hop skill
+expansion feeds ranking credit and the widened must-have filter.
 
 Loads tests/fixtures/retrieval_eval.json into EVAL_DATABASE_URL (its public schema is
 DROPPED and rebuilt) and runs each query through app.core.search_pipeline.run_search,
@@ -47,7 +53,9 @@ from app.ai.embeddings import embed_texts, freelancer_embedding_text  # noqa: E4
 from app.ai.ranking import default_weights  # noqa: E402
 from app.core.config import settings  # noqa: E402
 from app.ai import llm  # noqa: E402
+from app.core import search_pipeline  # noqa: E402
 from app.core.search_pipeline import rerank_shortlist, run_search  # noqa: E402
+from app.graph.postgres_context import PostgresGraphContext  # noqa: E402
 from app.db.repositories.postgres import (  # noqa: E402
     AIExplanationRepository,
     FreelancerRepository,
@@ -58,16 +66,23 @@ from app.db.session import async_session_factory, engine, init_postgres  # noqa:
 from app.models.schemas import SearchRequest  # noqa: E402
 
 FIXTURE = BACKEND_ROOT / "tests" / "fixtures" / "retrieval_eval.json"
+RARE_FIXTURE = BACKEND_ROOT / "tests" / "fixtures" / "retrieval_eval_rare.json"
 
-# (label, retrieval mode, apply deterministic ranking?, apply LLM rerank?)
+# (label, retrieval mode, apply deterministic ranking?, apply LLM rerank?, graph expansion?)
 CONFIGS = [
-    ("keyword only", "keyword", False, False),
-    ("vector only", "vector", False, False),
-    ("hybrid (RRF)", "hybrid", False, False),
-    ("vector + ranking", "vector", True, False),
-    ("hybrid + ranking", "hybrid", True, False),
+    ("keyword only", "keyword", False, False, False),
+    ("vector only", "vector", False, False, False),
+    ("hybrid (RRF)", "hybrid", False, False, False),
+    ("vector + ranking", "vector", True, False, False),
+    ("hybrid + ranking", "hybrid", True, False, False),
+    ("hybrid + ranking + graph", "hybrid", True, False, True),
 ]
-RERANK_CONFIG = ("hybrid + LLM rerank", "hybrid", True, True)
+RARE_CONFIGS = [
+    ("vector only", "vector", False, False, False),
+    ("hybrid + ranking", "hybrid", True, False, False),
+    ("hybrid + ranking + graph", "hybrid", True, False, True),
+]
+RERANK_CONFIG = ("hybrid + LLM rerank", "hybrid", True, True, False)
 
 
 async def _ensure_database() -> None:
@@ -164,7 +179,7 @@ async def evaluate(
             }
         )
         line = []
-        for label, mode, rank, rerank in configs:
+        for label, mode, rank, rerank, use_graph in configs:
             async with async_session_factory() as session:
                 freelancers = FreelancerRepository(session)
                 outcome = await run_search(
@@ -173,6 +188,7 @@ async def evaluate(
                     SkillRelationshipRepository(session),
                     mode=mode,
                     weights=weights,
+                    graph=PostgresGraphContext(session) if use_graph else None,
                 )
                 if rerank:
                     reranked = await rerank_shortlist(
@@ -193,9 +209,9 @@ async def evaluate(
                 mrr(gains),
             )
             results[label].append(scores)
-            line.append(f"{scores[0]:.2f}")
+            line.append(f"{scores[0]:.2f}|R{scores[1]:.2f}")
         if verbose:
-            print(f"#{query['id']:>2} [{query['set']}] nDCG@10 " + " / ".join(line)
+            print(f"#{query['id']:>2} [{query['set']}] nDCG@10|Recall@50 " + " / ".join(line)
                   + f"  {query['query'][:60]}")
     return results
 
@@ -205,10 +221,11 @@ def report(results, n_queries: int, set_name: str) -> None:
         f"\nset={set_name}  queries={n_queries}  embeddings={settings.embedding_provider}"
         f" ({settings.embedding_model})"
     )
-    print(f"{'config':<22} {'nDCG@10':>8} {'Recall@50':>10} {'MRR':>6}")
+    print(f"retrieval limit={search_pipeline.RETRIEVAL_LIMIT}")
+    print(f"{'config':<26} {'nDCG@10':>8} {'Recall@50':>10} {'MRR':>6}")
     for label, rows in results.items():
         means = [sum(col) / len(col) for col in zip(*rows)]
-        print(f"{label:<22} {means[0]:>8.3f} {means[1]:>10.3f} {means[2]:>6.3f}")
+        print(f"{label:<26} {means[0]:>8.3f} {means[1]:>10.3f} {means[2]:>6.3f}")
 
 
 def _parse_weights(pairs: list[str]):
@@ -223,12 +240,18 @@ def _parse_weights(pairs: list[str]):
 
 async def main() -> None:
     parser = argparse.ArgumentParser(description=__doc__.splitlines()[0])
-    parser.add_argument("--set", choices=["dev", "holdout", "all"], default="all")
+    parser.add_argument("--set", choices=["dev", "holdout", "all", "rare"], default="all")
+    parser.add_argument(
+        "--retrieval-limit", type=int, default=None,
+        help="shortlist size (default: the pipeline's RETRIEVAL_LIMIT)",
+    )
     parser.add_argument("--weight", action="append", default=[], metavar="NAME=VALUE")
     parser.add_argument("--verbose", action="store_true")
     parser.add_argument("--rerank", action="store_true", help="add the LLM rerank row")
     args = parser.parse_args()
-    configs = list(CONFIGS)
+    configs = list(RARE_CONFIGS if args.set == "rare" else CONFIGS)
+    if args.retrieval_limit:
+        search_pipeline.RETRIEVAL_LIMIT = args.retrieval_limit
     if args.rerank:
         if not llm.is_configured():
             raise SystemExit("--rerank needs ANTHROPIC_API_KEY")
@@ -237,7 +260,10 @@ async def main() -> None:
     if settings.embedding_provider.lower() in {"hash", "test"}:
         print("warning: hash embeddings are not semantic; vector numbers are meaningless")
     data = json.loads(FIXTURE.read_text())
-    queries = [q for q in data["queries"] if args.set == "all" or q["set"] == args.set]
+    if args.set == "rare":
+        queries = json.loads(RARE_FIXTURE.read_text())["queries"]
+    else:
+        queries = [q for q in data["queries"] if args.set == "all" or q["set"] == args.set]
     weights = _parse_weights(args.weight)
     archetypes = await load_corpus(data["profiles"])
     results = await evaluate(queries, archetypes, weights, args.verbose, configs)

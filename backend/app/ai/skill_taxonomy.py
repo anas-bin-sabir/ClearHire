@@ -251,8 +251,9 @@ def alias_terms() -> list[tuple[str, SkillDef]]:
 
 # Curated skill adjacency: (skill, related skill, weight). Weight is how much of a
 # required skill the related one stands in for (1.0 = interchangeable). Pairs are
-# symmetric. Synced into ``skill_relationships`` and used by ranking for partial
-# credit until the Neo4j ontology (CURRENT.md Phase 4) replaces it.
+# symmetric. Synced into ``skill_relationships`` (together with the category-derived
+# edges below) and from there into Neo4j RELATED_TO; ranking uses it for partial
+# credit and app.graph expands it over multiple hops.
 RELATED_SKILLS: tuple[tuple[str, str, float], ...] = (
     # Languages and their ecosystems
     ("JavaScript", "TypeScript", 0.8),
@@ -397,6 +398,146 @@ RELATED_SKILLS: tuple[tuple[str, str, float], ...] = (
     ("SEO", "Digital Marketing", 0.5),
     ("Copywriting", "Digital Marketing", 0.4),
     ("Copywriting", "Technical Writing", 0.4),
+    # --- Phase 4 ontology extension -------------------------------------------
+    # Languages and runtimes
+    ("TypeScript", "Node.js", 0.4),
+    ("TypeScript", "Next.js", 0.4),
+    ("JavaScript", "Vue.js", 0.4),
+    ("JavaScript", "Angular", 0.3),
+    ("JavaScript", "Svelte", 0.3),
+    ("JavaScript", "HTML", 0.4),
+    ("Python", "scikit-learn", 0.3),
+    ("Python", "Celery", 0.4),
+    ("Python", "Pytest", 0.4),
+    ("Python", "Bash", 0.3),
+    ("Python", "Data Engineering", 0.4),
+    ("Go", "Microservices", 0.4),
+    ("Go", "gRPC", 0.4),
+    ("Go", "Rust", 0.4),
+    ("Go", "Kubernetes", 0.3),
+    ("Rust", "C++", 0.5),
+    ("C++", "C#", 0.4),
+    ("Java", "C#", 0.5),
+    ("Java", "Scala", 0.5),
+    ("Kotlin", "Spring Boot", 0.4),
+    ("Kotlin", "Swift", 0.4),
+    ("Elixir", "Ruby", 0.4),
+    ("Elixir", "WebSockets", 0.3),
+    ("R", "Statistics", 0.6),
+    ("R", "Data Analysis", 0.5),
+    ("R", "Data Science", 0.5),
+    ("SQL", "SQLite", 0.5),
+    ("SQL", "Snowflake", 0.5),
+    ("SQL", "BigQuery", 0.5),
+    ("PHP", "MySQL", 0.4),
+    ("Solidity", "Cryptography", 0.3),
+    # Frontend
+    ("Next.js", "Nuxt", 0.5),
+    ("Next.js", "Node.js", 0.4),
+    ("Svelte", "Vue.js", 0.5),
+    ("Redux", "React Native", 0.3),
+    ("Tailwind CSS", "Sass", 0.5),
+    ("HTML", "Tailwind CSS", 0.3),
+    ("Webpack", "JavaScript", 0.4),
+    ("Webpack", "React", 0.3),
+    ("Three.js", "JavaScript", 0.4),
+    ("Three.js", "Unity", 0.3),
+    ("D3.js", "JavaScript", 0.4),
+    ("D3.js", "Data Analysis", 0.3),
+    # Backend
+    ("Express", "NestJS", 0.6),
+    ("Express", "REST APIs", 0.4),
+    ("Spring Boot", "Microservices", 0.4),
+    ("Spring Boot", "REST APIs", 0.4),
+    ("Ruby on Rails", "Laravel", 0.4),
+    ("Ruby on Rails", "Django", 0.4),
+    (".NET", "Azure", 0.4),
+    (".NET", "Spring Boot", 0.3),
+    ("GraphQL", "Node.js", 0.3),
+    ("WebSockets", "Node.js", 0.4),
+    ("Celery", "Django", 0.4),
+    ("Microservices", "Docker", 0.5),
+    ("Microservices", "Kafka", 0.4),
+    ("Django", "PostgreSQL", 0.3),
+    ("OAuth", "REST APIs", 0.3),
+    # Mobile
+    ("iOS Development", "Android Development", 0.4),
+    ("Flutter", "iOS Development", 0.3),
+    ("Flutter", "Android Development", 0.3),
+    ("Flutter", "Firebase", 0.3),
+    # Data stores
+    ("MySQL", "SQLite", 0.5),
+    ("Redis", "PostgreSQL", 0.3),
+    ("Elasticsearch", "Observability", 0.3),
+    ("Neo4j", "MongoDB", 0.3),
+    ("Firebase", "Supabase", 0.6),
+    ("Cassandra", "MongoDB", 0.4),
+    ("DynamoDB", "AWS", 0.5),
+    ("BigQuery", "Google Cloud", 0.5),
+    ("Snowflake", "dbt", 0.5),
+    ("BigQuery", "dbt", 0.5),
+    # Cloud & DevOps
+    ("Terraform", "Google Cloud", 0.4),
+    ("Terraform", "Azure", 0.4),
+    ("Kubernetes", "Terraform", 0.4),
+    ("Kubernetes", "Observability", 0.4),
+    ("GitHub Actions", "Jenkins", 0.6),
+    ("Docker", "Linux", 0.4),
+    ("Docker", "CI/CD", 0.4),
+    ("Serverless", "Google Cloud", 0.4),
+    ("Serverless", "Vercel", 0.4),
+    ("Nginx", "Docker", 0.3),
+    ("Bash", "DevOps", 0.4),
+    # Data & AI
+    ("Machine Learning", "Statistics", 0.5),
+    ("Machine Learning", "PyTorch", 0.5),
+    ("Machine Learning", "TensorFlow", 0.5),
+    ("Machine Learning", "Natural Language Processing", 0.5),
+    ("Machine Learning", "Computer Vision", 0.4),
+    ("Machine Learning", "LLM Integration", 0.4),
+    ("scikit-learn", "Pandas", 0.5),
+    ("Data Analysis", "Pandas", 0.6),
+    ("Data Analysis", "Statistics", 0.6),
+    ("Data Science", "Data Engineering", 0.4),
+    ("Data Science", "Recommendation Systems", 0.5),
+    ("Data Engineering", "BigQuery", 0.5),
+    ("Apache Spark", "Kafka", 0.4),
+    ("Apache Spark", "Pandas", 0.4),
+    ("Airflow", "dbt", 0.5),
+    ("MLOps", "Docker", 0.4),
+    ("MLOps", "Kubernetes", 0.4),
+    ("MLOps", "Airflow", 0.4),
+    ("Natural Language Processing", "RAG", 0.4),
+    ("Computer Vision", "PyTorch", 0.5),
+    ("Prompt Engineering", "RAG", 0.5),
+    ("Prompt Engineering", "LangChain", 0.5),
+    ("Recommendation Systems", "pgvector", 0.3),
+    # Design & product
+    ("Figma", "Prototyping", 0.6),
+    ("Figma", "Graphic Design", 0.4),
+    ("Adobe XD", "Prototyping", 0.5),
+    ("Product Management", "UI/UX Design", 0.3),
+    ("Technical Writing", "Product Management", 0.3),
+    # Quality & security
+    ("Jest", "JavaScript", 0.4),
+    ("Jest", "Cypress", 0.4),
+    ("Testing", "CI/CD", 0.3),
+    ("Penetration Testing", "Linux", 0.3),
+    ("Cybersecurity", "PCI DSS", 0.4),
+    ("Cybersecurity", "Linux", 0.3),
+    ("Blockchain", "Cryptography", 0.4),
+    # Compliance, commerce, platforms, hardware
+    ("HIPAA Compliance", "GDPR Compliance", 0.4),
+    ("PCI DSS", "SOC 2", 0.5),
+    ("FinTech", "Blockchain", 0.3),
+    ("Stripe", "Shopify", 0.4),
+    ("WordPress", "SEO", 0.3),
+    ("Shopify", "Digital Marketing", 0.3),
+    ("SEO", "Copywriting", 0.4),
+    ("Salesforce", "SAP", 0.4),
+    ("Embedded Systems", "C++", 0.5),
+    ("Embedded Systems", "Rust", 0.3),
+    ("IoT", "Linux", 0.3),
 )
 
 
@@ -410,6 +551,71 @@ def related_skill_map(
             neighbours = adjacency.setdefault(x.lower(), {})
             neighbours[y.lower()] = max(weight, neighbours.get(y.lower(), 0.0))
     return adjacency
+
+
+# Category-derived edges (Phase 4 ontology). Within one taxonomy category, each
+# skill is linked to its ``CATEGORY_EDGE_TOP_K`` most similar peers (cosine of the
+# stored skill embeddings) when the similarity clears ``CATEGORY_EDGE_MIN_SIMILARITY``.
+# Weights are scaled linearly into ``CATEGORY_EDGE_WEIGHT_BAND`` so they always sit
+# at or below curated weights, and curated pairs are never overridden. Thresholds
+# were picked from the MiniLM similarity distribution (in-category median ~0.36,
+# curated in-category pairs median ~0.43): top-2 above 0.5 adds about 40 edges.
+CATEGORY_EDGE_TOP_K = 2
+CATEGORY_EDGE_MIN_SIMILARITY = 0.5
+CATEGORY_EDGE_MAX_SIMILARITY = 0.8
+CATEGORY_EDGE_WEIGHT_BAND = (0.3, 0.5)
+
+
+def _cosine(a: list[float], b: list[float]) -> float:
+    dot = sum(x * y for x, y in zip(a, b))
+    norm = (sum(x * x for x in a) ** 0.5) * (sum(y * y for y in b) ** 0.5)
+    return dot / norm if norm else 0.0
+
+
+def category_edge_weight(similarity: float) -> float:
+    """Map a similarity in [min, max] linearly onto CATEGORY_EDGE_WEIGHT_BAND."""
+    low, high = CATEGORY_EDGE_WEIGHT_BAND
+    span = CATEGORY_EDGE_MAX_SIMILARITY - CATEGORY_EDGE_MIN_SIMILARITY
+    t = (similarity - CATEGORY_EDGE_MIN_SIMILARITY) / span
+    return round(low + (high - low) * max(0.0, min(1.0, t)), 3)
+
+
+def category_edges(
+    skills: dict[str, tuple[str, list[float]]],
+    *,
+    top_k: int = CATEGORY_EDGE_TOP_K,
+    min_similarity: float = CATEGORY_EDGE_MIN_SIMILARITY,
+    exclude: tuple[tuple[str, str, float], ...] | list[tuple[str, str, float]] = RELATED_SKILLS,
+) -> list[tuple[str, str, float]]:
+    """Similarity-weighted edges between skills of the same category.
+
+    ``skills`` maps canonical name -> (category, embedding). Pairs already in
+    ``exclude`` (the curated list, either orientation) are skipped so curated
+    weights always win. Deterministic: ties break on name, and each pair is
+    returned once as (lower name, higher name, weight), sorted.
+    """
+    curated = {frozenset((a.lower(), b.lower())) for a, b, _ in exclude}
+    by_category: dict[str, list[str]] = {}
+    for name, (category, _) in skills.items():
+        by_category.setdefault(category, []).append(name)
+
+    chosen: dict[tuple[str, str], float] = {}
+    for names in by_category.values():
+        names.sort()
+        for name in names:
+            vector = skills[name][1]
+            ranked = sorted(
+                ((_cosine(vector, skills[other][1]), other) for other in names if other != name),
+                key=lambda item: (-item[0], item[1]),
+            )
+            for similarity, other in ranked[:top_k]:
+                if similarity < min_similarity:
+                    break
+                if frozenset((name.lower(), other.lower())) in curated:
+                    continue
+                pair = (min(name, other), max(name, other))
+                chosen[pair] = max(similarity, chosen.get(pair, -1.0))
+    return [(a, b, category_edge_weight(sim)) for (a, b), sim in sorted(chosen.items())]
 
 
 def _check_related() -> None:

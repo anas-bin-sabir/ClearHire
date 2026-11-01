@@ -1,13 +1,16 @@
 import logging
 
 from fastapi import APIRouter, Depends, HTTPException
+from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.explainer import explain_search
 from app.ai.types import SearchExplanationInput
 from app.core.activity import log_activity
 from app.core.dependencies import (
     get_ai_explanation_repo,
+    get_db_session,
     get_freelancer_repo,
+    get_graph_context_dep,
     get_search_history_repo,
     get_skill_repo,
 )
@@ -16,6 +19,7 @@ from app.core.search_pipeline import (
     PRECOMPUTED_PIPELINE,
     RESULT_LIMIT,
     rerank_shortlist,
+    resolve_graph_context,
     run_search,
 )
 from app.db.repositories.postgres import (
@@ -38,10 +42,11 @@ async def search_freelancers(
     search_history_repo: SearchHistoryRepository = Depends(get_search_history_repo),
     ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
     skill_relationship_repo: SkillRelationshipRepository = Depends(get_skill_repo),
+    graph=Depends(get_graph_context_dep),
 ) -> SearchResponse:
     endpoint = "/search"
     try:
-        outcome = await run_search(body, freelancer_repo, skill_relationship_repo)
+        outcome = await run_search(body, freelancer_repo, skill_relationship_repo, graph=graph)
         retrieval, candidates = outcome.retrieval, outcome.candidates
         reranked = await rerank_shortlist(
             outcome, body, freelancer_repo, ai_explanation_repo, use_llm=body.rerank
@@ -92,6 +97,7 @@ async def search_freelancers(
             total_candidates=len(candidates),
             retrieval={"mode": retrieval.mode, "skill_filter": retrieval.skill_filter},
             reranking=reranked.meta(),
+            graph=outcome.graph.meta(),
         )
     except Exception as exc:
         logger.exception("search failed")
@@ -129,5 +135,6 @@ async def get_precomputed_results(
         "ranked_freelancers": meta.get("freelancers", []),
         "reranking": meta.get("reranking", {}),
         "retrieval": meta.get("retrieval", {}),
+        "graph": meta.get("graph"),
         "total_candidates": meta.get("total_candidates", 0),
     }

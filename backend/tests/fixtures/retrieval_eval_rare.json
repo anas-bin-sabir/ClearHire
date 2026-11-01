@@ -1,0 +1,224 @@
+{
+ "_about": "Rare-skill subset for the Phase 4 graph-expansion eval. Each query's must-have skill is tagged on at most 2 of the 130 profiles in retrieval_eval.json (6 of 14 on none); relevance labels use the same archetype scheme (2 core, 1 adjacent). Labels are topical, written before running the eval.",
+ "queries": [
+  {
+   "id": 101,
+   "set": "rare",
+   "query": "Native Android app for a field-service company: offline job lists, camera uploads and push notifications, written in Kotlin.",
+   "skills": [
+    "Kotlin"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "android_native": 2
+   }
+  },
+  {
+   "id": 102,
+   "set": "rare",
+   "query": "Orchestrate our nightly ELT jobs with Airflow: ingest from three SaaS APIs, load the warehouse, alert on failures.",
+   "skills": [
+    "Airflow"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "data_engineering": 2,
+    "data_analytics": 1
+   }
+  },
+  {
+   "id": 103,
+   "set": "rare",
+   "query": "Build an Express API for a booking platform: auth, availability search, webhooks to the payment provider.",
+   "skills": [
+    "Express"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "node_backend": 2
+   }
+  },
+  {
+   "id": 104,
+   "set": "rare",
+   "query": "Move slow report generation in our Python web app into Celery background workers with retries and progress tracking.",
+   "skills": [
+    "Celery"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "python_backend": 2
+   }
+  },
+  {
+   "id": 105,
+   "set": "rare",
+   "query": "Write end-to-end Cypress tests for our checkout and signup flows and run them in CI on every pull request.",
+   "skills": [
+    "Cypress"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "qa_automation": 2
+   }
+  },
+  {
+   "id": 106,
+   "set": "rare",
+   "query": "Review and implement the cryptography for an end-to-end encrypted messaging feature: key exchange, rotation, storage.",
+   "skills": [
+    "Cryptography"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "security": 2,
+    "blockchain": 1
+   }
+  },
+  {
+   "id": 107,
+   "set": "rare",
+   "query": "Model our product analytics in BigQuery: clean event tables, sessionization and a few core metric marts.",
+   "skills": [
+    "BigQuery"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "data_engineering": 2,
+    "data_analytics": 1
+   }
+  },
+  {
+   "id": 108,
+   "set": "rare",
+   "query": "Set up GitHub Actions pipelines for build, test and deploy of five services to our container platform.",
+   "skills": [
+    "GitHub Actions"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "devops_k8s": 2,
+    "qa_automation": 1
+   }
+  },
+  {
+   "id": 109,
+   "set": "rare",
+   "query": "Maintain and extend a Flask backend: new REST endpoints, SQLAlchemy models and better test coverage.",
+   "skills": [
+    "Flask"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "python_backend": 2,
+    "healthtech_backend": 1,
+    "fintech_payments": 1
+   }
+  },
+  {
+   "id": 110,
+   "set": "rare",
+   "query": "Improve prompt engineering for our support assistant: evaluation set, prompt iterations and retrieval tweaks.",
+   "skills": [
+    "Prompt Engineering"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "llm_rag": 2
+   }
+  },
+  {
+   "id": 111,
+   "set": "rare",
+   "query": "Build a small marketing site and dashboard in Svelte with charts and a design system.",
+   "skills": [
+    "Svelte"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "frontend_react": 1,
+    "vue_frontend": 1
+   }
+  },
+  {
+   "id": 112,
+   "set": "rare",
+   "query": "Prepare our card payment flow for PCI DSS: tokenization, audit logging and evidence for the assessor.",
+   "skills": [
+    "PCI DSS"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "fintech_payments": 2,
+    "security": 1
+   }
+  },
+  {
+   "id": 113,
+   "set": "rare",
+   "query": "Train a churn prediction model with scikit-learn on our customer data and ship a batch scoring job.",
+   "skills": [
+    "scikit-learn"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "ml_cv": 2,
+    "data_analytics": 1
+   }
+  },
+  {
+   "id": 114,
+   "set": "rare",
+   "query": "Optimize a C++ physics module in our game engine and profile frame-time spikes.",
+   "skills": [
+    "C++"
+   ],
+   "nice_to_have_skills": [],
+   "seniority_level": null,
+   "budget": 8000,
+   "budget_type": "fixed",
+   "relevant": {
+    "game_dev": 2
+   }
+  }
+ ]
+}

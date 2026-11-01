@@ -8,6 +8,7 @@ from app.ai.rerank import (
     ProjectContext,
     Reasoning,
     blend,
+    cache_key,
     candidate_card,
     deterministic_comparisons,
     deterministic_reasoning,
@@ -94,6 +95,94 @@ def test_comparison_refs_may_cite_either_candidate():
     _, comparisons, stripped = ground_output(output, _cards(ranked))
     assert comparisons[0].evidence == ["f1.skills", "f2.skills"]
     assert stripped == 0
+
+
+GRAPH_2 = {
+    "skill_paths": [{"required": "Kubernetes", "via": "Docker", "hops": 1, "weight": 0.6,
+                     "path": ["Docker", "Kubernetes"]}],
+    "past_projects": [{"id": 11, "title": "Container platform", "shared_skills": ["Kubernetes"]}],
+    "collaborations": [{"other_id": 1, "other_name": "Exact", "project_ids": [7], "count": 1,
+                        "avg_rating": 4.8}],
+}
+
+
+def _graph_cards(ranked):
+    return {
+        r.candidate.id: candidate_card(
+            r, [(7, "Cluster migration")] if r.candidate.id in (1, 2) else [],
+            GRAPH_2 if r.candidate.id == 2 else None,
+        )
+        for r in ranked
+    }
+
+
+def test_graph_refs_are_validated_against_the_card():
+    ranked = _ranked()
+    output = LLMRerankOutput(
+        judgements=[
+            LLMJudgement(
+                freelancer_id=2, fit_score=70, biggest_gap=None,
+                strengths=[
+                    _claim("Docker is one hop from Kubernetes", "f2.graph:path:Kubernetes"),
+                    _claim("Case-insensitive skill", "f2.graph:path:kubernetes"),
+                    _claim("Shipped with #1", "f2.graph:collab:1", "f2.project:7"),
+                    _claim("Similar past project", "f2.project:11"),  # from graph.past_projects
+                    _claim("No such path", "f2.graph:path:Rust"),
+                    _claim("No such collaborator", "f2.graph:collab:3"),
+                    _claim("Someone else's graph", "f1.graph:path:Kubernetes"),
+                    _claim("Malformed", "f2.graph:collab:x"),
+                ],
+                risks=[],
+            ),
+            LLMJudgement(
+                freelancer_id=1, fit_score=90, biggest_gap=None, risks=[],
+                strengths=[_claim("Card has no graph", "f1.graph:collab:2")],
+            ),
+        ],
+        comparisons=[],
+    )
+    reasoning, _, stripped = ground_output(output, _graph_cards(ranked))
+    assert [c.text for c in reasoning[2].strengths] == [
+        "Docker is one hop from Kubernetes", "Case-insensitive skill",
+        "Shipped with #1", "Similar past project",
+    ]
+    assert reasoning[2].strengths[2].evidence == ["f2.graph:collab:1", "f2.project:7"]
+    assert reasoning[1].strengths == []
+    assert stripped == 5
+
+
+def test_deterministic_reasoning_emits_graph_claims():
+    ranked = {r.candidate.id: r for r in _ranked()}
+    reasoning = deterministic_reasoning(ranked[2], CONTEXT, GRAPH_2, {7: "Cluster migration"})
+    by_ref = {ref: c.text for c in reasoning.strengths for ref in c.evidence}
+    assert "Docker → Kubernetes" in by_ref["f2.graph:path:Kubernetes"]
+    assert by_ref["f2.graph:collab:1"] == (
+        "Worked with Exact (#1) on 'Cluster migration' (avg 4.8★)"
+    )
+    assert "f2.project:7" in {r for c in reasoning.strengths for r in c.evidence}
+    assert "Container platform" in by_ref["f2.project:11"]
+    # The path is not claimed twice (adjacency claim already carries it).
+    assert sum("f2.graph:path:Kubernetes" in c.evidence for c in reasoning.strengths) == 1
+    # Every emitted ref passes the server-side grounding check.
+    cards = _graph_cards(list(ranked.values()))
+    output = LLMRerankOutput(
+        judgements=[LLMJudgement(freelancer_id=2, fit_score=50, biggest_gap=None, risks=[],
+                                 strengths=[LLMClaim(text=c.text, evidence=c.evidence)
+                                            for c in reasoning.strengths])],
+        comparisons=[],
+    )
+    _, _, stripped = ground_output(output, cards)
+    assert stripped == 0
+
+
+def test_cache_key_changes_with_graph_facts():
+    ranked = _ranked()
+    plain = [candidate_card(r) for r in ranked]
+    graphed = [candidate_card(r, None, GRAPH_2 if r.candidate.id == 2 else None) for r in ranked]
+    more = dict(GRAPH_2, collaborations=GRAPH_2["collaborations"] * 2)
+    changed = [candidate_card(r, None, more if r.candidate.id == 2 else None) for r in ranked]
+    keys = {cache_key(CONTEXT, cards) for cards in (plain, graphed, changed)}
+    assert len(keys) == 3
 
 
 # --- blending ----------------------------------------------------------------
