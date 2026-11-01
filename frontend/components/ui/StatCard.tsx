@@ -1,37 +1,43 @@
-'use client'
-
-import { LucideIcon } from 'lucide-react'
+import { Children } from 'react'
+import type { LucideIcon } from 'lucide-react'
 
 interface Props {
   label: string
   value: string | number
-  icon: LucideIcon
-  color?: 'electric' | 'mint' | 'rose' | 'amber'
+  icon?: LucideIcon
   description?: string
+  /** Emphasize the figure (e.g. a count that needs action). */
+  tone?: 'default' | 'danger' | 'ok'
 }
 
-export function StatCard({ label, value, icon: Icon, color = 'electric', description }: Props) {
-  const colorMap = {
-    electric: 'text-indigo-400 bg-indigo-500/10 border-indigo-500/20',
-    mint: 'text-emerald-400 bg-emerald-500/10 border-emerald-500/20',
-    rose: 'text-rose-400 bg-rose-500/10 border-rose-500/20',
-    amber: 'text-amber-400 bg-amber-500/10 border-amber-500/20'
-  }
-
+/**
+ * A single figure with its label. Used in a row inside one Panel, separated by
+ * dividers, rather than as a grid of identical floating cards.
+ */
+export function StatCard({ label, value, icon: Icon, description, tone = 'default' }: Props) {
+  const valueColor = tone === 'danger' ? 'text-danger' : tone === 'ok' ? 'text-ok' : 'text-fg'
   return (
-    <div className="glass-card p-6 flex flex-col justify-between">
-      <div className="flex justify-between items-start mb-4">
-        <div>
-          <span className="text-xs font-semibold text-slate-400 uppercase tracking-wider">{label}</span>
-          <h3 className="text-2xl font-bold text-white mt-1.5 tracking-tight">{value}</h3>
-        </div>
-        <div className={`p-2.5 rounded-xl border ${colorMap[color]}`}>
-          <Icon className="h-5 w-5" />
-        </div>
-      </div>
-      {description && (
-        <span className="text-xs font-medium text-slate-500">{description}</span>
-      )}
+    <div className="min-w-0 px-5 py-4">
+      <p className="flex items-center gap-2 text-[13px] font-medium text-fg-2">
+        {Icon && <Icon className="h-4 w-4 text-fg-3" aria-hidden />}
+        {label}
+      </p>
+      <p className={`mt-2 text-[28px] font-bold leading-none tracking-tight tabular-nums ${valueColor}`}>{value}</p>
+      {description && <p className="mt-2 text-xs text-fg-2">{description}</p>}
+    </div>
+  )
+}
+
+const LG_COLS: Record<number, string> = { 2: 'lg:grid-cols-2', 3: 'lg:grid-cols-3', 4: 'lg:grid-cols-4', 5: 'lg:grid-cols-5' }
+
+/** Horizontal strip of figures sharing one surface, split by hairlines. */
+export function StatStrip({ children }: { children: React.ReactNode }) {
+  const count = Children.count(children)
+  return (
+    <div
+      className={`grid grid-cols-2 gap-px overflow-hidden rounded-panel border border-line-2 bg-line shadow-card ${LG_COLS[count] ?? 'lg:grid-cols-4'} [&>*]:bg-panel [&>*:last-child:nth-child(odd)]:col-span-2 lg:[&>*:last-child:nth-child(odd)]:col-span-1`}
+    >
+      {children}
     </div>
   )
 }

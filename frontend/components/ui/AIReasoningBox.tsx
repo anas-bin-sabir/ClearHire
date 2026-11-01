@@ -1,8 +1,7 @@
 'use client'
 
-import { useState } from 'react'
-import { motion, AnimatePresence } from 'framer-motion'
-import { Sparkles, ChevronDown } from 'lucide-react'
+import { useId, useState } from 'react'
+import { ChevronDown, Sparkles } from 'lucide-react'
 
 interface Props {
   explanation: string
@@ -10,45 +9,33 @@ interface Props {
   defaultOpen?: boolean
 }
 
-export function AIReasoningBox({ explanation, title = 'AI Reasoning', defaultOpen = false }: Props) {
+/** Collapsible machine-written explanation, marked with the teal AI rule. */
+export function AIReasoningBox({ explanation, title = 'How ClearHire reached this', defaultOpen = false }: Props) {
   const [open, setOpen] = useState(defaultOpen)
+  const id = useId()
 
   return (
-    <div className="border border-indigo-500/10 hover:border-indigo-500/20 bg-indigo-500/3 rounded-xl overflow-hidden transition-all duration-300">
-      <button 
+    <div className="ai-rule rounded-r-control bg-teal-tint/50 py-1 pr-2">
+      <button
+        type="button"
         onClick={() => setOpen(!open)}
-        className="w-full flex items-center justify-between px-5 py-4 text-sm font-semibold text-white/90 cursor-pointer"
+        aria-expanded={open}
+        aria-controls={id}
+        className="flex min-h-10 w-full items-center justify-between gap-3 rounded-control text-left text-sm font-semibold text-fg"
       >
-        <span className="flex items-center gap-2.5">
-          <Sparkles className="h-4.5 w-4.5 text-electric animate-pulse" /> 
+        <span className="flex items-center gap-2">
+          <Sparkles className="h-4 w-4 text-teal-ink" aria-hidden />
           {title}
         </span>
-        <motion.div 
-          animate={{ rotate: open ? 180 : 0 }} 
-          transition={{ duration: 0.2 }}
-        >
-          <ChevronDown className="h-4 w-4 text-slate-400" />
-        </motion.div>
+        <ChevronDown className={`h-4 w-4 text-fg-2 transition-transform duration-150 ${open ? 'rotate-180' : ''}`} aria-hidden />
       </button>
-
-      <AnimatePresence initial={false}>
-        {open && (
-          <motion.div
-            initial={{ height: 0, opacity: 0 }}
-            animate={{ height: 'auto', opacity: 1 }}
-            exit={{ height: 0, opacity: 0 }}
-            transition={{ duration: 0.25, ease: [0.16, 1, 0.3, 1] }}
-          >
-            <div className="px-5 pb-5 text-sm text-slate-300 leading-relaxed bg-slate-950/20 border-t border-white/3 pt-3">
-              {explanation.split('\n').map((para, i) => (
-                <p key={i} className={i > 0 ? 'mt-2.5' : ''}>
-                  {para}
-                </p>
-              ))}
-            </div>
-          </motion.div>
-        )}
-      </AnimatePresence>
+      {open && (
+        <div id={id} className="max-w-prose space-y-2 pb-3 pt-1 text-sm leading-relaxed text-fg-2">
+          {explanation.split('\n').filter(Boolean).map((para, i) => (
+            <p key={i}>{para}</p>
+          ))}
+        </div>
+      )}
     </div>
   )
 }

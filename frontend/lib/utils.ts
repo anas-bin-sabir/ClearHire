@@ -1,3 +1,5 @@
+import type { BadgeTone } from '@/components/ui/Badge'
+
 export const fmt = {
   currency: (n: number) => `$${n.toLocaleString('en-US', { minimumFractionDigits: 0, maximumFractionDigits: 0 })}`,
   rate: (n: number) => `$${n}/hr`,
@@ -16,16 +18,16 @@ export const fmt = {
   annualCtc: (rate: number) => rate * 160 * 12,
 }
 
-export const fraudColor = (score: number) =>
-  score > 0.65 ? 'rose' : score > 0.35 ? 'amber' : 'mint'
+/** Fraud score is a model signal, not a verdict. Thresholds match the backend's flagging. */
+export const fraudTone = (score: number): BadgeTone =>
+  score > 0.65 ? 'danger' : score > 0.35 ? 'warn' : 'ok'
 
 export const fraudLabel = (score: number) =>
-  score > 0.65 ? 'Flagged' : score > 0.35 ? 'Review' : 'Verified'
+  score > 0.65 ? 'Flagged' : score > 0.35 ? 'Needs review' : 'Low risk'
 
-export const contractStatusColor: Record<string, string> = {
-  pending: 'amber',
-  active: 'electric',
-  completed: 'mint',
-  cancelled: 'rose',
+export const contractTone: Record<string, BadgeTone> = {
+  pending: 'warn',
+  active: 'ai',
+  completed: 'ok',
+  cancelled: 'danger',
 }
-

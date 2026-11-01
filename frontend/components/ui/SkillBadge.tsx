@@ -1,17 +1,14 @@
-'use client'
-
 interface Props {
   skill: string
+  /** Matches a requirement in the current context (search, project). */
   highlighted?: boolean
 }
 
 export function SkillBadge({ skill, highlighted = false }: Props) {
   return (
-    <span 
-      className={`inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border transition-colors ${
-        highlighted
-          ? 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-          : 'bg-slate-950/40 text-slate-300 border-white/5 hover:border-white/10'
+    <span
+      className={`inline-flex items-center rounded-chip border px-2 py-0.5 text-xs font-medium ${
+        highlighted ? 'border-teal/30 bg-teal-tint text-teal-ink' : 'border-line bg-sunken text-fg-2'
       }`}
     >
       {skill}

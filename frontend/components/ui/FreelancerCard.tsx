@@ -2,115 +2,106 @@
 
 import { useState } from 'react'
 import Link from 'next/link'
-import { Star, ShieldAlert, CheckCircle, Briefcase, ChevronRight } from 'lucide-react'
+import { Star } from 'lucide-react'
 import { FreelancerRecord } from '@/lib/api'
+import { fraudLabel, fraudTone } from '@/lib/utils'
+import { Avatar } from './Avatar'
+import { Badge } from './Badge'
 import { SkillBadge } from './SkillBadge'
 import { HireModal } from './HireModal'
-import { fraudColor, fraudLabel } from '@/lib/utils'
 
 interface Props {
+  /** match_score is on the backend's 0–100 scale. */
   freelancer: FreelancerRecord & { match_score?: number; rank_score?: number }
   role: 'client' | 'admin' | 'freelancer'
   showHireAction?: boolean
   onHireSuccess?: () => void
+  /** Skills to highlight as matching the current requirement. */
+  highlightSkills?: string[]
 }
 
-export function FreelancerCard({ freelancer, role, showHireAction = false, onHireSuccess }: Props) {
+export function FreelancerCard({ freelancer, role, showHireAction = false, onHireSuccess, highlightSkills = [] }: Props) {
   const [showHireModal, setShowHireModal] = useState(false)
-
-  const fColor = fraudColor(freelancer.fraud_score)
-  const fText = fraudLabel(freelancer.fraud_score)
-
-  const badgeColors: Record<string, string> = {
-    rose: 'bg-rose-500/10 text-rose-400 border-rose-500/20',
-    amber: 'bg-amber-500/10 text-amber-400 border-amber-500/20',
-    mint: 'bg-emerald-500/10 text-emerald-400 border-emerald-500/20'
-  }
+  const wanted = new Set(highlightSkills.map(s => s.toLowerCase()))
+  const skills = freelancer.skills || []
 
   return (
-    <div className="glass-card p-6 flex flex-col justify-between relative overflow-hidden group">
-      {/* Background glow hover effect */}
-      <div className="absolute inset-0 bg-linear-to-b from-indigo-500/0 to-indigo-500/2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none" />
-
-      <div>
-        {/* Header Name & Fraud Badge */}
-        <div className="flex justify-between items-start gap-4 mb-3">
-          <div>
-            <h4 className="text-base font-bold text-white tracking-tight">{freelancer.name}</h4>
-            <p className="text-xs text-slate-500 mt-0.5">Exp: {freelancer.experience_years} years · Rating: {freelancer.rating ? freelancer.rating.toFixed(1) : '0.0'}</p>
-          </div>
-          
-          <span className={`inline-flex items-center gap-1.5 px-2.5 py-0.5 rounded-full text-[10px] font-bold tracking-wider border uppercase ${badgeColors[fColor]}`}>
-            {freelancer.fraud_score > 0.35 ? <ShieldAlert className="h-3 w-3" /> : <CheckCircle className="h-3 w-3" />}
-            {fText}
-          </span>
+    <article className="flex flex-col rounded-panel border border-line-2 bg-panel p-5 shadow-card transition-shadow duration-200 hover:shadow-menu">
+      <div className="flex items-start gap-3">
+        <Avatar name={freelancer.name} tone="color" />
+        <div className="min-w-0 flex-1">
+          <h3 className="truncate text-[15px] font-semibold text-fg">{freelancer.name}</h3>
+          <p className="mt-0.5 text-[13px] text-fg-2">
+            {freelancer.experience_years} yrs experience{freelancer.location ? `, ${freelancer.location}` : ''}
+          </p>
         </div>
-
-        {/* Rating and rate */}
-        <div className="flex items-center gap-4 mb-4">
-          <div className="flex items-center text-amber-400">
-            <Star className="h-3.5 w-3.5 fill-current" />
-            <span className="text-xs font-semibold ml-1">{freelancer.rating ? freelancer.rating.toFixed(1) : '0.0'}</span>
-            <span className="text-[10px] text-slate-500 ml-0.5">({freelancer.review_count} reviews)</span>
-          </div>
-          <span className="text-sm font-bold text-white">${freelancer.hourly_rate}/hr</span>
-        </div>
-
-        {/* AI matching score indicator if available */}
-        {freelancer.match_score !== undefined && (
-          <div className="mb-4 bg-slate-950/40 border border-white/5 rounded-lg p-2.5">
-            <div className="flex justify-between text-[11px] mb-1">
-              <span className="text-slate-400 font-medium">AI Match Score</span>
-              <span className="text-emerald-400 font-semibold">{Math.round(freelancer.match_score * 100)}%</span>
-            </div>
-            <div className="w-full bg-slate-800 rounded-full h-1.5 overflow-hidden">
-              <div 
-                className="bg-emerald-500 h-1.5 rounded-full transition-all duration-500" 
-                style={{ width: `${Math.round(freelancer.match_score * 100)}%` }} 
-              />
-            </div>
-          </div>
-        )}
-
-        {/* Skills List */}
-        <div className="flex flex-wrap gap-1.5 mb-6">
-          {(freelancer.skills || []).slice(0, 5).map(skill => (
-            <SkillBadge key={skill} skill={skill} />
-          ))}
-          {freelancer.skills?.length > 5 && (
-            <span className="text-[10px] text-slate-500 self-center px-1">+{freelancer.skills.length - 5} more</span>
-          )}
-        </div>
+        <p className="shrink-0 text-right text-[15px] font-bold tabular-nums text-fg">
+          ${freelancer.hourly_rate}
+          <span className="text-xs font-medium text-fg-2">/hr</span>
+        </p>
       </div>
 
-      {/* Action triggers */}
-      <div className="flex gap-2 items-center border-t border-white/3 pt-4 mt-auto">
-        <Link 
+      <div className="mt-4 flex flex-wrap items-center gap-2">
+        <Badge tone={fraudTone(freelancer.fraud_score)}>{fraudLabel(freelancer.fraud_score)}</Badge>
+        {freelancer.review_count > 0 ? (
+          <span className="inline-flex items-center gap-1 text-[13px] text-fg-2">
+            <Star className="h-3.5 w-3.5 fill-star text-star" aria-hidden />
+            <span className="font-semibold tabular-nums text-fg">{freelancer.rating.toFixed(1)}</span>
+            <span className="tabular-nums">({freelancer.review_count} reviews)</span>
+          </span>
+        ) : (
+          <span className="text-[13px] text-fg-2">No reviews yet</span>
+        )}
+        {!freelancer.availability && <Badge>Unavailable</Badge>}
+      </div>
+
+      {freelancer.match_score !== undefined && (
+        <div className="mt-4">
+          <div className="mb-1.5 flex justify-between text-[13px]">
+            <span className="text-fg-2">Match score</span>
+            <span className="font-semibold tabular-nums text-teal-ink">{Math.round(freelancer.match_score)}%</span>
+          </div>
+          <div className="h-1.5 overflow-hidden rounded-full bg-sunken" aria-hidden>
+            <div className="h-full rounded-full bg-teal" style={{ width: `${Math.round(freelancer.match_score)}%` }} />
+          </div>
+        </div>
+      )}
+
+      {skills.length > 0 && (
+        <ul className="mt-4 flex flex-wrap gap-1.5" aria-label="Skills">
+          {skills.slice(0, 6).map(skill => (
+            <li key={skill}>
+              <SkillBadge skill={skill} highlighted={wanted.has(skill.toLowerCase())} />
+            </li>
+          ))}
+          {skills.length > 6 && <li className="self-center text-xs text-fg-2">+{skills.length - 6} more</li>}
+        </ul>
+      )}
+
+      <div className="mt-auto flex gap-2 pt-5">
+        <Link
           href={role === 'client' ? `/client/freelancers/${freelancer.id}` : `/freelancer/dashboard`}
-          className="flex-1 btn btn-sm btn-ghost flex items-center justify-center gap-1.5 py-2 cursor-pointer"
+          className="btn btn-secondary flex-1"
         >
-          View Profile <ChevronRight className="h-3.5 w-3.5" />
+          View profile
         </Link>
         {showHireAction && role === 'client' && (
-          <button 
-            onClick={() => setShowHireModal(true)}
-            className="flex-1 btn btn-sm btn-primary py-2 cursor-pointer"
-          >
+          <button type="button" onClick={() => setShowHireModal(true)} className="btn btn-primary flex-1">
             Hire
           </button>
         )}
       </div>
 
-      {showHireModal && (
-        <HireModal 
-          freelancerId={freelancer.id}
-          onSuccess={() => {
-            setShowHireModal(false)
-            if (onHireSuccess) onHireSuccess()
-          }}
-          onClose={() => setShowHireModal(false)}
-        />
-      )}
-    </div>
+      <HireModal
+        open={showHireModal}
+        freelancerId={freelancer.id}
+        freelancerName={freelancer.name}
+        onSuccess={() => {
+          setShowHireModal(false)
+          onHireSuccess?.()
+        }}
+        onClose={() => setShowHireModal(false)}
+      />
+    </article>
   )
 }

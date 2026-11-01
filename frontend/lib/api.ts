@@ -199,6 +199,8 @@ export interface RankedMatch extends FreelancerRecord {
   rank_score: number
   rank?: number
   reasoning?: CandidateReasoning
+  /** Present for the reranked head when a graph backend was available. */
+  graph?: CandidateGraphFacts
 }
 
 export interface MatchComparison {
@@ -222,8 +224,9 @@ export interface SearchResponse {
   freelancers: RankedMatch[]
   explanation: string
   total_candidates: number
-  retrieval?: { mode: string; skill_filter: 'strict' | 'relaxed' | 'none' }
+  retrieval?: { mode: string; skill_filter: 'strict' | 'expanded' | 'relaxed' | 'none' }
   reranking?: RerankingInfo
+  graph?: SearchGraphInfo
 }
 
 export interface PrecomputedResult {
@@ -232,6 +235,7 @@ export interface PrecomputedResult {
   computed_at?: string
   ranked_freelancers: RankedMatch[]
   reranking?: RerankingInfo
+  graph?: SearchGraphInfo | null
   total_candidates?: number
   message?: string
 }
@@ -278,29 +282,82 @@ export interface TeamBuilderResponse {
   message?: string
   backtracks: number
   nodes_explored: number
+  /** Chosen members who completed projects together (from the graph). */
+  collaborations?: TeamCollaboration[]
+  graph_source?: GraphSource
+}
+
+export interface TeamCollaboration {
+  a_id: number
+  a_name: string
+  b_id: number
+  b_name: string
+  project_ids: number[]
+  project_titles: string[]
+  count: number
+  avg_rating: number | null
 }
 
 export interface TeamBuildStatus {
   status: string
 }
 
+/** "off": no graph context; "error": the graph failed and search ran without it. */
+export type GraphSource = 'neo4j' | 'postgres' | 'off' | 'error'
+
 export interface GraphNode {
+  /** f-<id> freelancer, s-<skill>, p-<id> project, c-<id> client */
   id: string
   name: string
-  type: 'freelancer' | 'skill' | 'project'
-  fraud_score?: number
+  type: 'freelancer' | 'skill' | 'project' | 'client'
+  fraud_score?: number | null
 }
+
+export type GraphLinkType =
+  | 'HAS_SKILL' | 'RELATED_TO' | 'REQUIRES' | 'WORKED_ON' | 'POSTED' | 'COLLABORATED_WITH'
 
 export interface GraphLink {
   source: string
   target: string
-  type: string
+  type: GraphLinkType | string
+  /** RELATED_TO weight */
+  weight?: number | null
+  /** e.g. WORKED_ON {status, rating}, COLLABORATED_WITH {count, avg_rating, project_ids} */
+  properties?: Record<string, unknown>
 }
 
 export interface GraphResponse {
   nodes: GraphNode[]
   links: GraphLink[]
-  source: string
+  source: 'neo4j' | 'postgres'
+  /** Node id the subgraph is centred on; null for the overview. */
+  focus?: string | null
+}
+
+export interface GraphQuery {
+  freelancerId?: number
+  projectId?: number
+  limit?: number
+}
+
+/** Graph facts shown to the reasoner for one candidate (subgraph_to_prompt). */
+export interface CandidateGraphFacts {
+  skill_paths: { required: string; via: string; hops: number; weight: number; path: string[] }[]
+  past_projects: { id: number; title: string; shared_skills: string[] }[]
+  collaborations: {
+    other_id: number
+    other_name: string
+    project_ids: number[]
+    count: number
+    avg_rating: number | null
+  }[]
+}
+
+export interface SearchGraphInfo {
+  source: GraphSource
+  /** {required skill: {related skill: weight}}, multi-hop, lower-cased */
+  expanded_skills: Record<string, Record<string, number>>
+  error?: string | null
 }
 
 export interface PlatformStatsResponse {
@@ -483,7 +540,14 @@ export const api = {
   },
 
   // ── REST ─────────────────────────────────────────────────
-  graph:     () => req<GraphResponse>('/graph'),
+  graph: (q: GraphQuery = {}) => {
+    const params = new URLSearchParams()
+    if (q.freelancerId) params.set('freelancer_id', String(q.freelancerId))
+    if (q.projectId) params.set('project_id', String(q.projectId))
+    if (q.limit) params.set('limit', String(q.limit))
+    const qs = params.toString()
+    return req<GraphResponse>(`/graph${qs ? `?${qs}` : ''}`)
+  },
   stats:     () => req<PlatformStatsResponse>('/stats'),
   analytics: (days?: number) => req<TimeSeriesResponse>(`/analytics${days ? `?days=${days}` : ''}`),
   health:    () => req<HealthResponse>('/health'),
