@@ -19,6 +19,9 @@ os.environ.update(
         "DB_NULL_POOL": "true",
         "RATE_LIMIT_ENABLED": "false",
         "ANTHROPIC_API_KEY": "",
+        # Never call a real LLM from tests, even if backend/.env has a key.
+        "GEMINI_API_KEY": "",
+        "LLM_PROVIDER": "auto",
         "SECRET_KEY": "test-secret",
         "AUTO_MIGRATE": "true",
         # Graph tests opt in to Neo4j via the neo4j_graph fixture; the rest of the

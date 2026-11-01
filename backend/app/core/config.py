@@ -67,6 +67,18 @@ class Settings(BaseSettings):
         default=2.0, gt=0.0, alias="GRAPH_SYNC_INTERVAL_SECONDS"
     )
 
+    # Which LLM to call. "auto" = Gemini when GEMINI_API_KEY is set, else Anthropic.
+    llm_provider: Literal["auto", "gemini", "anthropic"] = Field(
+        default="auto", alias="LLM_PROVIDER"
+    )
+    # Google AI Studio key (https://aistudio.google.com/apikey).
+    gemini_api_key: str = Field(default="", alias="GEMINI_API_KEY")
+    gemini_model: str = Field(default="gemini-3.5-flash-lite", alias="GEMINI_MODEL")
+    gemini_timeout_seconds: float = Field(default=60.0, alias="GEMINI_TIMEOUT_SECONDS")
+    # Extra output budget for the model's internal thinking, which counts against
+    # Gemini's maxOutputTokens.
+    gemini_thinking_headroom: int = Field(default=8192, ge=0, alias="GEMINI_THINKING_HEADROOM")
+
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-haiku-5-5", alias="ANTHROPIC_MODEL")
     anthropic_timeout_seconds: float = Field(default=60.0, alias="ANTHROPIC_TIMEOUT_SECONDS")

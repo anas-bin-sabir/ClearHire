@@ -285,7 +285,7 @@ def extract_deterministic(text: str) -> ParsedBrief:
 def build_extraction_response(
     parsed: ParsedBrief,
     grounded: list,
-    source: Literal["claude", "deterministic"],
+    source: Literal["claude", "gemini", "deterministic"],
 ) -> ProjectExtractionResponse:
     """Clamp parsed values into the API contract and add server-side ambiguities.
 

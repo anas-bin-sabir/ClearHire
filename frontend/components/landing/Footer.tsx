@@ -35,7 +35,7 @@ export default function Footer() {
               </div>
             ))}
           </nav>
-          <p className="border-t border-line pt-5 text-xs text-fg-2 md:col-span-2">Built with FastAPI, PostgreSQL with pgvector, Neo4j, Next.js and Claude.</p>
+          <p className="border-t border-line pt-5 text-xs text-fg-2 md:col-span-2">Built with FastAPI, PostgreSQL with pgvector, Neo4j, Next.js and Gemini or Claude.</p>
         </div>
       </div>
     </footer>

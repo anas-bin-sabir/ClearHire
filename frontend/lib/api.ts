@@ -119,7 +119,7 @@ export interface ProjectExtractionResponse {
   compliance: string[]
   implicit_constraints: string[]
   ambiguities: string[]
-  source: 'claude' | 'deterministic'
+  source: 'claude' | 'gemini' | 'deterministic'
 }
 
 export interface ProjectCreateResponse {
@@ -387,7 +387,9 @@ export interface HealthResponse {
   postgres: string
   mongodb: string
   neo4j: string
+  /** True when the active LLM provider has a key (name kept for API compatibility). */
   anthropic_configured: boolean
+  llm_provider?: 'gemini' | 'claude' | null
 }
 
 export interface SeedRequest {

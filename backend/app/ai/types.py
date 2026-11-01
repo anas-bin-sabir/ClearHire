@@ -204,7 +204,7 @@ class StructuredExplanation(BaseModel):
     summary: str
     bullets: list[str] = Field(default_factory=list)
     confidence: ConfidenceLevel = ConfidenceLevel.MEDIUM
-    source: Literal["claude", "deterministic"] = "deterministic"
+    source: Literal["claude", "gemini", "deterministic"] = "deterministic"
     usage: dict[str, Any] | None = None
 
     @property

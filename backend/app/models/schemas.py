@@ -147,7 +147,7 @@ class ProjectExtractionResponse(BaseModel):
     compliance: list[str] = Field(default_factory=list)
     implicit_constraints: list[str] = Field(default_factory=list)
     ambiguities: list[str] = Field(default_factory=list)
-    source: Literal["claude", "deterministic"]
+    source: Literal["claude", "gemini", "deterministic"]
 
 
 # --- Fraud ---
@@ -414,7 +414,9 @@ class HealthResponse(BaseModel):
     status: str
     postgres: str
     neo4j: str = "disabled"  # ok | error | disabled
+    # True when the active LLM provider has a key (name kept for API compatibility).
     anthropic_configured: bool
+    llm_provider: Literal["gemini", "claude"] | None = None
 
 
 # --- Analytics ---

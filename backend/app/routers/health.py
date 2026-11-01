@@ -3,6 +3,7 @@ import asyncio
 from fastapi import APIRouter
 from sqlalchemy import text
 
+from app.ai import llm
 from app.core.config import settings
 from app.db.session import async_session_factory
 from app.graph import driver as graph_driver
@@ -38,5 +39,6 @@ async def health() -> HealthResponse:
         status="ok" if healthy else "degraded",
         postgres=postgres_status,
         neo4j=neo4j_status,
-        anthropic_configured=bool(settings.anthropic_api_key),
+        anthropic_configured=llm.is_configured(),
+        llm_provider=llm.provider() if llm.is_configured() else None,
     )

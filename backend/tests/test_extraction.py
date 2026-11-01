@@ -52,6 +52,7 @@ def _message(parsed=None, stop_reason="end_turn", text=None):
 @pytest.fixture
 def fake_claude(monkeypatch):
     """Install a fake SDK client; returns a setter for the per-call behaviour."""
+    monkeypatch.setattr(settings, "llm_provider", "anthropic")
     monkeypatch.setattr(settings, "anthropic_api_key", "test-key")
     holder = {}
 

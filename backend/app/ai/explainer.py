@@ -177,7 +177,7 @@ def _parse_claude_to_structured(
         summary=summary,
         bullets=bullets,
         confidence=fallback.confidence,
-        source="claude",
+        source=llm.provider(),
         usage=result.usage.as_metadata(),
     )
 

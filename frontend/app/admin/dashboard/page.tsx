@@ -103,12 +103,12 @@ export default function AdminDashboard() {
                   <ServiceRow name="PostgreSQL" status={health?.postgres} />
                   <ServiceRow name="MongoDB" status={health?.mongodb} />
                   <ServiceRow name="Neo4j graph" status={health?.neo4j} />
-                  <ServiceRow name="Anthropic API key" status={health ? (health.anthropic_configured ? 'ok' : 'Not configured') : undefined} okLabel="Configured" />
+                  <ServiceRow name="Language model key" status={health ? (health.anthropic_configured ? 'ok' : 'Not configured') : undefined} okLabel={health?.llm_provider === 'gemini' ? 'Gemini' : health?.llm_provider === 'claude' ? 'Claude' : 'Configured'} />
                 </ul>
               )}
             </Panel>
             <p className="px-1 text-[13px] leading-relaxed text-fg-2">
-              Without an Anthropic key, project briefs fall back to the rule-based parser and search skips the AI rerank.
+              Without a Gemini or Anthropic key, project briefs fall back to the rule-based parser and search skips the AI rerank.
             </p>
           </div>
         </div>

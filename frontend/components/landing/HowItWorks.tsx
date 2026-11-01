@@ -14,7 +14,7 @@ const STEPS = [
   {
     icon: Quote,
     title: 'Explain with evidence',
-    body: 'With an Anthropic key configured, a model re-reads the top candidates. Every strength or risk must cite a profile field or graph fact; uncited claims are removed.',
+    body: 'With a Gemini or Claude key configured, a language model re-reads the top candidates. Every strength or risk must cite a profile field or graph fact; uncited claims are removed.',
   },
 ]
 

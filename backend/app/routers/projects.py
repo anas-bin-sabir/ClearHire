@@ -53,7 +53,7 @@ async def extract_requirements(
     fallback_reason: str | None = None
     try:
         result = await extract_with_llm(body.text)
-        parsed, source = result.value, "claude"
+        parsed, source = result.value, llm.provider()
         usage = result.usage.as_metadata()
     except llm.LLMUnavailable as exc:
         parsed, source = extract_deterministic(body.text), "deterministic"

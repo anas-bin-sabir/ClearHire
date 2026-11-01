@@ -87,7 +87,7 @@ Requirement-extraction quality is scored on labelled briefs:
 
 ```bash
 python -m scripts.eval_extraction --set holdout          # rule-based fallback, offline
-python -m scripts.eval_extraction --set holdout --llm    # Claude (needs ANTHROPIC_API_KEY)
+python -m scripts.eval_extraction --set holdout --llm    # LLM (needs GEMINI_API_KEY or ANTHROPIC_API_KEY)
 ```
 
 Override the test database with `TEST_DATABASE_URL`. CI (`.github/workflows/ci.yml`) runs the backend tests plus frontend lint and build.

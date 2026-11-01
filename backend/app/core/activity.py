@@ -17,6 +17,7 @@ _SENSITIVE_KEYS = {
     "authorization",
     "api_key",
     "anthropic_api_key",
+    "gemini_api_key",
     "jwt",
 }
 

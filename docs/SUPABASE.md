@@ -113,6 +113,6 @@ Expect `"postgres": "ok"` from `/health` and non-empty results from `/search`.
 - Set `DATABASE_URL` to the `postgresql+asyncpg://` session pooler URL. It's `sync: false`, so enter it in the dashboard.
 - `DB_POOL_SIZE` and `DB_MAX_OVERFLOW` default to 5 in the blueprint.
 - `AUTO_MIGRATE=true` (default) applies migrations at startup. Set it to `false` if you run `alembic upgrade head` as a release step instead.
-- Also set `CORS_ORIGINS` to the Vercel domain, `ANTHROPIC_API_KEY` (optional) and `SEED_ENABLED=false`.
+- Also set `CORS_ORIGINS` to the Vercel domain, `GEMINI_API_KEY` (optional, from Google AI Studio; or `ANTHROPIC_API_KEY`) and `SEED_ENABLED=false`.
 
 **Vercel** doesn't need any database variable, because the frontend only talks to FastAPI. Set `NEXT_PUBLIC_API_URL` (the Render URL), `NEXTAUTH_URL` (the Vercel URL) and `NEXTAUTH_SECRET`.

@@ -72,7 +72,7 @@ export default function Hero() {
       </div>
       <div className="bg-shell">
         <ul aria-label="Built with" className="mx-auto flex max-w-6xl flex-wrap items-center justify-between gap-x-10 gap-y-4 px-5 py-8 sm:px-8">
-          {['FastAPI', 'PostgreSQL', 'pgvector', 'Neo4j', 'Claude', 'Next.js'].map(t => (
+          {['FastAPI', 'PostgreSQL', 'pgvector', 'Neo4j', 'Gemini', 'Next.js'].map(t => (
             <li key={t} className="font-display text-[26px] leading-none text-on-dark-2">{t}</li>
           ))}
         </ul>

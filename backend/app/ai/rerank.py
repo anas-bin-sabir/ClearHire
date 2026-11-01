@@ -570,7 +570,7 @@ def cache_key(project: ProjectContext, cards: list[dict]) -> str:
     """Hash of everything the LLM sees. Cards carry their ``graph`` facts, so a new
     collaboration or skill edge changes the key and invalidates cached reranks."""
     payload = json.dumps(
-        {"project": project.model_dump(), "cards": cards, "model": settings.anthropic_model},
+        {"project": project.model_dump(), "cards": cards, "model": llm.active_model()},
         sort_keys=True,
         default=str,
     )

@@ -278,7 +278,7 @@ export function BriefProjectForm() {
         <div className="ai-rule mx-5 mt-5 sm:mx-6 sm:mt-6">
           <h2 id="extracted-heading" className="text-[15px] font-semibold text-fg">Extracted requirements</h2>
           <p className="mt-1 text-sm text-fg-2">
-            {result.source === 'claude' ? 'Read from your brief by Claude.' : 'Read by the rule-based parser (no LLM was available).'}{' '}
+            {result.source === 'gemini' ? 'Read from your brief by Gemini.' : result.source === 'claude' ? 'Read from your brief by Claude.' : 'Read by the rule-based parser (no LLM was available).'}{' '}
             Correct anything that’s off. Select a skill to switch it between must-have and nice-to-have.
           </p>
         </div>
