@@ -247,3 +247,43 @@ class UserSetting(Base):
     user_id: Mapped[int] = mapped_column(Integer, primary_key=True)
     settings: Mapped[dict] = mapped_column(JSONB, default=dict)
     updated_at: Mapped[datetime] = mapped_column(DateTime(timezone=True), default=lambda: datetime.now(timezone.utc))
+
+
+from sqlalchemy import func as _sa_func, text as _sa_text  # noqa: E402  (graph outbox)
+
+
+class GraphOutbox(Base):
+    """Pending Postgres -> Neo4j sync work (see app.graph.outbox / app.graph.sync).
+
+    Rows are written in the same transaction as the entity change and drained by a
+    background task, so a Neo4j outage never fails the request that caused it.
+    entity_type: freelancer | project | contract | user | skill_relationships
+    op:          upsert | delete
+    """
+
+    __tablename__ = "graph_outbox"
+    __table_args__ = (
+        Index(
+            "ix_graph_outbox_pending",
+            "id",
+            postgresql_where=_sa_text("processed_at IS NULL"),
+        ),
+    )
+
+    id: Mapped[int] = mapped_column(Integer, primary_key=True, autoincrement=True)
+    entity_type: Mapped[str] = mapped_column(String(32), nullable=False)
+    entity_id: Mapped[int] = mapped_column(Integer, nullable=False)
+    op: Mapped[str] = mapped_column(String(10), nullable=False, default="upsert")
+    created_at: Mapped[datetime] = mapped_column(
+        DateTime(timezone=True),
+        default=lambda: datetime.now(timezone.utc),
+        server_default=_sa_func.now(),
+        nullable=False,
+    )
+    attempts: Mapped[int] = mapped_column(
+        Integer, default=0, server_default="0", nullable=False
+    )
+    last_error: Mapped[str | None] = mapped_column(Text, nullable=True)
+    processed_at: Mapped[datetime | None] = mapped_column(
+        DateTime(timezone=True), nullable=True
+    )

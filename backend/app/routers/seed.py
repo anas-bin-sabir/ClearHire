@@ -27,6 +27,7 @@ async def seed_database(
             freelancer_count=body.freelancer_count,
             reset=body.reset,
         )
+        await seeder.rebuild_graph()
 
         response = SeedResponse(
             success=True,

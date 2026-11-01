@@ -1,4 +1,5 @@
 import asyncio
+import logging
 from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
@@ -10,8 +11,12 @@ from app.core.config import settings
 from app.db import close_postgres, init_postgres
 from app.db.repositories.postgres import SkillRepository
 from app.db.session import async_session_factory
+from app.graph import driver as graph_driver
+from app.graph import outbox as graph_outbox
+from app.graph import sync as graph_sync
 from app.routers import (
     activity,
+    admin_graph,
     analytics,
     auth,
     contracts,
@@ -28,6 +33,29 @@ from app.routers import (
 )
 
 
+logger = logging.getLogger(__name__)
+
+
+async def _start_graph() -> None:
+    """Constraints + skill ontology + outbox drainer. Never fails startup."""
+    if not graph_driver.is_enabled():
+        return
+    try:
+        # Ping first: the driver retries failed queries for ~30s, which would stall boot.
+        if await asyncio.wait_for(graph_driver.ping(), timeout=5.0) == "ok":
+            await graph_sync.apply_constraints()
+            async with async_session_factory() as session:
+                await graph_sync.sync_skill_ontology(session)
+        else:
+            logger.warning("Neo4j unreachable at startup; the outbox drainer will sync the ontology")
+            async with async_session_factory() as session:
+                await graph_outbox.enqueue(session, "skill_relationships", 0)
+                await session.commit()
+    except Exception as exc:  # noqa: BLE001 - Neo4j is optional
+        logger.warning("Neo4j unavailable at startup (graph sync will retry): %s", exc)
+    graph_sync.start_drainer()
+
+
 @asynccontextmanager
 async def lifespan(app: FastAPI):
     await init_postgres()
@@ -35,8 +63,13 @@ async def lifespan(app: FastAPI):
     async with async_session_factory() as session:
         await SkillRepository(session).sync_taxonomy()
         await session.commit()
-    yield
-    await close_postgres()
+    await _start_graph()
+    try:
+        yield
+    finally:
+        await graph_sync.stop_drainer()
+        await graph_driver.close_driver()
+        await close_postgres()
 
 
 app = FastAPI(
@@ -67,6 +100,7 @@ app.include_router(stats.router, prefix="/stats", tags=["Stats"])
 app.include_router(analytics.router, prefix="/analytics", tags=["Analytics"])
 app.include_router(activity.router, prefix="/activity", tags=["Activity"])
 app.include_router(graph.router, prefix="/graph", tags=["Graph"])
+app.include_router(admin_graph.router, prefix="/admin/graph", tags=["Admin Graph"])
 app.include_router(health.router, tags=["Health"])
 
 

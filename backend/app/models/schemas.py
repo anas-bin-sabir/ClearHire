@@ -100,12 +100,22 @@ class RankedFreelancer(BaseModel):
     model_config = {"populate_by_name": True}
 
 
+class SearchGraphInfo(BaseModel):
+    """Which graph backend expanded the search skills (GraphRAG)."""
+
+    source: Literal["neo4j", "postgres", "off", "error"] = "off"
+    # {required skill (lower): {related skill (lower): weight}}, multi-hop
+    expanded_skills: dict[str, dict[str, float]] = Field(default_factory=dict)
+    error: Optional[str] = None
+
+
 class SearchResponse(BaseModel):
     freelancers: list[dict[str, Any]]
     explanation: str
     total_candidates: int
     retrieval: dict[str, Any] = Field(default_factory=dict)
     reranking: dict[str, Any] = Field(default_factory=dict)
+    graph: SearchGraphInfo = Field(default_factory=SearchGraphInfo)
 
 
 class ProjectExtractionRequest(BaseModel):
@@ -214,6 +224,19 @@ class TeamBuilderRequest(BaseModel):
         return _validate_skills(v)
 
 
+class TeamCollaboration(BaseModel):
+    """Two chosen members who completed projects together (graph fact)."""
+
+    a_id: int
+    a_name: str
+    b_id: int
+    b_name: str
+    project_ids: list[int] = Field(default_factory=list)
+    project_titles: list[str] = Field(default_factory=list)
+    count: int
+    avg_rating: Optional[float] = None
+
+
 class TeamBuilderResponse(BaseModel):
     success: bool
     team: list[dict[str, Any]]
@@ -222,15 +245,17 @@ class TeamBuilderResponse(BaseModel):
     message: Optional[str] = None
     backtracks: int = 0
     nodes_explored: int = 0
+    collaborations: list[TeamCollaboration] = Field(default_factory=list)
+    graph_source: Literal["neo4j", "postgres", "off", "error"] = "off"
 
 
 # --- Graph ---
 
 
 class GraphNode(BaseModel):
-    id: str
+    id: str  # f-<id> | s-<skill> | p-<id> | c-<id>
     name: str
-    type: Literal["freelancer", "skill", "project"]
+    type: Literal["freelancer", "skill", "project", "client"]
     fraud_score: Optional[float] = Field(
         default=None,
         description="Bayesian fraud score for freelancer nodes",
@@ -240,13 +265,19 @@ class GraphNode(BaseModel):
 class GraphLink(BaseModel):
     source: str
     target: str
+    # HAS_SKILL | RELATED_TO | REQUIRES | WORKED_ON | POSTED | COLLABORATED_WITH
     type: str
+    weight: Optional[float] = Field(default=None, description="RELATED_TO weight")
+    # e.g. WORKED_ON {status, rating}, COLLABORATED_WITH {count, avg_rating, project_ids},
+    # REQUIRES {importance}, HAS_SKILL {level}
+    properties: dict[str, Any] = Field(default_factory=dict)
 
 
 class GraphResponse(BaseModel):
     nodes: list[GraphNode]
     links: list[GraphLink]
-    source: str = Field(default="postgres", description="data source")
+    source: Literal["neo4j", "postgres"] = Field(default="postgres", description="data source")
+    focus: Optional[str] = Field(default=None, description="node id the subgraph is centred on")
 
 
 # --- Seed ---
@@ -382,6 +413,7 @@ class PlatformStatsResponse(BaseModel):
 class HealthResponse(BaseModel):
     status: str
     postgres: str
+    neo4j: str = "disabled"  # ok | error | disabled
     anthropic_configured: bool
 
 

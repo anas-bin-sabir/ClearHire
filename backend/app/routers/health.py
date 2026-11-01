@@ -1,11 +1,25 @@
+import asyncio
+
 from fastapi import APIRouter
 from sqlalchemy import text
 
 from app.core.config import settings
 from app.db.session import async_session_factory
+from app.graph import driver as graph_driver
 from app.models.schemas import HealthResponse
 
 router = APIRouter()
+
+NEO4J_PING_TIMEOUT_SECONDS = 3.0
+
+
+async def _neo4j_status() -> str:
+    if not graph_driver.is_enabled():
+        return "disabled"
+    try:
+        return await asyncio.wait_for(graph_driver.ping(), timeout=NEO4J_PING_TIMEOUT_SECONDS)
+    except Exception:  # noqa: BLE001 - health reports, never raises
+        return "error"
 
 
 @router.get("/health", response_model=HealthResponse)
@@ -17,9 +31,12 @@ async def health() -> HealthResponse:
     except Exception:
         postgres_status = "error"
 
-    overall = "ok" if postgres_status == "ok" else "degraded"
+    neo4j_status = await _neo4j_status()
+    # Neo4j is optional: "disabled" is healthy, enabled-but-failing is degraded.
+    healthy = postgres_status == "ok" and neo4j_status != "error"
     return HealthResponse(
-        status=overall,
+        status="ok" if healthy else "degraded",
         postgres=postgres_status,
+        neo4j=neo4j_status,
         anthropic_configured=bool(settings.anthropic_api_key),
     )

@@ -1,6 +1,7 @@
 from dataclasses import dataclass
 
-from sqlalchemy import delete, select
+from sqlalchemy import String, bindparam, delete, select, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -9,6 +10,7 @@ from app.ai.skill_taxonomy import (
     RELATED_SKILLS,
     TAXONOMY,
     SkillDef,
+    category_edges,
     lookup,
     related_skill_map,
 )
@@ -31,11 +33,57 @@ class SkillRelationshipRepository:
         )
         await self._session.execute(stmt)
 
+    async def _upsert_many(self, edges: list[tuple[str, str, float]]) -> None:
+        if not edges:
+            return
+        stmt = insert(SkillRelationship).values(
+            [{"skill_a": a, "skill_b": b, "weight": w} for a, b, w in edges]
+        )
+        stmt = stmt.on_conflict_do_update(
+            index_elements=["skill_a", "skill_b"], set_={"weight": stmt.excluded.weight}
+        )
+        await self._session.execute(stmt)
+
     async def sync_curated(self) -> int:
-        """Upsert the curated adjacency list from app.ai.skill_taxonomy."""
-        for skill_a, skill_b, weight in RELATED_SKILLS:
-            await self.upsert_pair(skill_a, skill_b, weight)
+        """Upsert the curated adjacency list from app.ai.skill_taxonomy (no pruning)."""
+        await self._upsert_many(list(RELATED_SKILLS))
         return len(RELATED_SKILLS)
+
+    async def sync_ontology(self, *, include_category_edges: bool) -> int:
+        """Make the table mirror the ontology: curated + category-derived edges.
+
+        Category edges are computed from the embeddings stored in ``skills`` (see
+        ``skill_taxonomy.category_edges``) and never override a curated pair. Rows
+        that are not part of the ontology (stale category edges, reversed duplicates
+        of a curated pair) are deleted, so re-running is idempotent. Returns the
+        number of edges in the table afterwards.
+        """
+        edges = list(RELATED_SKILLS)
+        if include_category_edges:
+            rows = await self._session.execute(
+                select(Skill.name, Skill.category, Skill.embedding).where(
+                    Skill.embedding.is_not(None)
+                )
+            )
+            vectors = {
+                name: (category, [float(x) for x in embedding])
+                for name, category, embedding in rows.all()
+            }
+            edges += category_edges(vectors)
+        await self._upsert_many(edges)
+        prune = text(
+            """
+            DELETE FROM skill_relationships r
+            WHERE NOT EXISTS (
+                SELECT 1 FROM unnest(:a, :b) AS k(a, b)
+                WHERE k.a = r.skill_a AND k.b = r.skill_b
+            )
+            """
+        ).bindparams(bindparam("a", type_=ARRAY(String)), bindparam("b", type_=ARRAY(String)))
+        await self._session.execute(
+            prune, {"a": [e[0] for e in edges], "b": [e[1] for e in edges]}
+        )
+        return len(edges)
 
     async def adjacency(self) -> dict[str, dict[str, float]]:
         """Symmetric {skill_lower: {related_lower: weight}} map for ranking."""
@@ -59,6 +107,10 @@ class GroundedSkill:
 def _skill_embedding_text(skill: SkillDef) -> str:
     aliases = ", ".join(skill.aliases)
     return f"{skill.name} ({skill.category})" + (f": {aliases}" if aliases else "")
+
+
+def _hash_embeddings() -> bool:
+    return (settings.embedding_provider or "local").lower() in {"hash", "test"}
 
 
 class SkillRepository:
@@ -88,7 +140,12 @@ class SkillRepository:
         vectors = embed_texts([_skill_embedding_text(d) for _, d in to_embed])
         for (row, _), vector in zip(to_embed, vectors):
             row.embedding = vector
-        await SkillRelationshipRepository(self._session).sync_curated()
+        await self._session.flush()
+        # Category edges need real embeddings: with the hash provider (tests) the
+        # cosine between skills is noise, so only the curated list is synced there.
+        await SkillRelationshipRepository(self._session).sync_ontology(
+            include_category_edges=not _hash_embeddings()
+        )
         await self._session.flush()
         return len(to_embed)
 

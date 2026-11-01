@@ -1,3 +1,4 @@
+import logging
 from typing import Any
 
 from fastapi import APIRouter, Depends, HTTPException
@@ -6,13 +7,57 @@ from app.ai.team_solver import solve_team
 from app.ai.explainer import explain_team
 from app.ai.types import FreelancerCandidate, TeamBuilderConstraints, TeamExplanationInput
 from app.core.activity import log_activity
-from app.core.dependencies import get_ai_explanation_repo, get_freelancer_repo
+from app.core.dependencies import (
+    get_ai_explanation_repo,
+    get_freelancer_repo,
+    get_graph_context_dep,
+)
 from app.core.rate_limit import enforce_public_rate_limit, enforce_user_action_rate_limit
 from app.db.repositories.postgres import AIExplanationRepository, FreelancerRepository
 from app.db.utils.serializers import freelancer_to_dict
-from app.models.schemas import TeamBuilderRequest, TeamBuilderResponse
+from app.models.schemas import TeamBuilderRequest, TeamBuilderResponse, TeamCollaboration
+
+logger = logging.getLogger(__name__)
 
 router = APIRouter()
+
+
+async def team_collaborations(
+    graph, team: list[FreelancerCandidate], required_skills: list[str],
+    freelancer_repo: FreelancerRepository,
+) -> tuple[list[TeamCollaboration], str]:
+    """COLLABORATED_WITH facts among the chosen members, one entry per pair."""
+    if graph is None:
+        return [], "off"
+    if len(team) < 2:
+        return [], graph.source
+    ids = [m.id for m in team]
+    names = {m.id: m.name for m in team}
+    try:
+        subgraphs = await graph.candidate_subgraph(ids, required_skills)
+    except Exception as exc:  # noqa: BLE001 - explanation degrades, team stands
+        logger.warning("team collaborations via %s failed: %s", graph.source, exc)
+        return [], "error"
+    titles: dict[int, str] = {}
+    for projects in (await freelancer_repo.completed_projects_for(ids, per_freelancer=50)).values():
+        titles.update(dict(projects))
+    pairs: dict[tuple[int, int], TeamCollaboration] = {}
+    for fid, sub in subgraphs.items():
+        for c in sub.collaborations:
+            if c.other_id not in names or fid not in names or c.other_id == fid:
+                continue
+            a, b = sorted((fid, c.other_id))
+            if (a, b) in pairs:
+                continue
+            pairs[(a, b)] = TeamCollaboration(
+                a_id=a, a_name=names[a], b_id=b, b_name=names[b],
+                project_ids=sorted(c.project_ids),
+                project_titles=[titles[p] for p in sorted(c.project_ids) if p in titles],
+                count=c.count,
+                avg_rating=None if c.avg_rating is None else round(c.avg_rating, 2),
+            )
+    ordered = sorted(pairs.values(), key=lambda x: (-x.count, x.a_id, x.b_id))
+    return ordered, graph.source
 
 
 @router.get(
@@ -42,6 +87,7 @@ async def build_team(
     body: TeamBuilderRequest,
     freelancer_repo: FreelancerRepository = Depends(get_freelancer_repo),
     ai_explanation_repo: AIExplanationRepository = Depends(get_ai_explanation_repo),
+    graph=Depends(get_graph_context_dep),
 ) -> TeamBuilderResponse:
     endpoint = "/team-builder"
     try:
@@ -62,8 +108,16 @@ async def build_team(
         )
         csp_result = solve_team(candidates, constraints)
 
+        collaborations, graph_source = (
+            await team_collaborations(
+                graph, csp_result.team, body.required_skills, freelancer_repo
+            )
+            if csp_result.solved
+            else ([], graph.source if graph is not None else "off")
+        )
         explanation_struct = await explain_team(
-            TeamExplanationInput(constraints=constraints, result=csp_result)
+            TeamExplanationInput(constraints=constraints, result=csp_result),
+            collaborations=[c.model_dump() for c in collaborations],
         )
         explanation = explanation_struct.text
 
@@ -76,6 +130,8 @@ async def build_team(
                 message=csp_result.message,
                 backtracks=csp_result.stats.backtracks,
                 nodes_explored=csp_result.stats.nodes_explored,
+                collaborations=collaborations,
+                graph_source=graph_source,
             )
         else:
             response = TeamBuilderResponse(
@@ -86,6 +142,7 @@ async def build_team(
                 message=csp_result.message,
                 backtracks=csp_result.stats.backtracks,
                 nodes_explored=csp_result.stats.nodes_explored,
+                graph_source=graph_source,
             )
 
         await ai_explanation_repo.insert(
@@ -102,6 +159,8 @@ async def build_team(
                 "team_size": len(response.team),
                 "source": explanation_struct.source,
                 "usage": explanation_struct.usage,
+                "collaborations": [c.model_dump() for c in collaborations],
+                "graph_source": graph_source,
             },
         )
 

@@ -21,8 +21,13 @@ os.environ.update(
         "ANTHROPIC_API_KEY": "",
         "SECRET_KEY": "test-secret",
         "AUTO_MIGRATE": "true",
+        # Graph tests opt in to Neo4j via the neo4j_graph fixture; the rest of the
+        # suite runs with it disabled (Postgres fallback).
+        "NEO4J_URI": "",
     }
 )
+TEST_NEO4J_URI = os.environ.get("TEST_NEO4J_URI", "bolt://localhost:7688")
+TEST_NEO4J_PASSWORD = os.environ.get("TEST_NEO4J_PASSWORD", "clearhire123")
 
 import httpx  # noqa: E402
 import pytest  # noqa: E402
@@ -46,6 +51,7 @@ TABLES = (
     "users",
     "activity_logs",
     "ai_explanations",
+    "graph_outbox",
 )
 
 
@@ -142,3 +148,21 @@ def make_project():
         return project
 
     return _make
+
+
+@pytest.fixture
+async def neo4j_graph(monkeypatch):
+    """Enable Neo4j against TEST_NEO4J_URI with an empty graph; skip if unreachable."""
+    from app.core.config import settings
+    from app.graph import driver
+
+    monkeypatch.setattr(settings, "neo4j_uri", TEST_NEO4J_URI)
+    monkeypatch.setattr(settings, "neo4j_password", TEST_NEO4J_PASSWORD)
+    await driver.close_driver()
+    if await driver.ping() != "ok":
+        await driver.close_driver()
+        pytest.skip(f"Neo4j not reachable at {TEST_NEO4J_URI}")
+    await driver.run("MATCH (n) DETACH DELETE n")
+    yield driver
+    await driver.run("MATCH (n) DETACH DELETE n")
+    await driver.close_driver()

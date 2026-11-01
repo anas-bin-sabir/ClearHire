@@ -163,3 +163,11 @@ def owns_project(user: User, project) -> bool:
     return user.role == "admin" or (
         project.client_id is not None and project.client_id == user.id
     )
+
+
+async def get_graph_context_dep(session: AsyncSession = Depends(get_db_session)):
+    """GraphContext on the request's session (Neo4j if reachable, else Postgres);
+    None if neither can be built, in which case callers run without graph facts."""
+    from app.core.search_pipeline import resolve_graph_context
+
+    return await resolve_graph_context(session)

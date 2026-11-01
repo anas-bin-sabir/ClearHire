@@ -2,11 +2,12 @@ import re
 from dataclasses import dataclass, field
 from typing import Any, Literal
 
-from sqlalchemy import and_, delete, func, literal_column, or_, select, text
+from sqlalchemy import String, and_, bindparam, delete, func, literal_column, or_, select, text
+from sqlalchemy.dialects.postgresql import ARRAY
 from sqlalchemy.ext.asyncio import AsyncSession
 
 from app.ai.embeddings import embed_text, freelancer_embedding_text
-from app.ai.skill_taxonomy import canonicalize_all
+from app.ai.skill_taxonomy import canonicalize, canonicalize_all
 from app.core.config import settings
 from app.db.utils.serializers import freelancer_to_dict
 from app.models.orm import Contract, ContractStatus, Freelancer, Project
@@ -16,6 +17,9 @@ _EMBED_FIELDS = {"name", "bio", "skills", "location"}
 RetrievalMode = Literal["hybrid", "vector", "keyword"]
 RRF_K = 60  # standard Reciprocal Rank Fusion constant (Cormack et al., 2009)
 _TOKEN = re.compile(r"[a-z0-9]+")
+SkillFilter = Literal["strict", "expanded", "relaxed", "none"]
+# Graph-expanded neighbours weaker than this don't widen the skill filter.
+EXPANSION_MIN_WEIGHT = 0.2
 
 
 def keyword_tsquery(text_: str, max_terms: int = 32) -> str:
@@ -39,16 +43,19 @@ class RetrievedCandidate:
     semantic_rank: int | None = None
     keyword_rank: int | None = None
     rrf_score: float = 0.0
-    skill_filter: Literal["strict", "relaxed", "none"] = "none"
+    skill_filter: SkillFilter = "none"
+    # Best graph-expansion weight among the candidate's skills (expanded pass only).
+    graph_affinity: float = 0.0
 
 
 @dataclass
 class RetrievalResult:
     candidates: list[RetrievedCandidate] = field(default_factory=list)
     mode: RetrievalMode = "hybrid"
-    # strict: every candidate has a must-have skill; relaxed: too few did, so the
+    # strict: every candidate has a must-have skill; expanded: too few did, so the
+    # filter was widened to graph-related skills; relaxed: still too few, so the
     # skill overlap filter was dropped to fill the shortlist.
-    skill_filter: Literal["strict", "relaxed", "none"] = "none"
+    skill_filter: SkillFilter = "none"
 
 
 class FreelancerRepository:
@@ -67,6 +74,7 @@ class FreelancerRepository:
         search: str | None = None,
         skill: str | None = None,
         skills_any: list[str] | None = None,
+        skills_any_ci: list[str] | None = None,
         min_rating: float | None = None,
         max_hourly_rate: float | None = None,
         min_hourly_rate: float | None = None,
@@ -92,6 +100,21 @@ class FreelancerRepository:
             clauses.append(Freelancer.skills.any(skill))
         if skills_any:
             clauses.append(Freelancer.skills.overlap(skills_any))
+        if skills_any_ci:
+            # Case-insensitive overlap: graph neighbours may be off-taxonomy skills
+            # whose stored casing we can't reconstruct from a lower-cased key.
+            clauses.append(
+                text(
+                    "EXISTS (SELECT 1 FROM unnest(freelancers.skills) AS fs(skill) "
+                    "WHERE lower(fs.skill) = ANY(:skills_any_ci))"
+                ).bindparams(
+                    bindparam(
+                        "skills_any_ci",
+                        value=sorted({x.lower() for x in skills_any_ci}),
+                        type_=ARRAY(String),
+                    )
+                )
+            )
         if min_rating is not None:
             clauses.append(Freelancer.rating >= min_rating)
         if min_hourly_rate is not None:
@@ -242,11 +265,52 @@ class FreelancerRepository:
         rows = sorted(fused.values(), key=lambda r: (-r[4], r[0]))
         return [tuple(r) for r in rows[:limit]]
 
+    @staticmethod
+    def _expanded_weights(
+        must: list[str], expanded_skills: dict[str, float] | None
+    ) -> dict[str, float]:
+        """{canonical skill: weight} of graph neighbours, minus the must-haves."""
+        must_keys = {m.lower() for m in must}
+        weights: dict[str, float] = {}
+        for skill, weight in (expanded_skills or {}).items():
+            name = canonicalize(skill)
+            if name.lower() in must_keys or weight < EXPANSION_MIN_WEIGHT:
+                continue
+            weights[name] = max(weight, weights.get(name, 0.0))
+        return weights
+
+    def _passes(
+        self, must: list[str], expanded: dict[str, float], filters: dict
+    ) -> list[tuple[str, Any]]:
+        if not must:
+            return [("none", self._filtered_stmt(**filters))]
+        passes: list[tuple[str, Any]] = [("strict", self._filtered_stmt(skills_any=must, **filters))]
+        if expanded:
+            passes.append(
+                ("expanded", self._filtered_stmt(skills_any_ci=list(expanded), **filters))
+            )
+        passes.append(("relaxed", self._filtered_stmt(**filters)))
+        return passes
+
+    async def _skills_of(self, ids: list[int]) -> dict[int, list[str]]:
+        if not ids:
+            return {}
+        rows = await self._session.execute(
+            select(Freelancer.id, Freelancer.skills).where(Freelancer.id.in_(ids))
+        )
+        return {fid: list(skills or []) for fid, skills in rows.all()}
+
+    @staticmethod
+    def _affinity(skills: list[str], expanded: dict[str, float]) -> float:
+        lowered = {k.lower(): w for k, w in expanded.items()}
+        return max((lowered.get(s.lower(), 0.0) for s in skills), default=0.0)
+
     async def hybrid_retrieve(
         self,
         query: str | None,
         *,
         must_skills: list[str] | None = None,
+        expanded_skills: dict[str, float] | None = None,
         mode: RetrievalMode = "hybrid",
         limit: int = 100,
         min_results: int = 20,
@@ -259,8 +323,14 @@ class FreelancerRepository:
         """Hard filters in SQL, then semantic (pgvector HNSW) + keyword (tsvector)
         channels merged with Reciprocal Rank Fusion.
 
-        Must-have skills are a SQL overlap filter; when that leaves fewer than
-        ``min_results`` candidates, a second pass without it tops the list up.
+        Must-have skills are a SQL overlap filter. When that leaves fewer than
+        ``min_results`` candidates and ``expanded_skills`` (graph neighbours of the
+        must-haves, ``{skill: weight}``) is given, an *expanded* pass widens the
+        filter to those neighbours, ordering its rows by RRF plus a graph-affinity
+        term, so related-skill holders take the free slots first (strongest
+        neighbours first). A *relaxed* pass without any skill filter then tops the
+        shortlist up to ``limit``: the expanded pass decides who gets in first, it
+        never shrinks the shortlist compared to the ungraphed relaxed pass.
         """
         filters = dict(
             min_rating=min_rating,
@@ -270,27 +340,34 @@ class FreelancerRepository:
             max_fraud_score=max_fraud_score,
         )
         must = canonicalize_all(must_skills)
-        passes: list[tuple[str, Any]] = (
-            [("strict", self._filtered_stmt(skills_any=must, **filters)),
-             ("relaxed", self._filtered_stmt(**filters))]
-            if must
-            else [("none", self._filtered_stmt(**filters))]
-        )
+        expanded = self._expanded_weights(must, expanded_skills)
+        passes = self._passes(must, expanded, filters)
 
         if not (query and query.strip()):
-            return await self._list_without_query(passes, limit, min_results)
+            return await self._list_without_query(passes, limit, min_results, expanded)
 
         query_vector = embed_text(query)
         if mode != "keyword":
             await self._tune_hnsw(limit)
 
         fused: list[tuple[str, tuple]] = []
+        affinity: dict[int, float] = {}
         seen: set[int] = set()
         used = "none"
         for label, stmt in passes:
-            if label == "relaxed" and len(fused) >= min_results:
+            if label == "expanded" and len(fused) >= min_results:
                 break
-            for row in await self._fused_pass(stmt, query, query_vector, mode, limit):
+            if label == "relaxed" and len(fused) >= (limit if used == "expanded" else min_results):
+                break
+            rows = await self._fused_pass(stmt, query, query_vector, mode, limit)
+            if label == "expanded":
+                rows = [r for r in rows if r[0] not in seen]
+                skills = await self._skills_of([r[0] for r in rows])
+                for r in rows:
+                    affinity[r[0]] = self._affinity(skills.get(r[0], []), expanded)
+                # A full-weight neighbour counts like a first place in one more channel.
+                rows.sort(key=lambda r: (-(r[4] + affinity[r[0]] / (RRF_K + 1)), r[0]))
+            for row in rows:
                 if row[0] not in seen and len(fused) < limit:
                     seen.add(row[0])
                     fused.append((label, row))
@@ -320,29 +397,47 @@ class FreelancerRepository:
                     keyword_rank=kw_rank,
                     rrf_score=round(rrf, 6),
                     skill_filter=label,
+                    graph_affinity=round(affinity.get(fid, 0.0), 6),
                 )
             )
         return RetrievalResult(candidates=candidates, mode=mode, skill_filter=used)
 
     async def _list_without_query(
-        self, passes: list[tuple[str, Any]], limit: int, min_results: int
+        self,
+        passes: list[tuple[str, Any]],
+        limit: int,
+        min_results: int,
+        expanded: dict[str, float] | None = None,
     ) -> RetrievalResult:
         candidates: list[RetrievedCandidate] = []
         seen: set[int] = set()
         used = "none"
         for label, stmt in passes:
-            if label == "relaxed" and len(candidates) >= min_results:
+            if label == "expanded" and len(candidates) >= min_results:
                 break
-            rows = (
-                await self._session.execute(
-                    stmt.order_by(Freelancer.rating.desc(), Freelancer.id).limit(limit)
-                )
-            ).scalars()
-            for freelancer in rows:
+            if label == "relaxed" and len(candidates) >= (
+                limit if used == "expanded" else min_results
+            ):
+                break
+            rows = list(
+                (
+                    await self._session.execute(
+                        stmt.order_by(Freelancer.rating.desc(), Freelancer.id).limit(limit)
+                    )
+                ).scalars()
+            )
+            scored = [(f, 0.0) for f in rows]
+            if label == "expanded":
+                scored = [(f, self._affinity(list(f.skills or []), expanded or {})) for f in rows]
+                scored.sort(key=lambda fa: (-fa[1], -(fa[0].rating or 0.0), fa[0].id))
+            for freelancer, aff in scored:
                 if freelancer.id not in seen and len(candidates) < limit:
                     seen.add(freelancer.id)
                     candidates.append(
-                        RetrievedCandidate(freelancer=freelancer, similarity=None, skill_filter=label)
+                        RetrievedCandidate(
+                            freelancer=freelancer, similarity=None, skill_filter=label,
+                            graph_affinity=round(aff, 6),
+                        )
                     )
             used = label
         return RetrievalResult(candidates=candidates, mode="hybrid", skill_filter=used)
@@ -494,6 +589,7 @@ class FreelancerRepository:
                 "keyword_rank": item.keyword_rank,
                 "rrf_score": item.rrf_score,
                 "skill_filter": item.skill_filter,
+                "graph_affinity": item.graph_affinity,
             }
             ranked.append(data)
         return ranked

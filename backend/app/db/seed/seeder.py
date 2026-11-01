@@ -184,3 +184,15 @@ class DatabaseSeeder:
             projects_created=1,
             contracts_created=contracts_created,
         )
+
+    async def rebuild_graph(self) -> bool:
+        """Commit, then rebuild the Neo4j read model when enabled (best-effort).
+
+        Seeding uses bulk statements the outbox listener can't see, so a full
+        rebuild is the reliable way to bring the graph in line. Returns True when a
+        rebuild ran; never raises for Neo4j errors.
+        """
+        from app.graph.sync import rebuild_if_enabled
+
+        await self._session.commit()
+        return await rebuild_if_enabled(self._session) is not None
