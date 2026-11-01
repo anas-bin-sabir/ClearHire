@@ -4,38 +4,33 @@ const FEATURES = [
   {
     icon: Users,
     title: 'Team builder',
-    body: 'Set a budget, team size, hours and the skills you need. A constraint solver searches for a team that covers the skills within budget, shows which members have already completed projects together, and tells you when no team fits.',
+    body: 'A constraint solver finds a team that covers your skills within budget, shows who has already worked together, and tells you when no team fits.',
   },
   {
     icon: ShieldCheck,
     title: 'Fraud review',
-    body: 'A Bayesian model scores every profile from signals such as account age, unverified identity, low response rate and rates out of line with experience. High scores are flagged for an admin to review, never auto-rejected.',
+    body: 'A Bayesian model scores profiles from signals such as account age, unverified identity and rates out of line with experience. High scores go to an admin, never auto-rejected.',
   },
   {
     icon: Network,
     title: 'Skill graph',
-    body: 'Freelancers, skills, projects and clients live in one knowledge graph. Freelancers see related skills worth adding; admins can explore who has worked with whom.',
+    body: 'Freelancers, skills, projects and clients share one knowledge graph. Freelancers see related skills worth adding; admins see who has worked with whom.',
   },
 ]
 
 export default function Features() {
   return (
-    <section id="features" className="scroll-mt-4 border-t border-line bg-panel">
-      <div className="mx-auto grid max-w-6xl grid-cols-1 gap-12 px-5 py-20 sm:px-8 lg:grid-cols-[20rem_minmax(0,1fr)] lg:py-28">
-        <div>
-          <h2 className="text-[32px] font-bold leading-tight tracking-tight text-fg sm:text-[40px]">Beyond a single hire</h2>
-          <p className="mt-4 text-base leading-relaxed text-fg-2">The same matching engine powers team assembly, trust checks and the graph behind them.</p>
-        </div>
-        <ul className="divide-y divide-line border-y border-line">
+    <section id="features" className="scroll-mt-4 bg-canvas">
+      <div className="mx-auto max-w-5xl px-5 py-20 sm:px-8 lg:py-24">
+        <h2 className="text-center text-[44px] text-fg sm:text-[56px]">Beyond a single hire</h2>
+        <ul className="mt-10 space-y-4">
           {FEATURES.map(f => (
-            <li key={f.title} className="grid grid-cols-[2.5rem_1fr] gap-4 py-7">
-              <span className="grid h-10 w-10 place-items-center rounded-control bg-primary-tint text-primary-ink">
+            <li key={f.title} className="grid grid-cols-[3rem_1fr] items-center gap-x-5 gap-y-2 rounded-panel bg-shell p-3 pr-6 text-on-dark md:grid-cols-[3rem_14rem_1fr]">
+              <span className="grid h-12 w-12 place-items-center rounded-field bg-primary text-on-primary">
                 <f.icon className="h-5 w-5" aria-hidden />
               </span>
-              <div>
-                <h3 className="text-lg font-semibold text-fg">{f.title}</h3>
-                <p className="mt-1.5 max-w-2xl text-[15px] leading-relaxed text-fg-2">{f.body}</p>
-              </div>
+              <h3 className="font-display text-[24px] leading-none">{f.title}</h3>
+              <p className="col-span-2 text-[14px] leading-relaxed text-on-dark-2 md:col-span-1 md:border-l md:border-line-dark md:pl-6">{f.body}</p>
             </li>
           ))}
         </ul>

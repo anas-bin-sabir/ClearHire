@@ -1,22 +1,41 @@
 import Link from 'next/link'
 
+const COLUMNS = [
+  { title: 'Product', links: [{ label: 'How it works', href: '#how-it-works' }, { label: 'What it does', href: '#features' }, { label: 'Trust', href: '#security' }] },
+  { title: 'Account', links: [{ label: 'Sign in', href: '/login' }, { label: 'Create an account', href: '/signup' }] },
+]
+
 export default function Footer() {
   return (
-    <footer id="footer" className="bg-shell text-on-dark">
-      <div className="mx-auto max-w-6xl px-5 py-16 sm:px-8">
-        <div className="flex flex-col gap-8 md:flex-row md:items-end md:justify-between">
-          <div>
-            <p className="text-[28px] font-bold leading-tight tracking-tight">Post your first project.</p>
-            <p className="mt-2 text-on-dark-2">Describe it in a sentence; review what ClearHire extracted before it’s saved.</p>
-          </div>
+    <footer id="footer">
+      <section className="bg-panel">
+        <div className="mx-auto flex max-w-6xl flex-col gap-8 px-5 py-20 sm:px-8 md:flex-row md:items-end md:justify-between">
+          <h2 className="max-w-xl text-[48px] text-fg sm:text-[64px]">Post your first project today.</h2>
           <div className="flex flex-wrap gap-3">
             <Link href="/signup" className="btn btn-lg btn-primary">Get started</Link>
-            <Link href="/login" className="btn btn-lg btn-dark">Sign in</Link>
+            <Link href="/login" className="btn btn-lg btn-secondary">Sign in</Link>
           </div>
         </div>
-        <div className="mt-14 flex flex-col gap-3 border-t border-line-dark pt-6 text-sm text-on-dark-2 sm:flex-row sm:justify-between">
-          <p>ClearHire</p>
-          <p>Built with FastAPI, PostgreSQL with pgvector, Neo4j, MongoDB, Next.js and Claude.</p>
+      </section>
+      <div className="bg-canvas">
+        <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-8 pt-16 sm:px-8 md:grid-cols-[minmax(0,1fr)_auto]">
+          <div>
+            <p className="max-w-sm text-[14px] leading-relaxed text-fg-2">Describe the work, get a ranked shortlist with evidence, and build a team inside your budget.</p>
+            <p className="font-display mt-6 text-[88px] leading-[0.9] text-fg sm:text-[120px]">ClearHire</p>
+          </div>
+          <nav aria-label="Footer" className="flex gap-16">
+            {COLUMNS.map(c => (
+              <div key={c.title}>
+                <p className="text-[13px] font-semibold text-fg">{c.title}</p>
+                <ul className="mt-3 space-y-2">
+                  {c.links.map(l => (
+                    <li key={l.href}><a href={l.href} className="text-[13px] text-fg-2 hover:text-fg">{l.label}</a></li>
+                  ))}
+                </ul>
+              </div>
+            ))}
+          </nav>
+          <p className="border-t border-line pt-5 text-xs text-fg-2 md:col-span-2">Built with FastAPI, PostgreSQL with pgvector, Neo4j, Next.js and Claude.</p>
         </div>
       </div>
     </footer>
