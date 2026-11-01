@@ -107,7 +107,14 @@ async def create_contract(
     project = await project_repo.get_by_id(body.project_id)
     if not project:
         raise HTTPException(status_code=404, detail="Project not found")
-    if not owns_project(user, project):
+    # Clients hire onto their own projects. A freelancer may only express interest:
+    # a pending contract for their own profile, which the project owner then accepts.
+    own_interest = (
+        freelancer.user_id is not None
+        and freelancer.user_id == user.id
+        and body.status == ContractStatus.PENDING.value
+    )
+    if not owns_project(user, project) and not own_interest:
         raise HTTPException(status_code=403, detail="Not your project")
 
     if await contract_repo.get_pair(body.freelancer_id, body.project_id):
@@ -190,6 +197,13 @@ async def update_contract_status(
     )
     if not is_party:
         raise HTTPException(status_code=403, detail="Not a party to this contract")
+    if (
+        contract.status == ContractStatus.PENDING.value
+        and body.status == ContractStatus.ACTIVE.value
+        and not (project is not None and owns_project(user, project))
+    ):
+        # Accepting a pending contract (e.g. a freelancer's interest) is the client's call.
+        raise HTTPException(status_code=403, detail="Only the project owner can accept this contract")
     if not contract_repo.can_transition(contract.status, body.status):
         raise HTTPException(
             status_code=409,
