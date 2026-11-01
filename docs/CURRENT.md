@@ -185,7 +185,29 @@ Each phase ends in a shippable, demoable state. Phases 1–3 deliver the first b
 
 ---
 
-### Phase 4 — Neo4j graph layer & GraphRAG (≈4–5 days)
+### Phase 4 — Neo4j graph layer & GraphRAG (≈4–5 days) — 🟡 implemented 2026-10-31, recall gain only at reduced shortlist size
+
+> **Status.**
+> - **Neo4j is an optional derived read model** (`app/graph/`), gated on `NEO4J_URI`.
+> - **Sync:** writes to freelancers, projects, contracts and client users queue `graph_outbox` rows inside the same transaction, through a SQLAlchemy flush listener (migration `0005`). A background drainer applies idempotent `MERGE`s from those rows, claiming them with `FOR UPDATE SKIP LOCKED`. A Neo4j outage never fails a request.
+> - **Admin and health:** `POST /admin/graph/rebuild` does a full rebuild and `GET /admin/graph/status` reports sync state. `/health` reports `neo4j: ok|error|disabled`. Seeding ends with a rebuild.
+> - **Skill ontology:** 264 curated `RELATED_TO` pairs, plus within-category edges weighted by MiniLM similarity (42 with real embeddings; skipped with hash embeddings).
+> - **Graph lookups:** `GraphContext` (`expand_skills`, `candidate_subgraph`) has a Cypher backend and a recursive-CTE Postgres backend. Parity tests assert both return identical results. If Neo4j fails mid-request, the call is retried on Postgres.
+> - **Search:** multi-hop adjacency feeds ranking. A new *expanded* retrieval pass admits holders of related skills before the relaxed pass. Search responses report `graph.source`.
+> - **LLM grounding:** rerank cards carry skill paths, past projects and in-shortlist collaborations, cited as `f<id>.graph:path:<skill>` / `f<id>.graph:collab:<id>` and validated server-side. The deterministic path emits the same graph claims, and team explanations include collaborations.
+> - **Admin graph view:** `GET /graph?freelancer_id=|project_id=` returns a focused subgraph for the rewritten admin graph page.
+>
+> **Eval** ([`EVAL.md`](./EVAL.md), 14 rare-skill queries, Postgres backend):
+> - With the production shortlist of 100, nDCG@10 goes from 0.783 to 0.798 and Recall@50 is unchanged at 0.906. 100 of the 130 eval profiles already make the shortlist, so there's little left to recall.
+> - At shortlist 30, Recall@50 goes from 0.818 to 0.874.
+> - Holdout nDCG@10 goes from 0.869 to 0.882, but Recall@50 drops from 0.921 to 0.901 on the Vue and Unity queries, where adjacency credit lifts JavaScript and C# generalists.
+> - The Neo4j backend wasn't evaluated separately; parity tests show it returns the same facts.
+>
+> **Open:**
+> - `WORKED_ON.rating` and `COLLABORATED_WITH.avg_rating` are null until contracts carry a rating, and `REVIEWED` and `Project.status` aren't written.
+> - `full_rebuild` wipes and then refills, so graph reads see partial data mid-rebuild.
+> - The outbox has no retry cap for poison rows.
+> - Graph citations haven't been tested with real Claude output.
 
 **Goal:** the graph changes retrieval, team building and fraud results, beyond the admin visualization.
 

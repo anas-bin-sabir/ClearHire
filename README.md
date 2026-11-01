@@ -54,6 +54,10 @@ npm run dev                                          # http://localhost:3000
 
 The schema is managed by Alembic and applied automatically on startup (`AUTO_MIGRATE=true`). To run it manually: `cd backend && alembic upgrade head`.
 
+## Hosted database (Supabase)
+
+In production the API uses Supabase as plain hosted Postgres (pgvector included). Auth stays in the app and only FastAPI talks to the database. Set `DATABASE_URL` to the session pooler URL (`postgresql+asyncpg://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`), then move local data with `backend/scripts/migrate_to_supabase.sh` or reseed with `--reseed`. The full runbook, covering connection options, security and free-tier limits, is in [`docs/SUPABASE.md`](docs/SUPABASE.md). Tests always run on the local Docker database.
+
 ## Demo accounts (after seeding)
 
 | Role | Email | Password |

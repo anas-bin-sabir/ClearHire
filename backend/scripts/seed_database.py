@@ -34,13 +34,17 @@ async def main() -> None:
             reset=args.reset,
         )
         await session.commit()
+        graph_rebuilt = await seeder.rebuild_graph()
 
     print(
         f"Seeded {result.freelancers_created} freelancers, "
         f"{result.projects_created} project(s), "
         f"{result.contracts_created} contract(s). "
-        "PostgreSQL only."
+        + ("Neo4j graph rebuilt." if graph_rebuilt else "Neo4j graph not rebuilt (disabled or unreachable).")
     )
+    from app.graph.driver import close_driver
+
+    await close_driver()
     await close_postgres()
 
 

@@ -48,6 +48,10 @@ alembic revision --autogenerate -m "describe change"  # after editing app/models
 
 `tests/test_migrations.py` fails if `orm.py` and the migrations drift apart.
 
+## Hosted database (Supabase)
+
+Production `DATABASE_URL` is a Supabase session pooler URL (port 5432, `+asyncpg`). TLS and pool size come from `DB_SSL_MODE`, `DB_POOL_SIZE`, `DB_MAX_OVERFLOW` and `DB_STATEMENT_CACHE_SIZE` (see `.env.example`). `scripts/migrate_to_supabase.sh` runs migrations on the target and then copies local data (or seeds with `--reseed`). Runbook: [`docs/SUPABASE.md`](../docs/SUPABASE.md). Never point `TEST_DATABASE_URL` at it.
+
 ## Seeding
 
 ```bash

@@ -24,9 +24,11 @@
 #     role is not a superuser. Instead the custom-format dump is rendered to SQL and loaded
 #     with psql in a single transaction after `SET session_replication_role = replica`,
 #     the approach Supabase's own migration guide uses (it skips FK triggers for the session).
-#     If that SET is refused, the load continues without it: pg_dump already emits table data
-#     in foreign-key dependency order, which suffices unless the schema has FK cycles
-#     (ClearHire's doesn't). Either way --single-transaction means all-or-nothing.
+#     If that SET is refused, the load continues without it: pg_dump emits table data in
+#     foreign-key dependency order, which covers every FK except self-references
+#     (freelancers.referred_by_id -> freelancers.id, which pg_dump warns about). A referral
+#     pointing at a later-inserted row would then fail the load; --single-transaction makes
+#     that an all-or-nothing rollback, never a half-copied database.
 #   * A data-only dump already carries setval() for owned sequences; sequences are reset to
 #     max(id)+1 again afterwards anyway so the target is correct even if rows were edited.
 set -euo pipefail
@@ -151,6 +153,7 @@ trap 'rm -rf "$WORK"' EXIT   # the dump contains user data (password hashes): ne
 
 # (c) dump
 log "pg_dump (data only) from source"
+# (pg_dump warns about the self-referencing FK on freelancers; handled by the load below)
 pg_dump "$SOURCE_URL" --data-only --no-owner --no-privileges -Fc \
   --schema=public --exclude-table=public.alembic_version -f "$WORK/data.dump"
 
@@ -168,7 +171,7 @@ psql_t --single-transaction "${pre[@]}" -f "$WORK/data.sql" >/dev/null
 
 # (e) sequences (serial and identity columns own their sequence)
 log "Resetting sequences to max(id) + 1"
-psql_t <<'SQL'
+psql_t >/dev/null <<'SQL'
 select format('select setval(%L, coalesce((select max(%I) from public.%I), 0) + 1, false)',
               seq.oid::regclass::text, att.attname, tbl.relname)
 from pg_class seq

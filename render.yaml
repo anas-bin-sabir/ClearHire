@@ -25,3 +25,13 @@ services:
         sync: false
       - key: ANTHROPIC_API_KEY
         sync: false
+      # Optional Neo4j graph read model. Neo4j AuraDB Free is enough for demo scale:
+      # use its neo4j+s://<id>.databases.neo4j.io URI. Leave NEO4J_URI unset to run
+      # Postgres-only (graph features use the Postgres fallback). After enabling,
+      # call POST /admin/graph/rebuild once.
+      - key: NEO4J_URI
+        sync: false
+      - key: NEO4J_USER
+        sync: false
+      - key: NEO4J_PASSWORD
+        sync: false

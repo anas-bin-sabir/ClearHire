@@ -51,6 +51,22 @@ class Settings(BaseSettings):
         default=None, ge=0, alias="DB_STATEMENT_CACHE_SIZE"
     )
 
+    # Neo4j graph read model (derived from Postgres; optional). Unset NEO4J_URI
+    # disables it and graph features fall back to recursive CTEs in Postgres.
+    neo4j_uri: str = Field(default="", alias="NEO4J_URI")
+    neo4j_user: str = Field(default="neo4j", alias="NEO4J_USER")
+    neo4j_password: str = Field(default="", alias="NEO4J_PASSWORD")
+    neo4j_database: str = Field(default="neo4j", alias="NEO4J_DATABASE")
+    # GraphRAG skill expansion: hops over RELATED_TO, weight multiplied per extra hop.
+    graph_expansion_hops: int = Field(default=2, ge=1, le=3, alias="GRAPH_EXPANSION_HOPS")
+    graph_expansion_decay: float = Field(
+        default=0.5, gt=0.0, le=1.0, alias="GRAPH_EXPANSION_DECAY"
+    )
+    # Outbox drain interval for Postgres -> Neo4j sync.
+    graph_sync_interval_seconds: float = Field(
+        default=2.0, gt=0.0, alias="GRAPH_SYNC_INTERVAL_SECONDS"
+    )
+
     anthropic_api_key: str = Field(default="", alias="ANTHROPIC_API_KEY")
     anthropic_model: str = Field(default="claude-haiku-5-5", alias="ANTHROPIC_MODEL")
     anthropic_timeout_seconds: float = Field(default=60.0, alias="ANTHROPIC_TIMEOUT_SECONDS")
