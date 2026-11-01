@@ -2,16 +2,13 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { api, ContractRecord, ProjectRecord } from '@/lib/api'
+import Link from 'next/link'
+import { api, ContractRecord } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { fmt } from '@/lib/utils'
-import { 
-  FileText, 
-  Calendar,
-  DollarSign,
-  AlertCircle
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { FileText } from 'lucide-react'
+import { PageBody, PageHeader } from '@/components/ui/PageHeader'
+import { EmptyState, LoadingRows, Notice } from '@/components/ui/States'
 
 interface EnrichedContract extends ContractRecord {
   projectTitle: string
@@ -20,7 +17,7 @@ interface EnrichedContract extends ContractRecord {
 
 export default function FreelancerContractsPage() {
   const { data: session } = useSession()
-  const flId = session?.user && (session.user as any).freelancerId ? Number((session.user as any).freelancerId) : 1
+  const flId = session?.user?.freelancerId ? Number(session.user.freelancerId) : 1
 
   const [contracts, setContracts] = useState<EnrichedContract[]>([])
   const [loading, setLoading] = useState(true)
@@ -51,7 +48,7 @@ export default function FreelancerContractsPage() {
                 projectTitle: proj.title || `Project #${c.project_id}`,
                 budget: proj.budget
               }
-            } catch (err) {
+            } catch {
               return {
                 ...c,
                 projectTitle: `Project #${c.project_id}`,
@@ -65,10 +62,10 @@ export default function FreelancerContractsPage() {
           setContracts(enriched)
           setLoading(false)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err)
         if (active) {
-          setError('Failed to retrieve contracts.')
+          setError('Your contracts couldn’t be loaded. Refresh the page to try again.')
           setLoading(false)
         }
       }
@@ -80,83 +77,65 @@ export default function FreelancerContractsPage() {
     }
   }, [flId])
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-mint border-t-transparent animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Retrieving active agreements...</p>
-        </div>
-      </div>
-    )
-  }
+  const created = (c: EnrichedContract) => (c.created_at ? new Date(c.created_at).toLocaleDateString() : '—')
 
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex justify-between items-center bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileText className="h-5.5 w-5.5 text-mint" /> Contracts Directory
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">Read-only history of your project contracts and applications status.</p>
-        </div>
-      </div>
+    <>
+      <PageHeader title="Contracts" description="Every contract you’ve been hired into or expressed interest in. Clients change the status." />
+      <PageBody className="max-w-5xl space-y-4">
+        {error && <Notice tone="danger">{error}</Notice>}
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
-
-      {/* Table */}
-      <div className="glass-card overflow-hidden">
-        {contracts.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">
-            You don't have any contract records. ViewMatches to find projects fitting your skills.
-          </div>
+        {loading ? (
+          <div className="rounded-panel border border-line-2 bg-panel p-5 shadow-card"><LoadingRows rows={4} label="Loading contracts" /></div>
+        ) : contracts.length === 0 ? (
+          <EmptyState
+            icon={<FileText aria-hidden />}
+            title="No contracts yet"
+            description="Express interest in a project, or wait for a client to hire you."
+            action={<Link href="/freelancer/matches" className="btn btn-sm btn-secondary">See project matches</Link>}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-hidden rounded-panel border border-line-2 bg-panel shadow-card">
+            <table className="data-table hidden md:table">
               <thead>
-                <tr className="border-b border-white/5 bg-slate-900/40 text-[10px] font-bold text-slate-400 uppercase tracking-widest">
-                  <th className="py-4 px-6">Project Title</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6">Your Rate</th>
-                  <th className="py-4 px-6">Project Budget</th>
-                  <th className="py-4 px-6">Assigned Date</th>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Your rate</th>
+                  <th scope="col" className="text-right">Project budget</th>
+                  <th scope="col">Created</th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/3 text-xs text-slate-300">
+              <tbody>
                 {contracts.map(contract => (
-                  <tr key={contract.id} className="hover:bg-white/1">
-                    <td className="py-4 px-6 font-semibold text-white">{contract.projectTitle}</td>
-                    <td className="py-4 px-6">
-                      <StatusBadge status={contract.status} />
-                    </td>
-                    <td className="py-4 px-6 font-mono text-slate-300">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="h-3.5 w-3.5 text-mint" /> 
-                        {fmt.rate(hourlyRate)}
-                      </span>
-                    </td>
-                    <td className="py-4 px-6 font-mono text-slate-400">
-                      ${contract.budget.toLocaleString()}
-                    </td>
-                    <td className="py-4 px-6 font-mono text-slate-400">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </td>
+                  <tr key={contract.id}>
+                    <td className="font-semibold text-fg">{contract.projectTitle}</td>
+                    <td><StatusBadge status={contract.status} /></td>
+                    <td className="text-right tabular-nums text-fg">{fmt.rate(hourlyRate)}</td>
+                    <td className="text-right tabular-nums text-fg">{fmt.currency(contract.budget)}</td>
+                    <td className="tabular-nums text-fg-2">{created(contract)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+            <ul className="divide-y divide-line md:hidden">
+              {contracts.map(contract => (
+                <li key={contract.id} className="space-y-2 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <p className="font-semibold text-fg">{contract.projectTitle}</p>
+                    <StatusBadge status={contract.status} />
+                  </div>
+                  <p className="flex flex-wrap gap-x-4 text-[13px] text-fg-2">
+                    <span className="tabular-nums">{fmt.rate(hourlyRate)}</span>
+                    <span className="tabular-nums">Budget {fmt.currency(contract.budget)}</span>
+                    <span className="tabular-nums">Created {created(contract)}</span>
+                  </p>
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-      </div>
-    </div>
+      </PageBody>
+    </>
   )
 }

@@ -2,16 +2,8 @@
 
 import { useEffect, useState } from 'react'
 import { useRouter } from 'next/navigation'
-import {
-  AlertTriangle,
-  ArrowRight,
-  DollarSign,
-  Plus,
-  RotateCcw,
-  ShieldCheck,
-  Sparkles,
-  X,
-} from 'lucide-react'
+import { AlertTriangle, Plus, RotateCcw, Sparkles, X } from 'lucide-react'
+import { Notice, Spinner } from '@/components/ui/States'
 import {
   api,
   BudgetType,
@@ -80,34 +72,34 @@ function SkillChip({
   const custom = skill.match === 'none'
   const renamed = !custom && skill.input.toLowerCase() !== skill.name.toLowerCase()
   const tone = custom
-    ? 'border-dashed border-amber-400/50 text-amber-400 bg-amber-400/5'
+    ? 'border-dashed border-warn/50 bg-warn-tint text-warn'
     : skill.importance === 'must'
-      ? 'border-electric/40 bg-electric/15 text-white'
-      : 'border-white/10 bg-slate-900/60 text-slate-300'
-  const title = custom
-    ? 'Not in the skill taxonomy; kept as a custom requirement'
+      ? 'border-transparent bg-shell text-on-dark'
+      : 'border-line bg-panel text-fg'
+  const note = custom
+    ? 'Not in the skill taxonomy; kept as a custom requirement.'
     : skill.match === 'semantic'
-      ? `Matched by meaning (${Math.round(skill.confidence * 100)}% similar)`
-      : 'Click to toggle must-have / nice-to-have'
+      ? `Matched by meaning, ${Math.round(skill.confidence * 100)}% similar.`
+      : ''
   return (
-    <span
-      className={`inline-flex items-center gap-1.5 text-xs px-2.5 py-1 rounded-lg border ${tone}`}
-      title={title}
-    >
-      <button type="button" onClick={onToggle} className="cursor-pointer">
+    <span className={`inline-flex min-h-8 items-center gap-1 rounded-chip border pl-2.5 pr-1 text-[13px] font-medium ${tone}`} title={note || undefined}>
+      <button
+        type="button"
+        onClick={onToggle}
+        className="rounded-sm"
+        aria-label={`${skill.name}, ${skill.importance === 'must' ? 'must-have' : 'nice-to-have'}. ${note} Switch to ${skill.importance === 'must' ? 'nice-to-have' : 'must-have'}`}
+      >
         {skill.name}
-        {renamed && <span className="text-slate-500 ml-1">← {skill.input}</span>}
-        {skill.match === 'semantic' && (
-          <span className="text-slate-500 ml-1">~{Math.round(skill.confidence * 100)}%</span>
-        )}
+        {renamed && <span className="ml-1 font-normal opacity-70">from “{skill.input}”</span>}
+        {skill.match === 'semantic' && <span className="ml-1 font-normal tabular-nums opacity-70">{Math.round(skill.confidence * 100)}%</span>}
       </button>
       <button
         type="button"
         onClick={onRemove}
         aria-label={`Remove ${skill.name}`}
-        className="text-slate-500 hover:text-white cursor-pointer"
+        className="grid h-6 w-6 place-items-center rounded-md opacity-70 hover:opacity-100"
       >
-        <X className="h-3 w-3" />
+        <X className="h-3.5 w-3.5" aria-hidden />
       </button>
     </span>
   )
@@ -213,39 +205,39 @@ export function BriefProjectForm() {
 
   if (!draft || !result) {
     return (
-      <div className="glass-card p-8 space-y-5">
-        <div>
-          <h3 className="text-base font-bold text-white mb-1">Describe your project</h3>
-          <p className="text-xs text-slate-400">
-            Write it the way you would explain it to a colleague: what you are building,
-            the stack, budget, timeline and team size. You will review everything before it
-            is saved.
+      <div className="rounded-panel border border-line-2 bg-panel shadow-card">
+        <div className="p-5 sm:p-6">
+          <label htmlFor="brief-text" className="text-[15px] font-semibold text-fg">
+            What do you need built?
+          </label>
+          <p id="brief-help" className="mt-1 max-w-prose text-sm text-fg-2">
+            Write it the way you’d explain it to a colleague: what you’re building, the stack, budget,
+            timeline and team size. You’ll review everything ClearHire extracts before it’s saved.
           </p>
+          <textarea
+            id="brief-text"
+            aria-describedby="brief-help"
+            rows={9}
+            value={brief}
+            onChange={e => setBrief(e.target.value)}
+            placeholder={EXAMPLE}
+            maxLength={10000}
+            className="input mt-4 min-h-56 text-[15px] leading-relaxed"
+          />
+          <p className="mt-2 text-right text-xs tabular-nums text-fg-2">{brief.length.toLocaleString()} / 10,000</p>
         </div>
-        <textarea
-          rows={7}
-          value={brief}
-          onChange={e => setBrief(e.target.value)}
-          placeholder={EXAMPLE}
-          maxLength={10000}
-          className="input resize-y"
-        />
-        {error && <p className="text-xs text-rose-400">{error}</p>}
-        <div className="flex items-center justify-between gap-3">
-          <button
-            type="button"
-            onClick={() => setBrief(EXAMPLE)}
-            className="btn btn-sm btn-ghost text-slate-400"
-          >
-            Use example
+        {error && <div className="px-5 pb-4 sm:px-6"><Notice tone="danger">{error}</Notice></div>}
+        <div className="flex flex-col-reverse gap-2 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <button type="button" onClick={() => setBrief(EXAMPLE)} className="btn btn-ghost">
+            Use an example brief
           </button>
           <button
             type="button"
             onClick={extract}
             disabled={extracting || brief.trim().length < 10}
-            className="btn btn-md btn-primary flex items-center gap-2"
+            className="btn btn-primary"
           >
-            <Sparkles className="h-4 w-4" />
+            {extracting ? <Spinner /> : <Sparkles aria-hidden />}
             {extracting ? 'Reading your brief…' : 'Extract requirements'}
           </button>
         </div>
@@ -264,268 +256,286 @@ export function BriefProjectForm() {
   const remove = (name: string) => update({ skills: draft.skills.filter(s => s.name !== name) })
 
   return (
-    <div className="glass-card p-8 space-y-6">
-      <div className="flex items-start justify-between gap-4">
-        <div>
-          <h3 className="text-base font-bold text-white mb-1">Review extracted requirements</h3>
-          <p className="text-xs text-slate-400">
-            Edit anything that is off. Click a skill to switch it between must-have and
-            nice-to-have.
-          </p>
-        </div>
-        <span
-          className="shrink-0 text-[10px] uppercase tracking-wider px-2 py-1 rounded-md border border-white/10 text-slate-400"
-          title={
-            result.source === 'claude'
-              ? 'Extracted by Claude'
-              : 'Extracted by the rule-based parser (no LLM available)'
-          }
-        >
-          {result.source === 'claude' ? 'Claude' : 'Rule-based'}
-        </span>
-      </div>
-
-      {result.ambiguities.length > 0 && (
-        <div className="rounded-xl border border-amber-400/30 bg-amber-400/5 p-4">
-          <p className="flex items-center gap-2 text-xs font-semibold text-amber-400 mb-2">
-            <AlertTriangle className="h-4 w-4" /> Please confirm
-          </p>
-          <ul className="list-disc pl-5 space-y-1 text-xs text-slate-300">
-            {result.ambiguities.map(a => (
-              <li key={a}>{a}</li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      <div className="space-y-4">
-        <div>
-          <label className="input-label" htmlFor="brief-title">Project title</label>
-          <input
-            id="brief-title"
-            className="input"
-            value={draft.title}
-            maxLength={255}
-            onChange={e => update({ title: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="input-label" htmlFor="brief-summary">Summary</label>
-          <textarea
-            id="brief-summary"
-            rows={2}
-            className="input resize-y"
-            value={draft.summary}
-            onChange={e => update({ summary: e.target.value })}
-          />
-        </div>
-      </div>
-
-      <div className="space-y-3">
-        <p className="input-label">Must-have skills</p>
-        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-          {must.length === 0 && <span className="text-xs text-slate-500">None yet</span>}
-          {must.map(s => (
-            <SkillChip key={s.name} skill={s} onToggle={() => toggle(s.name)} onRemove={() => remove(s.name)} />
-          ))}
-        </div>
-        <p className="input-label">Nice-to-have skills</p>
-        <div className="flex flex-wrap gap-1.5 min-h-[28px]">
-          {nice.length === 0 && <span className="text-xs text-slate-500">None</span>}
-          {nice.map(s => (
-            <SkillChip key={s.name} skill={s} onToggle={() => toggle(s.name)} onRemove={() => remove(s.name)} />
-          ))}
-        </div>
-        <div className="flex gap-2">
-          <input
-            list="taxonomy-skills"
-            className="input text-xs flex-1"
-            placeholder="Add a skill…"
-            value={newSkill}
-            onChange={e => setNewSkill(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addSkill()
-              }
-            }}
-          />
-          <datalist id="taxonomy-skills">
-            {taxonomy.map(s => (
-              <option key={s} value={s} />
-            ))}
-          </datalist>
-          <button
-            type="button"
-            onClick={addSkill}
-            disabled={!newSkill.trim()}
-            aria-label="Add skill"
-            className="btn btn-sm btn-ghost px-3 border border-electric/20 text-electric"
-          >
-            <Plus className="h-3.5 w-3.5" />
-          </button>
-        </div>
-      </div>
-
-      <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-        <div>
-          <label className="input-label" htmlFor="brief-budget">
-            Budget ({draft.budgetType === 'hourly' ? 'USD per hour' : 'USD total'})
-          </label>
-          <div className="flex gap-2">
-            <div className="relative flex-1">
-              <DollarSign className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-              <input
-                id="brief-budget"
-                type="number"
-                min={1}
-                className={`input pl-9 font-mono ${budgetValue > 0 ? '' : 'border-amber-400/50'}`}
-                placeholder="Required"
-                value={draft.budget}
-                onChange={e => update({ budget: e.target.value })}
-              />
-            </div>
-            <select
-              aria-label="Budget type"
-              className="input w-auto"
-              value={draft.budgetType}
-              onChange={e => update({ budgetType: e.target.value as BudgetType })}
-            >
-              <option value="fixed">Fixed</option>
-              <option value="hourly">Hourly</option>
-            </select>
-          </div>
-        </div>
-        <div>
-          <label className="input-label" htmlFor="brief-deadline">Deadline (days)</label>
-          <input
-            id="brief-deadline"
-            type="number"
-            min={1}
-            max={365}
-            className="input font-mono"
-            placeholder="Optional"
-            value={draft.deadlineDays}
-            onChange={e => update({ deadlineDays: e.target.value })}
-          />
-        </div>
-        <div>
-          <label className="input-label" htmlFor="brief-team">
-            Team size: <strong className="text-white">{draft.teamSize}</strong>
-          </label>
-          <input
-            id="brief-team"
-            type="range"
-            min={1}
-            max={10}
-            value={Math.min(draft.teamSize, 10)}
-            onChange={e => update({ teamSize: Number(e.target.value) })}
-            className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-electric"
-          />
-        </div>
-        <div>
-          <label className="input-label" htmlFor="brief-seniority">Seniority</label>
-          <select
-            id="brief-seniority"
-            className="input"
-            value={draft.seniority}
-            onChange={e => update({ seniority: e.target.value as Seniority })}
-          >
-            <option value="junior">Junior</option>
-            <option value="mid">Mid-level</option>
-            <option value="senior">Senior</option>
-            <option value="lead">Lead</option>
-          </select>
-        </div>
-        <div>
-          <label className="input-label" htmlFor="brief-domain">Industry</label>
-          <input
-            id="brief-domain"
-            className="input"
-            placeholder="e.g. Healthcare"
-            maxLength={100}
-            value={draft.domain}
-            onChange={e => update({ domain: e.target.value })}
-          />
-        </div>
-        <div>
-          <p className="input-label flex items-center gap-1">
-            <ShieldCheck className="h-3.5 w-3.5" /> Compliance
-          </p>
-          <div className="flex flex-wrap gap-1.5 mb-2">
-            {draft.compliance.map(c => (
-              <span key={c} className="inline-flex items-center gap-1 text-xs px-2 py-1 rounded-lg border border-mint/30 text-mint">
-                {c}
-                <button
-                  type="button"
-                  aria-label={`Remove ${c}`}
-                  onClick={() => update({ compliance: draft.compliance.filter(x => x !== c) })}
-                  className="cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </span>
-            ))}
-          </div>
-          <input
-            className="input text-xs"
-            placeholder="Add (e.g. GDPR) and press Enter"
-            value={newCompliance}
-            onChange={e => setNewCompliance(e.target.value)}
-            onKeyDown={e => {
-              if (e.key === 'Enter') {
-                e.preventDefault()
-                addCompliance()
-              }
-            }}
-          />
-        </div>
-      </div>
-
-      {draft.constraints.length > 0 && (
-        <div>
-          <p className="input-label">Other requirements</p>
-          <ul className="space-y-1">
-            {draft.constraints.map(c => (
-              <li key={c} className="flex items-center justify-between gap-2 text-xs text-slate-300">
-                <span>{c}</span>
-                <button
-                  type="button"
-                  aria-label={`Remove ${c}`}
-                  onClick={() => update({ constraints: draft.constraints.filter(x => x !== c) })}
-                  className="text-slate-500 hover:text-white cursor-pointer"
-                >
-                  <X className="h-3 w-3" />
-                </button>
-              </li>
-            ))}
-          </ul>
-        </div>
-      )}
-
-      {error && <p className="text-xs text-rose-400">{error}</p>}
-
-      <div className="flex justify-between border-t border-white/5 pt-6">
+    <div className="grid grid-cols-1 gap-6 xl:grid-cols-[minmax(0,22rem)_minmax(0,1fr)]">
+      {/* What the client wrote */}
+      <aside className="self-start rounded-panel border border-line-2 bg-sunken p-5 xl:sticky xl:top-4">
+        <h2 className="text-sm font-semibold text-fg">Your brief</h2>
+        <p className="mt-2 whitespace-pre-wrap text-sm leading-relaxed text-fg-2">{brief}</p>
         <button
           type="button"
           onClick={() => {
             setResult(null)
             setDraft(null)
           }}
-          className="btn btn-md btn-ghost flex items-center gap-1.5"
+          className="btn btn-sm btn-secondary mt-4"
         >
-          <RotateCcw className="h-4 w-4" /> Edit brief
+          <RotateCcw aria-hidden /> Edit brief
         </button>
-        <button
-          type="button"
-          onClick={create}
-          disabled={!canCreate || creating}
-          className="btn btn-md btn-primary flex items-center gap-2"
-        >
-          {creating ? 'Creating project…' : 'Create & find matches'}
-          {!creating && <ArrowRight className="h-4 w-4" />}
-        </button>
-      </div>
+      </aside>
+
+      {/* What ClearHire extracted, editable */}
+      <section aria-labelledby="extracted-heading" className="rounded-panel border border-line-2 bg-panel shadow-card">
+        <div className="ai-rule mx-5 mt-5 sm:mx-6 sm:mt-6">
+          <h2 id="extracted-heading" className="text-[15px] font-semibold text-fg">Extracted requirements</h2>
+          <p className="mt-1 text-sm text-fg-2">
+            {result.source === 'claude' ? 'Read from your brief by Claude.' : 'Read by the rule-based parser (no LLM was available).'}{' '}
+            Correct anything that’s off. Select a skill to switch it between must-have and nice-to-have.
+          </p>
+        </div>
+
+        <div className="space-y-6 p-5 sm:p-6">
+          {result.ambiguities.length > 0 && (
+            <div className="rounded-control bg-warn-tint p-4">
+              <p className="flex items-center gap-2 text-sm font-semibold text-warn">
+                <AlertTriangle className="h-4 w-4" aria-hidden /> Check these before creating the project
+              </p>
+              <ul className="mt-2 list-disc space-y-1 pl-6 text-sm text-fg">
+                {result.ambiguities.map(a => (
+                  <li key={a}>{a}</li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          <div className="space-y-4">
+            <div>
+              <label className="field-label" htmlFor="brief-title">Project title</label>
+              <input
+                id="brief-title"
+                className="input"
+                value={draft.title}
+                maxLength={255}
+                aria-invalid={draft.title.trim().length === 0}
+                onChange={e => update({ title: e.target.value })}
+              />
+              {draft.title.trim().length === 0 && <p className="field-error">Give the project a title.</p>}
+            </div>
+            <div>
+              <label className="field-label" htmlFor="brief-summary">Summary</label>
+              <textarea
+                id="brief-summary"
+                rows={2}
+                className="input min-h-20"
+                value={draft.summary}
+                onChange={e => update({ summary: e.target.value })}
+              />
+            </div>
+          </div>
+
+          <fieldset className="space-y-3 border-t border-line pt-5">
+            <legend className="sr-only">Skills</legend>
+            <div>
+              <p className="field-label">Must-have skills</p>
+              <div className="flex min-h-8 flex-wrap gap-1.5">
+                {must.length === 0 && <span className="self-center text-[13px] text-fg-2">None yet</span>}
+                {must.map(s => (
+                  <SkillChip key={s.name} skill={s} onToggle={() => toggle(s.name)} onRemove={() => remove(s.name)} />
+                ))}
+              </div>
+            </div>
+            <div>
+              <p className="field-label">Nice-to-have skills</p>
+              <div className="flex min-h-8 flex-wrap gap-1.5">
+                {nice.length === 0 && <span className="self-center text-[13px] text-fg-2">None</span>}
+                {nice.map(s => (
+                  <SkillChip key={s.name} skill={s} onToggle={() => toggle(s.name)} onRemove={() => remove(s.name)} />
+                ))}
+              </div>
+            </div>
+            <div className="flex gap-2 sm:max-w-sm">
+              <label htmlFor="brief-new-skill" className="sr-only">Add a skill</label>
+              <input
+                id="brief-new-skill"
+                list="taxonomy-skills"
+                className="input"
+                placeholder="Add a skill"
+                value={newSkill}
+                onChange={e => setNewSkill(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addSkill()
+                  }
+                }}
+              />
+              <datalist id="taxonomy-skills">
+                {taxonomy.map(s => (
+                  <option key={s} value={s} />
+                ))}
+              </datalist>
+              <button
+                type="button"
+                onClick={addSkill}
+                disabled={!newSkill.trim()}
+                aria-label="Add skill"
+                className="btn btn-icon btn-secondary shrink-0"
+              >
+                <Plus aria-hidden />
+              </button>
+            </div>
+          </fieldset>
+
+          <div className="grid grid-cols-1 gap-4 border-t border-line pt-5 sm:grid-cols-2">
+            <div>
+              <label className="field-label" htmlFor="brief-budget">
+                Budget ({draft.budgetType === 'hourly' ? 'USD per hour' : 'USD total'})
+              </label>
+              <div className="flex gap-2">
+                <div className="relative flex-1">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                  <input
+                    id="brief-budget"
+                    type="number"
+                    min={1}
+                    className="input pl-6 tabular-nums"
+                    placeholder="Required"
+                    aria-invalid={!(budgetValue > 0)}
+                    aria-describedby="brief-budget-error"
+                    value={draft.budget}
+                    onChange={e => update({ budget: e.target.value })}
+                  />
+                </div>
+                <select
+                  aria-label="Budget type"
+                  className="input w-auto"
+                  value={draft.budgetType}
+                  onChange={e => update({ budgetType: e.target.value as BudgetType })}
+                >
+                  <option value="fixed">Fixed</option>
+                  <option value="hourly">Hourly</option>
+                </select>
+              </div>
+              {!(budgetValue > 0) && <p id="brief-budget-error" className="field-error">Enter a budget above zero.</p>}
+            </div>
+            <div>
+              <label className="field-label" htmlFor="brief-deadline">Deadline (days)</label>
+              <input
+                id="brief-deadline"
+                type="number"
+                min={1}
+                max={365}
+                className="input tabular-nums"
+                placeholder="Optional"
+                aria-invalid={draft.deadlineDays !== '' && !(deadlineValue >= 1 && deadlineValue <= 365)}
+                value={draft.deadlineDays}
+                onChange={e => update({ deadlineDays: e.target.value })}
+              />
+              {draft.deadlineDays !== '' && !(deadlineValue >= 1 && deadlineValue <= 365) && (
+                <p className="field-error">Use a number of days between 1 and 365.</p>
+              )}
+            </div>
+            <div>
+              <div className="flex items-baseline justify-between">
+                <label className="field-label" htmlFor="brief-team">Team size</label>
+                <output htmlFor="brief-team" className="text-sm font-semibold tabular-nums text-fg">{draft.teamSize}</output>
+              </div>
+              <input
+                id="brief-team"
+                type="range"
+                min={1}
+                max={10}
+                value={Math.min(draft.teamSize, 10)}
+                onChange={e => update({ teamSize: Number(e.target.value) })}
+                className="w-full"
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="brief-seniority">Seniority</label>
+              <select
+                id="brief-seniority"
+                className="input"
+                value={draft.seniority}
+                onChange={e => update({ seniority: e.target.value as Seniority })}
+              >
+                <option value="junior">Junior</option>
+                <option value="mid">Mid-level</option>
+                <option value="senior">Senior</option>
+                <option value="lead">Lead</option>
+              </select>
+            </div>
+            <div>
+              <label className="field-label" htmlFor="brief-domain">Industry</label>
+              <input
+                id="brief-domain"
+                className="input"
+                placeholder="e.g. Healthcare"
+                maxLength={100}
+                value={draft.domain}
+                onChange={e => update({ domain: e.target.value })}
+              />
+            </div>
+            <div>
+              <label className="field-label" htmlFor="brief-compliance">Compliance</label>
+              {draft.compliance.length > 0 && (
+                <div className="mb-2 flex flex-wrap gap-1.5">
+                  {draft.compliance.map(c => (
+                    <span key={c} className="inline-flex min-h-7 items-center gap-1 rounded-chip bg-teal-tint pl-2 pr-1 text-xs font-semibold text-teal-ink">
+                      {c}
+                      <button
+                        type="button"
+                        aria-label={`Remove ${c}`}
+                        onClick={() => update({ compliance: draft.compliance.filter(x => x !== c) })}
+                        className="grid h-5 w-5 place-items-center rounded-md"
+                      >
+                        <X className="h-3 w-3" aria-hidden />
+                      </button>
+                    </span>
+                  ))}
+                </div>
+              )}
+              <input
+                id="brief-compliance"
+                className="input"
+                placeholder="Add, e.g. GDPR, then press Enter"
+                value={newCompliance}
+                onChange={e => setNewCompliance(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addCompliance()
+                  }
+                }}
+              />
+            </div>
+          </div>
+
+          {draft.constraints.length > 0 && (
+            <div className="border-t border-line pt-5">
+              <p className="field-label">Other requirements</p>
+              <ul className="divide-y divide-line rounded-control border border-line">
+                {draft.constraints.map(c => (
+                  <li key={c} className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-fg">
+                    <span>{c}</span>
+                    <button
+                      type="button"
+                      aria-label={`Remove ${c}`}
+                      onClick={() => update({ constraints: draft.constraints.filter(x => x !== c) })}
+                      className="btn btn-icon btn-sm btn-ghost"
+                    >
+                      <X aria-hidden />
+                    </button>
+                  </li>
+                ))}
+              </ul>
+            </div>
+          )}
+
+          {error && <Notice tone="danger">{error}</Notice>}
+        </div>
+
+        <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-6">
+          <p className="text-[13px] text-fg-2">Creating the project ranks candidates for it straight away.</p>
+          <button
+            type="button"
+            onClick={create}
+            disabled={!canCreate || creating}
+            className="btn btn-primary"
+          >
+            {creating && <Spinner />}
+            {creating ? 'Creating project…' : 'Create project and find matches'}
+          </button>
+        </div>
+      </section>
     </div>
   )
 }

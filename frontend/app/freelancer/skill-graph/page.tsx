@@ -2,16 +2,20 @@
 
 import { useEffect, useRef, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { api, GraphResponse, GraphNode, GraphLink } from '@/lib/api'
-import { Network, HelpCircle, PlusCircle, CheckCircle2, ShieldAlert } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { api, GraphNode, GraphLink } from '@/lib/api'
+import { Check, Plus } from 'lucide-react'
 import * as d3 from 'd3'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Panel } from '@/components/ui/Panel'
+import { Badge } from '@/components/ui/Badge'
+import { ErrorState, Notice, Spinner } from '@/components/ui/States'
+import { fitToView, graphPalette, NODE_TYPE_LABEL } from '@/lib/graphColors'
 
 interface ExtendedNode extends d3.SimulationNodeDatum {
   id: string
   name: string
-  type: 'freelancer' | 'skill' | 'project'
-  fraud_score?: number
+  type: GraphNode['type']
+  fraud_score?: number | null
 }
 
 interface ExtendedLink extends d3.SimulationLinkDatum<ExtendedNode> {
@@ -22,7 +26,7 @@ interface ExtendedLink extends d3.SimulationLinkDatum<ExtendedNode> {
 
 export default function SkillGraphPage() {
   const { data: session } = useSession()
-  const flId = session?.user && (session.user as any).freelancerId ? Number((session.user as any).freelancerId) : 1
+  const flId = session?.user?.freelancerId ? Number(session.user.freelancerId) : 1
 
   const svgRef = useRef<SVGSVGElement | null>(null)
   
@@ -35,17 +39,140 @@ export default function SkillGraphPage() {
   
   const [actionLoading, setActionLoading] = useState(false)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
+  const [error, setError] = useState<string | null>(null)
+  const [nodeCount, setNodeCount] = useState(0)
+
+  const renderD3Graph = (nodesData: GraphNode[], linksData: GraphLink[], flNodeId: string) => {
+    if (!svgRef.current) return
+    const color = graphPalette()
+
+    // Clear previous drawing
+    d3.select(svgRef.current).selectAll('*').remove()
+
+    const width = 600
+    const height = 400
+
+    const svg = d3.select(svgRef.current)
+      .attr('viewBox', `0 0 ${width} ${height}`)
+      .attr('width', '100%')
+      .attr('height', '100%')
+
+    const container = svg.append('g')
+
+    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
+      .scaleExtent([0.5, 4])
+      .on('zoom', (event) => {
+        container.attr('transform', event.transform)
+      })
+
+    svg.call(zoomBehavior)
+
+    // Deep clones to prevent d3 mutation issues
+    const nodes: ExtendedNode[] = nodesData.map(d => ({ ...d }))
+    const links: ExtendedLink[] = linksData.map(d => ({ ...d }))
+
+    const simulation = d3.forceSimulation<ExtendedNode>(nodes)
+      .force('link', d3.forceLink<ExtendedNode, ExtendedLink>(links).id(d => d.id).distance(100))
+      .force('charge', d3.forceManyBody().strength(-200))
+      .force('center', d3.forceCenter(width / 2, height / 2))
+      .force('collision', d3.forceCollide().radius(35))
+
+    svg.append('defs').append('marker')
+      .attr('id', 'arrow')
+      .attr('viewBox', '0 -5 10 10')
+      .attr('refX', 18)
+      .attr('refY', 0)
+      .attr('markerWidth', 6)
+      .attr('markerHeight', 6)
+      .attr('orient', 'auto')
+      .append('path')
+      .attr('d', 'M0,-5L10,0L0,5')
+      .attr('fill', color.link)
+
+    const link = container.append('g')
+      .selectAll('line')
+      .data(links)
+      .enter()
+      .append('line')
+      .attr('stroke', color.link)
+      .attr('stroke-width', 1.5)
+      .attr('marker-end', d => d.type === 'RELATED_TO' ? 'url(#arrow)' : null)
+
+    const drag = d3.drag<SVGGElement, ExtendedNode>()
+      .on('start', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0.3).restart()
+        d.fx = d.x
+        d.fy = d.y
+      })
+      .on('drag', (event, d) => {
+        d.fx = event.x
+        d.fy = event.y
+      })
+      .on('end', (event, d) => {
+        if (!event.active) simulation.alphaTarget(0)
+        d.fx = null
+        d.fy = null
+      })
+
+    const node = container.append('g')
+      .selectAll<SVGGElement, ExtendedNode>('g')
+      .data(nodes)
+      .enter()
+      .append('g')
+      .attr('tabindex', 0)
+      .attr('role', 'button')
+      .attr('aria-label', d => `${NODE_TYPE_LABEL[d.type]}: ${d.name}`)
+      .style('cursor', 'pointer')
+      .on('click', (_event, d) => setSelectedNode(d))
+      .on('keydown', (event: KeyboardEvent, d) => {
+        if (event.key === 'Enter' || event.key === ' ') {
+          event.preventDefault()
+          setSelectedNode(d)
+        }
+      })
+      .call(drag)
+
+    node.append('circle')
+      .attr('r', d => d.id === flNodeId ? 20 : d.type === 'skill' ? 14 : 12)
+      .attr('fill', d => (d.id === flNodeId ? color.you : d.type === 'freelancer' ? color.freelancer : d.type === 'skill' ? color.skill : color.project))
+      .attr('stroke', color.halo)
+      .attr('stroke-width', 2)
+
+    node.append('text')
+      .text(d => d.name)
+      .attr('y', d => d.id === flNodeId ? 32 : 26)
+      .attr('text-anchor', 'middle')
+      .attr('font-size', '11px')
+      .attr('font-weight', d => (d.id === flNodeId ? '700' : '500'))
+      .attr('fill', color.label)
+      .attr('paint-order', 'stroke')
+      .attr('stroke', color.halo)
+      .attr('stroke-width', 3)
+      .style('font-family', 'var(--font-sans)')
+
+    simulation.on('tick', () => {
+      link
+        .attr('x1', d => (d.source as ExtendedNode).x ?? 0)
+        .attr('y1', d => (d.source as ExtendedNode).y ?? 0)
+        .attr('x2', d => (d.target as ExtendedNode).x ?? 0)
+        .attr('y2', d => (d.target as ExtendedNode).y ?? 0)
+
+      node.attr('transform', d => `translate(${d.x},${d.y})`)
+    })
+    simulation.on('end', () => fitToView(svg, zoomBehavior, nodes, width, height))
+  }
 
   const loadGraphData = async () => {
     try {
       const fl = await api.freelancers.get(flId)
       setMySkills(fl.skills || [])
       
-      const graphData = await api.graph()
+      // The subgraph centred on this freelancer: their skills, related skills, projects and collaborators.
+      const graphData = await api.graph({ freelancerId: flId })
       
       // Localized filtering:
       // Keep freelancer node, direct skill nodes, direct project nodes connected to freelancer.
-      const flNodeId = `F${flId}`
+      const flNodeId = `f-${flId}`
       
       const directLinks = graphData.links.filter(
         l => l.source === flNodeId || l.target === flNodeId
@@ -79,6 +206,7 @@ export default function SkillGraphPage() {
       })
       const filteredLinks = Array.from(uniqueLinksMap.values())
 
+      setNodeCount(filteredNodes.length)
       renderD3Graph(filteredNodes, filteredLinks, flNodeId)
       
       // Calculate suggested skills: Skills connected to my skills but not in my skills
@@ -102,6 +230,7 @@ export default function SkillGraphPage() {
       setLoading(false)
     } catch (err) {
       console.error('Failed to load graph view:', err)
+      setError(err instanceof Error && err.message.startsWith('403') ? 'This account isn’t linked to a freelancer profile, so there’s no skill graph to show.' : 'Your skill graph couldn’t be loaded. Refresh the page to try again.')
       setLoading(false)
     }
   }
@@ -110,142 +239,14 @@ export default function SkillGraphPage() {
     loadGraphData()
   }, [flId])
 
-  const renderD3Graph = (nodesData: GraphNode[], linksData: GraphLink[], flNodeId: string) => {
-    if (!svgRef.current) return
-
-    // Clear previous drawing
-    d3.select(svgRef.current).selectAll('*').remove()
-
-    const width = 600
-    const height = 400
-
-    const svg = d3.select(svgRef.current)
-      .attr('viewBox', `0 0 ${width} ${height}`)
-      .attr('width', '100%')
-      .attr('height', '100%')
-
-    // Create a container group for zooming
-    const container = svg.append('g')
-
-    // Zooming support
-    const zoomBehavior = d3.zoom<SVGSVGElement, unknown>()
-      .scaleExtent([0.5, 4])
-      .on('zoom', (event) => {
-        container.attr('transform', event.transform)
-      })
-
-    svg.call(zoomBehavior)
-
-    // Deep clones to prevent d3 mutation issues
-    const nodes: ExtendedNode[] = nodesData.map(d => ({ ...d }))
-    const links: ExtendedLink[] = linksData.map(d => ({ ...d }))
-
-    // Simulation forces
-    const simulation = d3.forceSimulation<ExtendedNode>(nodes)
-      .force('link', d3.forceLink<ExtendedNode, ExtendedLink>(links).id(d => d.id).distance(100))
-      .force('charge', d3.forceManyBody().strength(-200))
-      .force('center', d3.forceCenter(width / 2, height / 2))
-      .force('collision', d3.forceCollide().radius(35))
-
-    // Arrow markers
-    svg.append('defs').append('marker')
-      .attr('id', 'arrow')
-      .attr('viewBox', '0 -5 10 10')
-      .attr('refX', 18)
-      .attr('refY', 0)
-      .attr('markerWidth', 6)
-      .attr('markerHeight', 6)
-      .attr('orient', 'auto')
-      .append('path')
-      .attr('d', 'M0,-5L10,0L0,5')
-      .attr('fill', '#475569')
-
-    // Render Links
-    const link = container.append('g')
-      .selectAll('line')
-      .data(links)
-      .enter()
-      .append('line')
-      .attr('stroke', '#334155')
-      .attr('stroke-width', 1.5)
-      .attr('marker-end', d => d.type === 'RELATED_TO' ? 'url(#arrow)' : null)
-
-    // Render Nodes
-    const node = container.append('g')
-      .selectAll('g')
-      .data(nodes)
-      .enter()
-      .append('g')
-      .attr('class', 'node-group cursor-pointer')
-      .on('click', (event, d) => {
-        setSelectedNode(d)
-      })
-      .call(d3.drag<SVGGElement, ExtendedNode>()
-        .on('start', dragstarted)
-        .on('drag', dragged)
-        .on('end', dragended) as any
-      )
-
-    // Draw node shapes
-    node.append('circle')
-      .attr('r', d => d.id === flNodeId ? 22 : d.type === 'skill' ? 16 : 14)
-      .attr('fill', d => {
-        if (d.id === flNodeId) return '#00d4a4' // Freelancer is mint color
-        if (d.type === 'skill') return '#6366f1' // Skill is electric indigo
-        return '#f59e0b' // Project is amber
-      })
-      .attr('stroke', d => d.id === flNodeId ? '#0e131f' : 'transparent')
-      .attr('stroke-width', 2)
-      .attr('filter', d => d.id === flNodeId ? 'drop-shadow(0 0 8px rgba(0, 212, 164, 0.4))' : 'none')
-
-    // Node labels
-    node.append('text')
-      .text(d => d.name)
-      .attr('y', d => d.id === flNodeId ? 32 : 26)
-      .attr('text-anchor', 'middle')
-      .attr('font-size', '10px')
-      .attr('font-weight', '500')
-      .attr('fill', '#cbd5e1')
-      .attr('font-family', 'system-ui, sans-serif')
-
-    // Simulation updates
-    simulation.on('tick', () => {
-      link
-        .attr('x1', d => (d.source as any).x)
-        .attr('y1', d => (d.source as any).y)
-        .attr('x2', d => (d.target as any).x)
-        .attr('y2', d => (d.target as any).y)
-
-      node
-        .attr('transform', d => `translate(${d.x},${d.y})`)
-    })
-
-    // Drag behavior implementations
-    function dragstarted(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0.3).restart()
-      d.fx = d.x
-      d.fy = d.y
-    }
-
-    function dragged(event: any, d: any) {
-      d.fx = event.x
-      d.fy = event.y
-    }
-
-    function dragended(event: any, d: any) {
-      if (!event.active) simulation.alphaTarget(0)
-      d.fx = null
-      d.fy = null
-    }
-  }
-
   const handleAddSkill = async (skillName: string) => {
     setActionLoading(true)
     setSuccessMsg(null)
+    setError(null)
     try {
       const updatedSkills = [...mySkills, skillName]
       await api.freelancers.update(flId, { skills: updatedSkills })
-      setSuccessMsg(`Skill "${skillName}" successfully added! Refreshing graph...`)
+      setSuccessMsg(`${skillName} added to your profile.`)
       setMySkills(updatedSkills)
       
       // Reload graph
@@ -253,131 +254,112 @@ export default function SkillGraphPage() {
       setActionLoading(false)
     } catch (err) {
       console.error('Failed to append skill:', err)
+      setError(`${skillName} wasn’t added to your profile. Try again.`)
       setActionLoading(false)
     }
   }
 
+  const legend = [
+    { label: 'You', cls: 'bg-primary' },
+    { label: 'Other freelancer', cls: 'bg-fg-2' },
+    { label: 'Skill', cls: 'bg-teal' },
+    { label: 'Project', cls: 'bg-star' },
+  ]
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex justify-between items-center bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Network className="h-5.5 w-5.5 text-mint" /> Localized Skills Network
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">Interactive graph showing connections to your skills and active projects.</p>
-        </div>
-      </div>
+    <>
+      <PageHeader
+        title="Skill graph"
+        description="Your skills and projects in ClearHire’s knowledge graph, plus related skills the graph links to yours. Adding a related skill can widen your matches."
+      />
+      <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_20rem]">
+        <div className="min-w-0 space-y-4">
+          {successMsg && <Notice tone="ok">{successMsg}</Notice>}
+          {error && <ErrorState message={error} />}
 
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex gap-3 items-center">
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          <p>{successMsg}</p>
-        </div>
-      )}
-
-      {/* Main Grid: D3 Viewer Left, Info Panel Right */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        
-        {/* Left D3 Container */}
-        <div className="lg:col-span-2 glass-card p-6 min-h-[450px] bg-slate-950/20 flex items-center justify-center relative overflow-hidden">
-          {loading ? (
-            <div className="flex flex-col items-center gap-3">
-              <div className="h-8 w-8 border-2 border-mint border-t-transparent rounded-full animate-spin" />
-              <p className="text-xs text-slate-500 font-mono">Drawing D3 force networks...</p>
+          <section aria-label="Graph" className="overflow-hidden rounded-panel border border-line-2 bg-panel shadow-card">
+            <div className="flex flex-wrap items-center justify-between gap-3 border-b border-line px-5 py-3">
+              <ul className="flex flex-wrap gap-4 text-[13px] text-fg-2" aria-label="Legend">
+                {legend.map(l => (
+                  <li key={l.label} className="flex items-center gap-1.5">
+                    <span className={`h-2.5 w-2.5 rounded-full ${l.cls}`} aria-hidden />
+                    {l.label}
+                  </li>
+                ))}
+              </ul>
+              <p className="text-xs text-fg-2">Drag to rearrange. Scroll or pinch to zoom. Select a node for details.</p>
             </div>
-          ) : (
-            <svg ref={svgRef} className="w-full h-full max-h-[400px]" />
-          )}
-
-          {/* D3 Instructions Overlay */}
-          <div className="absolute bottom-4 left-4 bg-slate-900/90 border border-white/5 px-3 py-2 rounded-lg text-[10px] text-slate-400 flex items-center gap-2">
-            <HelpCircle className="h-4 w-4 text-slate-500" />
-            <span>Click and drag nodes to inspect connections. Scroll/pinch to zoom.</span>
-          </div>
+            <div className="relative aspect-[3/2] min-h-72 w-full bg-canvas">
+              {/* The svg stays mounted so D3 can draw as soon as data arrives. */}
+              <svg ref={svgRef} className="absolute inset-0 h-full w-full" role="group" aria-label="Your skill graph" />
+              {loading && (
+                <p role="status" className="absolute inset-0 grid place-items-center text-sm text-fg-2">
+                  <span className="flex items-center gap-2"><Spinner /> Loading your graph</span>
+                </p>
+              )}
+              {!loading && !error && nodeCount <= 1 && (
+                <p className="absolute inset-0 grid place-items-center px-6 text-center text-sm text-fg-2">
+                  The graph has no connections for your profile yet. Add skills on your profile to appear here.
+                </p>
+              )}
+            </div>
+          </section>
         </div>
 
-        {/* Right Info Sidebar Panels */}
-        <div className="lg:col-span-1 space-y-6">
-          {/* Selected Node details */}
-          <div className="glass-card p-6 space-y-4 min-h-[180px]">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-3">
-              Selected Item Details
-            </h3>
-
+        <aside className="space-y-4">
+          <Panel title="Selected node">
             {selectedNode ? (
-              <div className="space-y-4">
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Node Type</span>
-                  <div className="flex items-center gap-2 mt-1">
-                    <span className={`h-2.5 w-2.5 rounded-full ${
-                      selectedNode.type === 'freelancer' ? 'bg-mint' : selectedNode.type === 'skill' ? 'bg-electric' : 'bg-amber'
-                    }`} />
-                    <span className="text-xs font-semibold text-white uppercase tracking-wider">{selectedNode.type}</span>
-                  </div>
+              <div className="space-y-3">
+                <div className="flex items-center gap-2">
+                  <Badge>{NODE_TYPE_LABEL[selectedNode.type]}</Badge>
                 </div>
-
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Node Name</span>
-                  <h4 className="text-base font-bold text-white mt-1">{selectedNode.name}</h4>
-                </div>
-
+                <p className="text-base font-semibold text-fg">{selectedNode.name}</p>
                 {selectedNode.type === 'skill' && (
-                  <div className="pt-2">
-                    {mySkills.includes(selectedNode.name) ? (
-                      <span className="inline-flex items-center gap-1.5 px-3 py-1 rounded bg-mint/10 border border-mint/20 text-mint text-xs font-semibold">
-                        <CheckCircle2 className="h-3.5 w-3.5" /> Already declared skill
-                      </span>
-                    ) : (
-                      <button
-                        disabled={actionLoading}
-                        onClick={() => handleAddSkill(selectedNode.name)}
-                        className="btn btn-sm btn-primary bg-mint hover:bg-emerald-400 border-none text-ink font-semibold flex items-center gap-1.5 cursor-pointer shadow-md"
-                      >
-                        <PlusCircle className="h-3.5 w-3.5" /> Suggest Add to Profile
-                      </button>
-                    )}
-                  </div>
+                  mySkills.includes(selectedNode.name) ? (
+                    <p className="flex items-center gap-1.5 text-[13px] font-semibold text-ok">
+                      <Check className="h-4 w-4" aria-hidden /> On your profile
+                    </p>
+                  ) : (
+                    <button
+                      type="button"
+                      disabled={actionLoading}
+                      onClick={() => handleAddSkill(selectedNode.name)}
+                      className="btn btn-sm btn-primary"
+                    >
+                      <Plus aria-hidden /> Add to my profile
+                    </button>
+                  )
                 )}
               </div>
             ) : (
-              <p className="text-slate-500 text-xs italic py-6 text-center">
-                Click on any node in the graph to view details and suggestions.
-              </p>
+              <p className="text-sm text-fg-2">Select a node in the graph to see what it is.</p>
             )}
-          </div>
+          </Panel>
 
-          {/* Suggested skills list */}
-          <div className="glass-card p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-3">
-              Ontology Recommendations
-            </h3>
-            
-            <p className="text-xs text-slate-400 leading-relaxed">
-              Based on skill ontology links, we suggest declared experts consider appending:
-            </p>
-
-            <div className="space-y-2 max-h-[180px] overflow-y-auto pr-1">
-              {suggestedSkills.length === 0 ? (
-                <p className="text-slate-500 text-xs italic py-4 text-center">No new skill suggestions available.</p>
-              ) : (
-                suggestedSkills.map(skill => (
-                  <div key={skill} className="flex justify-between items-center p-2 rounded-lg bg-slate-950/20 border border-white/3 text-xs">
-                    <span className="text-slate-300 font-semibold">{skill}</span>
+          <Panel title="Related skills" description="Linked to skills you already list, according to the skill ontology.">
+            {suggestedSkills.length === 0 ? (
+              <p className="text-sm text-fg-2">{loading ? 'Loading…' : 'No related skills to suggest right now.'}</p>
+            ) : (
+              <ul className="-my-2 max-h-72 divide-y divide-line overflow-y-auto">
+                {suggestedSkills.map(skill => (
+                  <li key={skill} className="flex items-center justify-between gap-2 py-2">
+                    <span className="text-sm font-medium text-fg">{skill}</span>
                     <button
+                      type="button"
                       disabled={actionLoading}
                       onClick={() => handleAddSkill(skill)}
-                      className="text-mint hover:text-emerald-400 font-medium cursor-pointer flex items-center gap-1"
+                      className="btn btn-sm btn-ghost text-primary-ink"
+                      aria-label={`Add ${skill} to my profile`}
                     >
-                      <PlusCircle className="h-3.5 w-3.5" /> Add
+                      <Plus aria-hidden /> Add
                     </button>
-                  </div>
-                ))
-              )}
-            </div>
-          </div>
-        </div>
+                  </li>
+                ))}
+              </ul>
+            )}
+          </Panel>
+        </aside>
       </div>
-    </div>
+    </>
   )
 }

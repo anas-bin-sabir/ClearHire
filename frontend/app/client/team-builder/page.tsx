@@ -1,24 +1,17 @@
 'use client'
 
 import { useEffect, useState } from 'react'
-import { api, TeamBuilderResponse, FreelancerRecord, ProjectRecord } from '@/lib/api'
-import { FreelancerCard } from '@/components/ui/FreelancerCard'
+import Link from 'next/link'
+import { api, TeamBuilderResponse, ProjectRecord } from '@/lib/api'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
-import { fmt } from '@/lib/utils'
-import { 
-  Sparkles, 
-  Cpu, 
-  HelpCircle, 
-  Briefcase, 
-  Plus, 
-  Users, 
-  Layers, 
-  AlertTriangle,
-  CheckCircle2,
-  BookmarkCheck,
-  Zap
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { fmt, fraudLabel, fraudTone } from '@/lib/utils'
+import { AlertTriangle, Check, Users } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Panel } from '@/components/ui/Panel'
+import { Avatar } from '@/components/ui/Avatar'
+import { Badge } from '@/components/ui/Badge'
+import { EmptyState, LoadingRows, Notice, Spinner } from '@/components/ui/States'
+import { SkillBadge } from '@/components/ui/SkillBadge'
 
 export default function TeamBuilderPage() {
   const [loading, setLoading] = useState(false)
@@ -94,12 +87,12 @@ export default function TeamBuilderPage() {
       const res = await api.teamBuilder.build(payload)
       setResponse(res)
       if (!res.success) {
-        setError(res.message || 'No valid team configurations found under current constraint profiles.')
+        setError(res.message || 'No team fits these constraints. Raise the budget or fraud cut-off, reduce the team size, or drop a skill.')
       }
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Error occurred while solving CSP constraints.')
+      setError(err instanceof Error && err.message ? err.message : 'The team builder didn’t finish. Check the constraints and try again.')
       setLoading(false)
     }
   }
@@ -107,7 +100,7 @@ export default function TeamBuilderPage() {
   const handleHireTeam = async () => {
     if (!response || !response.team || response.team.length === 0) return
     if (!selectedProjectId) {
-      setError('Please select or create a project first to assign and hire the team.')
+      setError('Choose a project at the top of the form first. Contracts are created under that project.')
       return
     }
 
@@ -119,12 +112,12 @@ export default function TeamBuilderPage() {
         freelancer_ids: response.team.map(m => m.id),
         status: 'active'
       })
-      setSuccessMsg('Successfully hired the entire team! Contracts have been created.')
+      setSuccessMsg('Team hired. An active contract was created for each member.')
       setResponse(null)
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Batch hiring failed.')
+      setError(err instanceof Error && err.message ? err.message : 'The contracts weren’t created. Try hiring the team again.')
       setLoading(false)
     }
   }
@@ -133,254 +126,243 @@ export default function TeamBuilderPage() {
     s.toLowerCase().includes(skillQuery.toLowerCase())
   )
 
+  // Presentation only: which required skills each proposed member covers.
+  const coverage = response?.success
+    ? requiredSkills.map(skill => ({
+        skill,
+        members: response.team.filter(m => m.skills?.some(s => s.toLowerCase() === skill.toLowerCase())).map(m => m.name),
+      }))
+    : []
+  const uncovered = coverage.filter(c => c.members.length === 0)
+  const budgetUse = response?.success && budget > 0 ? Math.min(response.total_cost / budget, 1) : 0
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Cpu className="h-5.5 w-5.5 text-indigo-400" />
-            AI Constraint Allocation (CSP Solver)
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            allocates a complete developer team matching skills, budget limits, trust parameters, and hourly rates simultaneously.
-          </p>
-        </div>
-        <div className="agent-badge">
-          <span className="agent-dot" /> 🤖 CSP Agent Ready
-        </div>
-      </div>
+    <>
+      <PageHeader
+        title="Team builder"
+        description="Set the budget, skills and trust threshold. The optimizer searches for a team that covers every skill and stays within budget, then you decide whether to hire it."
+      />
 
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex gap-3 items-center">
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          <p>{successMsg}</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-          <AlertTriangle className="h-5 w-5 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
-
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Constraints Form */}
-        <div className="lg:col-span-1">
-          <div className="glass-card p-6 space-y-5">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Layers className="h-4.5 w-4.5 text-electric" /> Input Constraints
-            </h3>
-
-            <form onSubmit={handleBuildTeam} className="space-y-4">
-              <div>
-                <label className="input-label">Associate Project (Recommended)</label>
-                <select 
-                  className="input cursor-pointer"
-                  onChange={e => handleProjectSelect(Number(e.target.value))}
-                  value={selectedProjectId || ''}
-                >
-                  <option value="">Create manual parameters...</option>
-                  {myProjects.map(p => (
-                    <option key={p.id} value={p.id}>{p.title}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="input-label">Allocated Project Budget ($)</label>
-                <input 
-                  type="number"
-                  required
-                  min="100"
-                  value={budget}
-                  onChange={e => setBudget(Number(e.target.value))}
-                  className="input font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Target Team Size: <strong className="text-white">{teamSize}</strong></label>
-                <input 
-                  type="range"
-                  min="1"
-                  max="10"
-                  value={teamSize}
-                  onChange={e => setTeamSize(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-electric"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-                  <span>1 dev</span>
-                  <span>5 devs</span>
-                  <span>10 devs</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="input-label">Engagement Hours per Member</label>
-                <input 
-                  type="number"
-                  min="10"
-                  max="200"
-                  value={hoursPerMember}
-                  onChange={e => setHoursPerMember(Number(e.target.value))}
-                  className="input font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Trust Threshold (Max Fraud score): <strong className="text-white">{maxFraudScore}</strong></label>
-                <input 
-                  type="range"
-                  min="0.1"
-                  max="1.0"
-                  step="0.05"
-                  value={maxFraudScore}
-                  onChange={e => setMaxFraudScore(Number(e.target.value))}
-                  className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-electric"
-                />
-                <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-                  <span>Oldest Accs (0.1)</span>
-                  <span>Standard (0.6)</span>
-                  <span>All (1.0)</span>
-                </div>
-              </div>
-
-              <div>
-                <label className="input-label">Deadline (Days)</label>
-                <input 
-                  type="number"
-                  min="1"
-                  value={deadlineDays}
-                  onChange={e => setDeadlineDays(Number(e.target.value))}
-                  className="input font-mono"
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Team Skill Requirements</label>
-                <input 
-                  type="text"
-                  placeholder="Filter skills list..."
-                  value={skillQuery}
-                  onChange={e => setSkillQuery(e.target.value)}
-                  className="input mb-2 text-xs"
-                />
-                <div className="max-h-[100px] overflow-y-auto bg-slate-950/40 p-2 border border-white/5 rounded-lg flex flex-wrap gap-1">
-                  {filteredSkills.map(skill => {
-                    const active = requiredSkills.includes(skill)
-                    return (
-                      <button
-                        type="button"
-                        key={skill}
-                        onClick={() => toggleSkill(skill)}
-                        className={`text-[10px] px-2 py-0.5 rounded cursor-pointer ${
-                          active 
-                            ? 'bg-electric/20 text-white border border-electric/30' 
-                            : 'bg-slate-900/80 text-slate-400 border border-white/5'
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading || requiredSkills.length === 0}
-                className="w-full btn btn-md btn-primary flex items-center justify-center gap-2 cursor-pointer mt-4"
-              >
-                <Zap className="h-4 w-4" />
-                {loading ? 'Solving Constraints...' : 'Allocate Team'}
-              </button>
-            </form>
+      <form onSubmit={handleBuildTeam} className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[20rem_minmax(0,1fr)]">
+        {/* Constraints */}
+        <aside aria-label="Team constraints" className="space-y-5 self-start rounded-panel border border-line-2 bg-panel p-5 shadow-card lg:sticky lg:top-4">
+          <div>
+            <label htmlFor="tb-project" className="field-label">Project</label>
+            <select
+              id="tb-project"
+              className="input"
+              onChange={e => handleProjectSelect(Number(e.target.value))}
+              value={selectedProjectId || ''}
+            >
+              <option value="">None (set constraints by hand)</option>
+              {myProjects.map(p => (
+                <option key={p.id} value={p.id}>{p.title}</option>
+              ))}
+            </select>
+            <p className="field-hint">Choosing a project fills in its budget and skills, and lets you hire the team into it.</p>
           </div>
-        </div>
 
-        {/* Right Column: Allocation Results */}
-        <div className="lg:col-span-2 space-y-6">
+          <div className="grid grid-cols-2 gap-3 border-t border-line pt-5">
+            <div className="col-span-2">
+              <label htmlFor="tb-budget" className="field-label">Budget (USD)</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                <input id="tb-budget" type="number" required min="100" value={budget} onChange={e => setBudget(Number(e.target.value))} className="input pl-6 tabular-nums" />
+              </div>
+            </div>
+            <div>
+              <label htmlFor="tb-hours" className="field-label">Hours each</label>
+              <input id="tb-hours" type="number" min="10" max="200" value={hoursPerMember} onChange={e => setHoursPerMember(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+            <div>
+              <label htmlFor="tb-deadline" className="field-label">Deadline (days)</label>
+              <input id="tb-deadline" type="number" min="1" value={deadlineDays} onChange={e => setDeadlineDays(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+          </div>
+
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label htmlFor="tb-size" className="field-label">Team size</label>
+              <output htmlFor="tb-size" className="text-sm font-semibold tabular-nums text-fg">{teamSize}</output>
+            </div>
+            <input id="tb-size" type="range" min="1" max="10" value={teamSize} onChange={e => setTeamSize(Number(e.target.value))} className="w-full" />
+          </div>
+
+          <div>
+            <div className="flex items-baseline justify-between">
+              <label htmlFor="tb-fraud" className="field-label">Fraud risk cut-off</label>
+              <output htmlFor="tb-fraud" className="text-sm font-semibold tabular-nums text-fg">{Math.round(maxFraudScore * 100)}%</output>
+            </div>
+            <input id="tb-fraud" type="range" min="0.1" max="1.0" step="0.05" value={maxFraudScore} onChange={e => setMaxFraudScore(Number(e.target.value))} className="w-full" />
+            <p className="field-hint">Freelancers scored above this aren’t considered.</p>
+          </div>
+
+          <div className="border-t border-line pt-5">
+          <fieldset>
+            <legend className="field-label">Required skills</legend>
+            {requiredSkills.length > 0 && (
+              <p className="mb-2 text-[13px] text-fg-2"><span className="font-semibold tabular-nums text-fg">{requiredSkills.length}</span> selected</p>
+            )}
+            <label htmlFor="tb-skill-filter" className="sr-only">Filter skills</label>
+            <input
+              id="tb-skill-filter"
+              type="text"
+              placeholder="Filter skills"
+              value={skillQuery}
+              onChange={e => setSkillQuery(e.target.value)}
+              className="input mb-2"
+            />
+            <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+              {filteredSkills.length === 0 ? (
+                <p className="p-1 text-xs text-fg-2">{allSkills.length === 0 ? 'Loading skills' : 'No skills match.'}</p>
+              ) : filteredSkills.map(skill => {
+                const active = requiredSkills.includes(skill)
+                return (
+                  <button
+                    type="button"
+                    key={skill}
+                    onClick={() => toggleSkill(skill)}
+                    aria-pressed={active}
+                    className={`min-h-7 rounded-md border px-2 text-xs font-medium transition-colors duration-150 ${
+                      active ? 'border-shell bg-shell text-on-dark' : 'border-line bg-panel text-fg-2 hover:text-fg'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                )
+              })}
+            </div>
+          </fieldset>
+          </div>
+
+          <button type="submit" disabled={loading || requiredSkills.length === 0} className="btn btn-primary w-full">
+            {loading && <Spinner />}
+            {loading ? 'Building team…' : 'Build team'}
+          </button>
+          {requiredSkills.length === 0 && <p className="-mt-3 text-center text-xs text-fg-2">Select at least one skill.</p>}
+        </aside>
+
+        {/* Result */}
+        <section aria-label="Proposed team" aria-busy={loading} className="min-w-0 space-y-4">
+          {successMsg && <Notice tone="ok">{successMsg}</Notice>}
+          {error && <Notice tone="danger">{error}</Notice>}
+
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3 glass-card">
-              <div className="h-8 w-8 border-2 border-electric border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Solving backtrack logic graphs...</p>
+            <div className="rounded-panel border border-line-2 bg-panel p-6 shadow-card">
+              <LoadingRows rows={4} label="Building team" />
             </div>
           ) : !response ? (
-            <div className="glass-card p-12 text-center text-slate-500 text-sm flex flex-col items-center justify-center">
-              <Users className="h-10 w-10 text-slate-700 mb-3" />
-              Configure skills, budget limits, and trigger the solver to build your squad.
-            </div>
+            !successMsg && (
+              <EmptyState
+                icon={<Users aria-hidden />}
+                title="No team proposed yet"
+                description="Pick a project or set a budget and skills, then choose Build team."
+              />
+            )
           ) : response.success ? (
-            <div className="space-y-6 animate-fade-in">
-              {/* Solver stats header */}
-              <div className="glass-card p-5 bg-indigo-500/3 border-indigo-500/10 flex flex-wrap justify-between items-center gap-4">
-                <div className="space-y-1">
-                  <span className="text-[10px] text-slate-400 font-bold uppercase tracking-wider">Solution Confirmed</span>
-                  <div className="text-lg font-bold text-white">Estimated cost: <strong className="text-emerald-400">{fmt.currency(response.total_cost)}</strong></div>
-                </div>
-
-                <div className="flex items-center gap-4 text-xs font-mono">
-                  <div className="bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
-                    <span className="text-slate-500">Backtracks:</span> <strong className="text-white">{response.backtracks}</strong>
+            <>
+              {/* Constraint check: budget and coverage */}
+              <div className="grid grid-cols-1 gap-4 xl:grid-cols-2">
+                <Panel title="Budget">
+                  <p className="flex items-baseline gap-2">
+                    <span className="text-[28px] font-bold leading-none tabular-nums text-fg">{fmt.currency(response.total_cost)}</span>
+                    <span className="text-sm text-fg-2">of {fmt.currency(budget)}</span>
+                  </p>
+                  <div className="mt-3 h-2 overflow-hidden rounded-full bg-sunken" aria-hidden>
+                    <div className={`h-full rounded-full ${response.total_cost > budget ? 'bg-danger' : 'bg-teal'}`} style={{ width: `${budgetUse * 100}%` }} />
                   </div>
-                  <div className="bg-slate-900 px-3 py-1.5 rounded-lg border border-white/5">
-                    <span className="text-slate-500">Nodes explored:</span> <strong className="text-white">{response.nodes_explored}</strong>
+                  <p className="mt-2 text-[13px] text-fg-2">
+                    {response.total_cost <= budget
+                      ? `${fmt.currency(budget - response.total_cost)} left, at ${hoursPerMember} hours per member.`
+                      : `${fmt.currency(response.total_cost - budget)} over budget.`}
+                  </p>
+                </Panel>
+                <Panel title="Skill coverage" description={uncovered.length === 0 ? 'Every required skill is covered.' : `${uncovered.length} required ${uncovered.length === 1 ? 'skill isn’t' : 'skills aren’t'} covered.`}>
+                  <ul className="space-y-1.5 text-[13px]">
+                    {coverage.map(c => (
+                      <li key={c.skill} className="flex items-start gap-2">
+                        {c.members.length > 0 ? (
+                          <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-label="covered" />
+                        ) : (
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-label="not covered" />
+                        )}
+                        <span className="font-semibold text-fg">{c.skill}</span>
+                        <span className="min-w-0 truncate text-fg-2">{c.members.length > 0 ? c.members.join(', ') : 'No member'}</span>
+                      </li>
+                    ))}
+                  </ul>
+                </Panel>
+              </div>
+
+              {/* Members */}
+              <Panel
+                title={`Proposed team of ${response.team.length}`}
+                description={`Found after exploring ${response.nodes_explored.toLocaleString()} options with ${response.backtracks.toLocaleString()} backtracks.`}
+                flush
+              >
+                <ul className="divide-y divide-line">
+                  {response.team.map(member => (
+                    <li key={member.id} className="flex flex-col gap-3 px-5 py-4 sm:flex-row sm:items-center">
+                      <div className="flex min-w-0 flex-1 items-center gap-3">
+                        <Avatar name={member.name} tone="color" />
+                        <div className="min-w-0">
+                          <Link href={`/client/freelancers/${member.id}`} className="font-semibold text-fg hover:underline">{member.name}</Link>
+                          <ul className="mt-1 flex flex-wrap gap-1" aria-label="Skills">
+                            {member.skills.slice(0, 6).map(s => (
+                              <li key={s}><SkillBadge skill={s} highlighted={requiredSkills.some(r => r.toLowerCase() === s.toLowerCase())} /></li>
+                            ))}
+                          </ul>
+                        </div>
+                      </div>
+                      <div className="flex shrink-0 items-center gap-4 text-[13px] sm:justify-end">
+                        <Badge tone={fraudTone(member.fraud_score)}>{fraudLabel(member.fraud_score)}</Badge>
+                        <span className="tabular-nums text-fg-2">{fmt.rate(member.hourly_rate)}</span>
+                        <span className="w-20 text-right font-semibold tabular-nums text-fg">{fmt.currency(member.hourly_rate * hoursPerMember)}</span>
+                      </div>
+                    </li>
+                  ))}
+                </ul>
+                {response.collaborations && response.collaborations.length > 0 && (
+                  <div className="border-t border-line px-5 py-4">
+                    <div className="ai-rule">
+                      <p className="text-[13px] font-semibold text-fg">Have worked together</p>
+                      <ul className="mt-1.5 space-y-1 text-[13px] text-fg-2">
+                        {response.collaborations.map(c => (
+                          <li key={`${c.a_id}-${c.b_id}`}>
+                            <span className="text-fg">{c.a_name} and {c.b_name}</span> on {c.project_titles.join(', ') || `${c.count} project${c.count === 1 ? '' : 's'}`}
+                            {c.avg_rating != null && <span className="tabular-nums">, rated {c.avg_rating.toFixed(1)}</span>}
+                          </li>
+                        ))}
+                      </ul>
+                      {response.graph_source && <p className="mt-1.5 text-xs text-fg-2">From the {response.graph_source} knowledge graph.</p>}
+                    </div>
                   </div>
+                )}
+                <div className="flex flex-col gap-3 border-t border-line px-5 py-4 sm:flex-row sm:items-center sm:justify-between">
+                  <p className="text-[13px] text-fg-2">
+                    {selectedProjectId
+                      ? `Creates an active contract for each member under ${myProjects.find(p => p.id === selectedProjectId)?.title ?? 'the selected project'}.`
+                      : 'Choose a project in the form to hire this team into it.'}
+                  </p>
+                  <button type="button" onClick={handleHireTeam} className="btn btn-primary shrink-0">
+                    Hire this team
+                  </button>
                 </div>
-              </div>
+              </Panel>
 
-              {/* Team list */}
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                {response.team.map((member, idx) => (
-                  <motion.div
-                    key={member.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.04, duration: 0.3 }}
-                  >
-                    <FreelancerCard 
-                      freelancer={member}
-                      role="client"
-                      showHireAction={false}
-                    />
-                  </motion.div>
-                ))}
-              </div>
-
-              {/* Action Buttons */}
-              <div className="flex justify-end pt-4">
-                <button
-                  onClick={handleHireTeam}
-                  className="btn btn-md btn-primary px-8 flex items-center gap-2 shadow-lg shadow-electric/25"
-                >
-                  <BookmarkCheck className="h-4 w-4" /> Hire Entire Team
-                </button>
-              </div>
-
-              {/* AI Reasoning Explaining allocation */}
               {response.explanation && (
-                <div className="pt-2">
-                  <AIReasoningBox 
-                    explanation={response.explanation}
-                    title="CSP Agent Team Explanation"
-                    defaultOpen={true}
-                  />
-                </div>
+                <AIReasoningBox explanation={response.explanation} title="How the optimizer chose this team" defaultOpen />
               )}
-            </div>
+            </>
           ) : (
-            <div className="glass-card p-12 border-rose-500/10 bg-rose-500/2 text-center">
-              <AlertTriangle className="h-8 w-8 text-rose-500 mx-auto mb-3" />
-              <h4 className="font-bold text-white text-base">Infeasible Constraints</h4>
-              <p className="text-xs text-slate-400 mt-1 max-w-md mx-auto">
-                {response.message || 'The CSP solver backtracked completely without finding any valid freelancer matches that stay within the budget, skill profile, and fraud score limits.'}
-              </p>
-            </div>
+            <EmptyState
+              icon={<AlertTriangle aria-hidden />}
+              title="No team fits these constraints"
+              description={response.message || 'No combination of freelancers covers the skills within the budget and fraud cut-off. Raise the budget, reduce the team size, or remove a skill.'}
+            />
           )}
-        </div>
-      </div>
-    </div>
+        </section>
+      </form>
+    </>
   )
 }

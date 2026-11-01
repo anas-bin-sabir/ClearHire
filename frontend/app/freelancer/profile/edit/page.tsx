@@ -3,18 +3,23 @@
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { useRouter } from 'next/navigation'
-import { api, FreelancerRecord } from '@/lib/api'
-import { ShieldCheck, Plus, Trash2, CheckCircle2, Award, Globe, Heart, Save } from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { api } from '@/lib/api'
+import { Plus, Trash2, X } from 'lucide-react'
+import { PageHeader } from '@/components/ui/PageHeader'
+import { Badge } from '@/components/ui/Badge'
+import { ErrorState, LoadingRows, Notice, Spinner } from '@/components/ui/States'
+import { fraudLabel, fraudTone } from '@/lib/utils'
 
 export default function EditProfilePage() {
   const { data: session } = useSession()
   const router = useRouter()
-  const flId = session?.user && (session.user as any).freelancerId ? Number((session.user as any).freelancerId) : 1
+  const flId = session?.user?.freelancerId ? Number(session.user.freelancerId) : 1
 
   const [loading, setLoading] = useState(true)
   const [saving, setSaving] = useState(false)
   const [success, setSuccess] = useState(false)
+  const [saveError, setSaveError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   // Form states
   const [name, setName] = useState('')
@@ -63,7 +68,10 @@ export default function EditProfilePage() {
         setLoading(false)
       } catch (err) {
         console.error('Failed to load profile:', err)
-        if (active) setLoading(false)
+        if (active) {
+          setLoadFailed(true)
+          setLoading(false)
+        }
       }
     }
 
@@ -101,6 +109,7 @@ export default function EditProfilePage() {
     e.preventDefault()
     setSaving(true)
     setSuccess(false)
+    setSaveError(null)
 
     const payload = {
       name,
@@ -127,6 +136,7 @@ export default function EditProfilePage() {
       }, 1500)
     } catch (err) {
       console.error('Failed to save profile:', err)
+      setSaveError('Your changes weren’t saved. Check the fields and try again.')
       setSaving(false)
     }
   }
@@ -135,319 +145,208 @@ export default function EditProfilePage() {
     s.toLowerCase().includes(skillQuery.toLowerCase())
   )
 
+  const section = 'grid grid-cols-1 gap-x-10 gap-y-5 border-b border-line py-8 lg:grid-cols-[16rem_minmax(0,1fr)]'
+
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-mint border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Assembling details...</p>
-        </div>
-      </div>
+      <>
+        <PageHeader title="Profile" />
+        <div className="p-5 sm:p-8"><LoadingRows rows={4} label="Loading your profile" /></div>
+      </>
+    )
+  }
+
+  if (loadFailed) {
+    return (
+      <>
+        <PageHeader title="Profile" />
+        <div className="p-5 sm:p-8"><ErrorState message="Your profile couldn’t be loaded. Refresh the page to try again." /></div>
+      </>
     )
   }
 
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex justify-between items-center bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Award className="h-5.5 w-5.5 text-mint" /> Declare Professional Identity
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Declarative profile changes emit background audit events which will trigger Naive Bayes evaluation updates.
-          </p>
-        </div>
-      </div>
+    <form onSubmit={handleSubmit}>
+      <PageHeader
+        title="Profile"
+        description="This is what clients and the matching engine see. Saving re-runs your trust analysis."
+        actions={<Badge tone={fraudTone(currentScore)}>Trust: {fraudLabel(currentScore).toLowerCase()}, {Math.round(currentScore * 100)}% risk</Badge>}
+      />
 
-      {success && (
-        <motion.div 
-          initial={{ opacity: 0, y: -10 }} 
-          animate={{ opacity: 1, y: 0 }}
-          className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex gap-3 items-center"
-        >
-          <CheckCircle2 className="h-5 w-5 shrink-0" />
-          <p>Profile updated successfully! Emitting background fraud checks. Redirecting to Trust Score...</p>
-        </motion.div>
-      )}
-
-      {/* Main Glass Form */}
-      <form onSubmit={handleSubmit} className="space-y-8">
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-8">
-          
-          {/* Col 1: Basic Identity & Parameters */}
-          <div className="glass-card p-6 space-y-5">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-3">
-              Identity Declarations
-            </h3>
-
+      <div className="px-5 sm:px-8">
+        <section className={section} aria-labelledby="sec-about">
+          <div>
+            <h2 id="sec-about" className="text-[15px] font-semibold text-fg">About you</h2>
+            <p className="mt-1 text-[13px] text-fg-2">Your name and a short bio appear at the top of your profile.</p>
+          </div>
+          <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
             <div>
-              <label className="input-label">FullName</label>
-              <input 
-                type="text" 
-                required
-                value={name} 
-                onChange={e => setName(e.target.value)} 
-                className="input" 
-              />
+              <label htmlFor="pf-name" className="field-label">Full name</label>
+              <input id="pf-name" type="text" required autoComplete="name" value={name} onChange={e => setName(e.target.value)} className="input" />
             </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Hourly Rate ($/hr)</label>
-                <input 
-                  type="number" 
-                  required
-                  min="0"
-                  value={hourlyRate} 
-                  onChange={e => setHourlyRate(Number(e.target.value))} 
-                  className="input font-mono" 
-                />
-              </div>
-              <div>
-                <label className="input-label">Years of Experience</label>
-                <input 
-                  type="number" 
-                  required
-                  min="0"
-                  value={experienceYears} 
-                  onChange={e => setExperienceYears(Number(e.target.value))} 
-                  className="input font-mono" 
-                />
-              </div>
-            </div>
-
-            <div className="grid grid-cols-2 gap-4">
-              <div>
-                <label className="input-label">Rating Value (0-5)</label>
-                <input 
-                  type="number" 
-                  step="0.1"
-                  min="0"
-                  max="5"
-                  required
-                  value={rating} 
-                  onChange={e => setRating(Number(e.target.value))} 
-                  className="input font-mono" 
-                />
-              </div>
-              <div>
-                <label className="input-label">Review Count</label>
-                <input 
-                  type="number" 
-                  required
-                  min="0"
-                  value={reviewCount} 
-                  onChange={e => setReviewCount(Number(e.target.value))} 
-                  className="input font-mono" 
-                />
-              </div>
-            </div>
-
             <div>
-              <div className="flex justify-between items-center mb-1">
-                <label className="input-label mb-0">Account Age (Days)</label>
-                <span className={`text-[10px] px-2 py-0.5 rounded font-mono font-bold ${
-                  currentScore > 0.65 ? 'bg-rose-500/10 text-rose-400' : currentScore > 0.35 ? 'bg-amber-500/10 text-amber-400' : 'bg-emerald-500/10 text-emerald-400'
-                }`}>
-                  Current Fraud: {Math.round(currentScore * 100)}%
-                </span>
-              </div>
-              <input 
-                type="number" 
-                required
-                min="0"
-                value={accountAgeDays} 
-                onChange={e => setAccountAgeDays(Number(e.target.value))} 
-                className="input font-mono" 
-              />
-              <p className="text-[10px] text-slate-500 mt-1">
-                * Higher value = older account = lower fraud risk score.
-              </p>
+              <label htmlFor="pf-location" className="field-label">Location</label>
+              <input id="pf-location" type="text" placeholder="City, country" value={location} onChange={e => setLocation(e.target.value)} className="input" />
             </div>
-
-            <div className="flex items-center gap-2 pt-2">
-              <input 
-                type="checkbox"
-                id="availabilityCheck"
-                checked={availability}
-                onChange={e => setAvailability(e.target.checked)}
-                className="rounded bg-slate-900 border-white/5 text-mint focus:ring-0 cursor-pointer h-4 w-4"
-              />
-              <label htmlFor="availabilityCheck" className="text-xs text-slate-300 font-semibold cursor-pointer">Open for immediate hiring contract allocation</label>
-            </div>
-
-            <div>
-              <label className="input-label">Location</label>
-              <input 
-                type="text" 
-                value={location} 
-                onChange={e => setLocation(e.target.value)} 
-                placeholder="e.g. London, UK"
-                className="input" 
-              />
+            <div className="sm:col-span-2">
+              <label htmlFor="pf-bio" className="field-label">Bio</label>
+              <textarea id="pf-bio" rows={4} placeholder="What you build and the kind of work you take on" value={bio} onChange={e => setBio(e.target.value)} className="input" />
             </div>
           </div>
+        </section>
 
-          {/* Col 2: Skills & External URLs */}
-          <div className="space-y-8">
-            {/* Bio & Skills */}
-            <div className="glass-card p-6 space-y-4">
-              <h3 className="text-sm font-bold text-white uppercase tracking-wider border-b border-white/5 pb-3">
-                Bio & Skills Matrix
-              </h3>
-              
-              <div>
-                <label className="input-label">Brief Professional Biography</label>
-                <textarea 
-                  rows={4}
-                  value={bio}
-                  onChange={e => setBio(e.target.value)}
-                  placeholder="Introduce yourself to prospective clients..."
-                  className="input resize-none text-xs"
-                />
-              </div>
-
-              <div>
-                <label className="input-label">Skill Capabilities</label>
-
-                {/* Custom skill input */}
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="Type a custom skill and press Enter..."
-                    value={customSkillInput}
-                    onChange={e => setCustomSkillInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
-                    className="input text-xs flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomSkill}
-                    disabled={!customSkillInput.trim()}
-                    className="btn btn-sm btn-ghost px-3 border border-mint/20 text-mint hover:bg-mint/10 disabled:opacity-30 shrink-0 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Selected skill chips */}
-                {skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {skills.map(skill => (
-                      <span key={skill} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-mint/15 text-white border border-mint/30">
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => setSkills(prev => prev.filter(s => s !== skill))}
-                          className="text-mint/70 hover:text-white ml-0.5 transition-colors cursor-pointer leading-none"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                {/* Filter predefined skills */}
-                <input
-                  type="text"
-                  placeholder="Search predefined skills..."
-                  value={skillQuery}
-                  onChange={e => setSkillQuery(e.target.value)}
-                  className="input mb-2 text-xs"
-                />
-                <div className="max-h-[100px] overflow-y-auto bg-slate-950/40 p-2.5 border border-white/5 rounded-lg flex flex-wrap gap-1 min-h-[40px]">
-                  {filteredSkills.length === 0 ? (
-                    <p className="text-[10px] text-slate-500 italic self-center w-full text-center">
-                      {allSkills.length === 0 ? 'Loading predefined skills...' : 'No skills match your search'}
-                    </p>
-                  ) : filteredSkills.map(skill => {
-                    const active = skills.includes(skill)
-                    return (
-                      <button
-                        type="button"
-                        key={skill}
-                        onClick={() => toggleSkill(skill)}
-                        className={`text-[10px] px-2 py-0.5 rounded cursor-pointer transition-colors ${
-                          active
-                            ? 'bg-mint/15 text-white border border-mint/30'
-                            : 'bg-slate-900/60 text-slate-400 border border-white/5'
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    )
-                  })}
-                </div>
+        <section className={section} aria-labelledby="sec-work">
+          <div>
+            <h2 id="sec-work" className="text-[15px] font-semibold text-fg">Rate and availability</h2>
+            <p className="mt-1 text-[13px] text-fg-2">Used to fit you into project budgets.</p>
+          </div>
+          <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-2">
+            <div>
+              <label htmlFor="pf-rate" className="field-label">Hourly rate (USD)</label>
+              <div className="relative">
+                <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                <input id="pf-rate" type="number" min="0" required value={hourlyRate} onChange={e => setHourlyRate(Number(e.target.value))} className="input pl-6 tabular-nums" />
               </div>
             </div>
+            <div>
+              <label htmlFor="pf-exp" className="field-label">Years of experience</label>
+              <input id="pf-exp" type="number" min="0" required value={experienceYears} onChange={e => setExperienceYears(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+            <label className="flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-fg sm:col-span-2">
+              <input type="checkbox" checked={availability} onChange={e => setAvailability(e.target.checked)} className="h-4 w-4" />
+              Available for new contracts
+            </label>
+          </div>
+        </section>
 
-            {/* Dynamic URLs */}
-            <div className="glass-card p-6 space-y-4">
-              <div className="flex justify-between items-center border-b border-white/5 pb-3">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5">
-                  <Globe className="h-4.5 w-4.5 text-indigo-400" /> Portfolio Links
-                </h3>
-                <button
-                  type="button"
-                  onClick={addUrl}
-                  className="btn btn-sm btn-ghost inline-flex items-center gap-1 cursor-pointer text-slate-300 hover:text-white"
-                >
-                  <Plus className="h-3.5 w-3.5" /> Add URL
+        <section className={section} aria-labelledby="sec-skills">
+          <div>
+            <h2 id="sec-skills" className="text-[15px] font-semibold text-fg">Skills</h2>
+            <p className="mt-1 text-[13px] text-fg-2">Matching compares these against each project’s requirements.</p>
+          </div>
+          <div className="max-w-2xl space-y-3">
+            {skills.length > 0 ? (
+              <ul className="flex flex-wrap gap-1.5" aria-label="Your skills">
+                {skills.map(skill => (
+                  <li key={skill}>
+                    <span className="inline-flex min-h-8 items-center gap-1 rounded-chip bg-shell pl-2.5 pr-1 text-[13px] font-medium text-on-dark">
+                      {skill}
+                      <button type="button" onClick={() => toggleSkill(skill)} className="grid h-6 w-6 place-items-center rounded-md hover:bg-shell-3" aria-label={`Remove ${skill}`}>
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-[13px] text-warn">Add at least one skill so you can be matched.</p>
+            )}
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div>
+                <label htmlFor="pf-skill-filter" className="sr-only">Filter skills</label>
+                <input id="pf-skill-filter" type="text" placeholder="Filter the skill list" value={skillQuery} onChange={e => setSkillQuery(e.target.value)} className="input" />
+              </div>
+              <div className="flex gap-2">
+                <label htmlFor="pf-custom-skill" className="sr-only">Add a skill that isn’t listed</label>
+                <input
+                  id="pf-custom-skill"
+                  type="text"
+                  placeholder="Add a skill that isn’t listed"
+                  value={customSkillInput}
+                  onChange={e => setCustomSkillInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
+                  className="input"
+                />
+                <button type="button" onClick={addCustomSkill} disabled={!customSkillInput.trim()} className="btn btn-icon btn-secondary shrink-0" aria-label="Add skill">
+                  <Plus aria-hidden />
                 </button>
               </div>
-
-              <div className="space-y-2.5 max-h-[180px] overflow-y-auto pr-1">
-                <AnimatePresence initial={false}>
-                  {portfolioUrls.map((url, idx) => (
-                    <motion.div 
-                      key={idx}
-                      initial={{ opacity: 0, height: 0 }}
-                      animate={{ opacity: 1, height: 'auto' }}
-                      exit={{ opacity: 0, height: 0 }}
-                      className="flex items-center gap-2"
-                    >
-                      <input 
-                        type="url"
-                        placeholder="https://github.com/yourprofile"
-                        value={url}
-                        onChange={e => handleUrlChange(e.target.value, idx)}
-                        className="input text-xs flex-1"
-                        required
-                      />
-                      <button
-                        type="button"
-                        onClick={() => removeUrl(idx)}
-                        className="btn btn-sm btn-danger p-2.5 rounded-lg shrink-0 cursor-pointer"
-                      >
-                        <Trash2 className="h-3.5 w-3.5" />
-                      </button>
-                    </motion.div>
-                  ))}
-                </AnimatePresence>
-                {portfolioUrls.length === 0 && (
-                  <p className="text-slate-500 text-xs italic py-4 text-center">
-                    No external portfolio web links added. (Low links increase fraud risk rating).
-                  </p>
-                )}
-              </div>
+            </div>
+            <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+              {filteredSkills.length === 0 ? (
+                <p className="p-1 text-[13px] text-fg-2">No listed skill matches. Add it as your own.</p>
+              ) : filteredSkills.map(skill => {
+                const active = skills.includes(skill)
+                return (
+                  <button
+                    type="button"
+                    key={skill}
+                    onClick={() => toggleSkill(skill)}
+                    aria-pressed={active}
+                    className={`min-h-8 rounded-md border px-2.5 text-[13px] font-medium transition-colors duration-150 ${
+                      active ? 'border-shell bg-shell text-on-dark' : 'border-line bg-panel text-fg-2 hover:text-fg'
+                    }`}
+                  >
+                    {skill}
+                  </button>
+                )
+              })}
             </div>
           </div>
-        </div>
+        </section>
 
-        {/* Submit controls */}
-        <div className="flex justify-end pt-4">
-          <button
-            type="submit"
-            disabled={saving}
-            className="btn btn-md btn-primary px-8 flex items-center gap-2 bg-mint hover:bg-emerald-400 border-none text-ink font-semibold shadow-lg shadow-mint/20 cursor-pointer"
-          >
-            <Save className="h-4.5 w-4.5" />
-            {saving ? 'Saving changes...' : 'Save Profile declarations'}
-          </button>
+        <section className={section} aria-labelledby="sec-portfolio">
+          <div>
+            <h2 id="sec-portfolio" className="text-[15px] font-semibold text-fg">Portfolio</h2>
+            <p className="mt-1 text-[13px] text-fg-2">Links to work you’ve shipped. Clients see these on your profile.</p>
+          </div>
+          <div className="max-w-2xl space-y-2">
+            {portfolioUrls.length === 0 && <p className="text-[13px] text-fg-2">No links yet.</p>}
+            {portfolioUrls.map((url, idx) => (
+              <div key={idx} className="flex gap-2">
+                <label htmlFor={`pf-url-${idx}`} className="sr-only">Portfolio link {idx + 1}</label>
+                <input
+                  id={`pf-url-${idx}`}
+                  type="url"
+                  placeholder="https://"
+                  value={url}
+                  onChange={e => handleUrlChange(e.target.value, idx)}
+                  className="input"
+                />
+                <button type="button" onClick={() => removeUrl(idx)} className="btn btn-icon btn-ghost shrink-0 hover:text-danger" aria-label={`Remove link ${idx + 1}`}>
+                  <Trash2 aria-hidden />
+                </button>
+              </div>
+            ))}
+            <button type="button" onClick={addUrl} className="btn btn-sm btn-secondary">
+              <Plus aria-hidden /> Add a link
+            </button>
+          </div>
+        </section>
+
+        <section className={section} aria-labelledby="sec-record">
+          <div>
+            <h2 id="sec-record" className="text-[15px] font-semibold text-fg">Platform record</h2>
+            <p className="mt-1 text-[13px] text-fg-2">These feed the trust model. Keep them accurate.</p>
+          </div>
+          <div className="grid max-w-2xl grid-cols-1 gap-4 sm:grid-cols-3">
+            <div>
+              <label htmlFor="pf-rating" className="field-label">Rating (0–5)</label>
+              <input id="pf-rating" type="number" step="0.1" min="0" max="5" value={rating} onChange={e => setRating(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+            <div>
+              <label htmlFor="pf-reviews" className="field-label">Reviews</label>
+              <input id="pf-reviews" type="number" min="0" value={reviewCount} onChange={e => setReviewCount(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+            <div>
+              <label htmlFor="pf-age" className="field-label">Account age (days)</label>
+              <input id="pf-age" type="number" min="0" value={accountAgeDays} onChange={e => setAccountAgeDays(Number(e.target.value))} className="input tabular-nums" />
+            </div>
+          </div>
+        </section>
+      </div>
+
+      {/* Save bar stays in reach on long forms */}
+      <div className="sticky bottom-0 z-10 flex flex-col gap-3 border-t border-line bg-panel px-5 py-4 sm:flex-row sm:items-center sm:justify-between sm:px-8">
+        <div className="min-h-5" aria-live="polite">
+          {success && <Notice tone="ok">Profile saved. Opening your updated trust score…</Notice>}
+          {saveError && <Notice tone="danger">{saveError}</Notice>}
         </div>
-      </form>
-    </div>
+        <button type="submit" disabled={saving} className="btn btn-primary shrink-0">
+          {saving && <Spinner />}
+          {saving ? 'Saving…' : 'Save profile'}
+        </button>
+      </div>
+    </form>
   )
 }

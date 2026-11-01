@@ -2,26 +2,23 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
+import Link from 'next/link'
+import { AlertTriangle, Check } from 'lucide-react'
 import { api, FraudResponse } from '@/lib/api'
 import { FraudGauge } from '@/components/ui/FraudGauge'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
-import { 
-  ShieldCheck, 
-  AlertTriangle, 
-  CheckCircle2, 
-  HelpCircle,
-  TrendingUp,
-  XCircle,
-  FileText
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import { PageBody, PageHeader } from '@/components/ui/PageHeader'
+import { Panel } from '@/components/ui/Panel'
+import { ErrorState, Skeleton } from '@/components/ui/States'
+import { signalLabel } from '@/lib/fraudSignals'
 
 export default function TrustScorePage() {
   const { data: session } = useSession()
-  const flId = session?.user && (session.user as any).freelancerId ? Number((session.user as any).freelancerId) : 1
+  const flId = session?.user?.freelancerId ? Number(session.user.freelancerId) : 1
 
   const [fraud, setFraud] = useState<FraudResponse | null>(null)
   const [loading, setLoading] = useState(true)
+  const [error, setError] = useState(false)
 
   useEffect(() => {
     let active = true
@@ -34,7 +31,10 @@ export default function TrustScorePage() {
         }
       } catch (err) {
         console.error('Failed to load trust index score:', err)
-        if (active) setLoading(false)
+        if (active) {
+          setError(true)
+          setLoading(false)
+        }
       }
     }
     loadFraud()
@@ -43,115 +43,84 @@ export default function TrustScorePage() {
     }
   }, [flId])
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-mint border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Assembling trust indices...</p>
-        </div>
-      </div>
-    )
-  }
-
-  const SIGNALS = [
-    { key: 'low_account_age', label: 'Account age sufficient (>30 days)' },
-    { key: 'low_rating', label: 'Rating above 3.0 stars' },
-    { key: 'no_portfolio', label: 'Portfolio web links supplied' },
-    { key: 'low_review_count', label: 'Received reviewer feedback' },
-    { key: 'high_rate', label: 'Hourly rate fits market range' }
-  ]
-
   return (
-    <div className="p-8 max-w-4xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <ShieldCheck className="h-5.5 w-5.5 text-mint" /> Bayesian Trust Metrics
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Real-time audit log analyzing profile parameters to calculate platform risk ratings.
-          </p>
-        </div>
-      </div>
+    <>
+      <PageHeader
+        title="Trust score"
+        description="ClearHire’s fraud model looks at your profile and history and estimates a risk score. Clients see it as a signal next to your matches; it isn’t a judgement."
+      />
+      <PageBody className="max-w-5xl space-y-6">
+        {error && <ErrorState message="Your trust analysis couldn’t be loaded. Refresh the page to try again." />}
 
-      {fraud?.is_flagged && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-          <AlertTriangle className="h-5.5 w-5.5 shrink-0 animate-bounce" />
-          <div>
-            <h4 className="font-bold">Account flagged for review</h4>
-            <p className="text-xs text-rose-400/80 mt-0.5">Your profile declarations have exceeded standard risk threshold triggers. An administrator will review your account soon.</p>
-          </div>
-        </div>
-      )}
-
-      {/* Main split */}
-      <div className="grid grid-cols-1 md:grid-cols-3 gap-8">
-        
-        {/* Semicircle risk gauge */}
-        <div className="glass-card p-6 md:col-span-1 flex flex-col items-center justify-center">
-          {fraud && (
-            <div className="space-y-4 flex flex-col items-center text-center">
-              <FraudGauge score={fraud.score} confidence={fraud.confidence} size="lg" />
-              <div className="pt-2">
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest font-mono">Platform Score</span>
-                <div className="text-2xl font-bold text-white mt-1">{(fraud.score * 100).toFixed(0)}% Risk</div>
-              </div>
+        {fraud?.is_flagged && (
+          <div role="status" className="flex gap-3 rounded-panel bg-danger-tint p-4">
+            <AlertTriangle className="mt-0.5 h-5 w-5 shrink-0 text-danger" aria-hidden />
+            <div>
+              <p className="font-semibold text-danger">Your account is flagged for review</p>
+              <p className="mt-0.5 text-sm text-fg">
+                The score passed the review threshold, so an admin checks the account before it’s matched again.
+                Completing your <Link href="/freelancer/profile/edit" className="font-semibold text-primary-ink underline underline-offset-2">profile</Link> helps.
+              </p>
             </div>
-          )}
-        </div>
-
-        {/* Signals Passes / Fails checklist */}
-        <div className="glass-card p-6 md:col-span-2 space-y-4">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-white/5 pb-3">
-            <CheckCircle2 className="h-4.5 w-4.5 text-mint" /> Audit checklist
-          </h3>
-
-          <div className="space-y-3">
-            {SIGNALS.map(s => {
-              const triggered = fraud?.signals?.includes(s.key)
-              return (
-                <div key={s.key} className="flex justify-between items-center p-3 rounded-xl bg-slate-950/20 border border-white/3">
-                  <span className="text-xs text-slate-300 font-medium">{s.label}</span>
-                  <span className={`inline-flex items-center gap-1 px-2.5 py-0.5 rounded text-[10px] font-mono font-bold uppercase ${
-                    triggered 
-                      ? 'bg-rose-500/10 text-rose-400' 
-                      : 'bg-emerald-500/10 text-emerald-400'
-                  }`}>
-                    {triggered ? '✗ Alert' : '✓ Pass'}
-                  </span>
-                </div>
-              )
-            })}
           </div>
-        </div>
-      </div>
+        )}
 
-      {/* Risk Factors Explanation */}
-      {fraud?.risk_factors && fraud.risk_factors.length > 0 && (
-        <div className="glass-card p-6 space-y-3">
-          <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-1.5 border-b border-white/5 pb-3">
-            <AlertTriangle className="h-4.5 w-4.5 text-rose-400" /> Active Risk Factors
-          </h3>
-          <ul className="list-disc pl-5 text-xs text-slate-300 space-y-1.5 leading-relaxed">
-            {fraud.risk_factors.map((factor, idx) => (
-              <li key={idx} className="marker:text-rose-500">{factor}</li>
-            ))}
-          </ul>
-        </div>
-      )}
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-[18rem_minmax(0,1fr)]">
+          <Panel title="Current score">
+            {loading ? (
+              <Skeleton className="mx-auto h-32 w-48" />
+            ) : fraud ? (
+              <div className="flex flex-col items-center gap-2 text-center">
+                <FraudGauge score={fraud.score} confidence={fraud.confidence} size="lg" />
+                {fraud.ran_at && (
+                  <p className="text-xs text-fg-2">
+                    Last analysed <time dateTime={fraud.ran_at}>{new Date(fraud.ran_at).toLocaleDateString()}</time>
+                  </p>
+                )}
+              </div>
+            ) : null}
+          </Panel>
 
-      {/* Improvement advice box */}
-      {fraud?.explanation && (
-        <div className="pt-2">
-          <AIReasoningBox 
-            explanation={fraud.explanation}
-            title="Mitigation Suggestions & AI Feedback"
-            defaultOpen={true}
-          />
+          <Panel title="What the model found" description="Signals raise the score; each one is listed with the reason the model gave.">
+            {loading ? (
+              <div className="space-y-3"><Skeleton className="h-4 w-3/4" /><Skeleton className="h-4 w-2/3" /></div>
+            ) : fraud ? (
+              <div className="space-y-5">
+                {fraud.signals.length > 0 ? (
+                  <ul className="space-y-2.5">
+                    {fraud.signals.map(sig => (
+                      <li key={sig} className="flex gap-2 text-sm text-fg" title={sig}>
+                        <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
+                        {signalLabel(sig)}
+                      </li>
+                    ))}
+                  </ul>
+                ) : (
+                  <p className="flex gap-2 text-sm text-fg">
+                    <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
+                    No fraud signals were triggered.
+                  </p>
+                )}
+
+                {fraud.risk_factors && fraud.risk_factors.length > 0 && (
+                  <div className="border-t border-line pt-4">
+                    <p className="text-[13px] font-semibold text-fg">Risk factors</p>
+                    <ul className="mt-2 list-disc space-y-1.5 pl-5 text-sm text-fg-2 marker:text-warn">
+                      {fraud.risk_factors.map((factor, idx) => (
+                        <li key={idx}>{factor}</li>
+                      ))}
+                    </ul>
+                  </div>
+                )}
+              </div>
+            ) : null}
+          </Panel>
         </div>
-      )}
-    </div>
+
+        {fraud?.explanation && (
+          <AIReasoningBox explanation={fraud.explanation} title="The model’s explanation" defaultOpen />
+        )}
+      </PageBody>
+    </>
   )
 }

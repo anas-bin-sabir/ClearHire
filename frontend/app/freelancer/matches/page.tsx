@@ -4,19 +4,10 @@ import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
 import { api, ProjectRecord, FreelancerRecord } from '@/lib/api'
 import { SkillBadge } from '@/components/ui/SkillBadge'
-import { StatusBadge } from '@/components/ui/StatusBadge'
 import { fmt } from '@/lib/utils'
-import { 
-  Sparkles, 
-  ThumbsUp, 
-  ThumbsDown, 
-  DollarSign, 
-  Calendar, 
-  Award, 
-  BookmarkCheck,
-  AlertCircle
-} from 'lucide-react'
-import { motion, AnimatePresence } from 'framer-motion'
+import { Check, Zap } from 'lucide-react'
+import { PageBody, PageHeader } from '@/components/ui/PageHeader'
+import { EmptyState, ErrorState, LoadingRows, Notice } from '@/components/ui/States'
 
 interface MatchProject extends ProjectRecord {
   matchPct: number
@@ -26,7 +17,7 @@ interface MatchProject extends ProjectRecord {
 
 export default function MatchesPage() {
   const { data: session } = useSession()
-  const flId = session?.user && (session.user as any).freelancerId ? Number((session.user as any).freelancerId) : 1
+  const flId = session?.user?.freelancerId ? Number(session.user.freelancerId) : 1
 
   const [matches, setMatches] = useState<MatchProject[]>([])
   const [loading, setLoading] = useState(true)
@@ -34,6 +25,7 @@ export default function MatchesPage() {
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [successMsg, setSuccessMsg] = useState<string | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [loadFailed, setLoadFailed] = useState(false)
 
   // Filter list of ignored project ids
   const [ignoredIds, setIgnoredIds] = useState<number[]>([])
@@ -78,7 +70,10 @@ export default function MatchesPage() {
         }
       } catch (err) {
         console.error('Failed to load project matches:', err)
-        if (active) setLoading(false)
+        if (active) {
+          setLoadFailed(true)
+          setLoading(false)
+        }
       }
     }
 
@@ -98,14 +93,14 @@ export default function MatchesPage() {
         project_id: pId,
         status: 'pending' // Expressing interest sets contract status to pending
       })
-      setSuccessMsg('Interest submitted! The client will review your profile.')
+      setSuccessMsg('Interest sent. A pending contract was created for the client to review.')
       setMatches(prev => 
         prev.map(m => m.id === pId ? { ...m, isInterested: true } : m)
       )
       setActionLoading(null)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Failed to submit interest.')
+      setError(err instanceof Error && err.message ? err.message : 'Your interest wasn’t sent. Try again.')
       setActionLoading(null)
     }
   }
@@ -116,122 +111,88 @@ export default function MatchesPage() {
 
   const visibleMatches = matches.filter(m => !ignoredIds.includes(m.id))
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 border-2 border-mint border-t-transparent rounded-full animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Matching your skills with open roles...</p>
-        </div>
-      </div>
-    )
-  }
-
   return (
-    <div className="p-8 max-w-5xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex justify-between items-center bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="h-5.5 w-5.5 text-mint" /> Smart Matching Queue
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            Projects sorted by skill similarity. Express interest to trigger contract allocation.
-          </p>
-        </div>
-      </div>
+    <>
+      <PageHeader
+        title="Project matches"
+        description="Open projects ordered by how many of their required skills you have. Express interest to send the client a pending contract."
+      />
+      <PageBody className="max-w-5xl space-y-4">
+        {successMsg && <Notice tone="ok">{successMsg}</Notice>}
+        {error && <Notice tone="danger">{error}</Notice>}
+        {loadFailed && <ErrorState message="Open projects couldn’t be loaded. Refresh the page to try again." />}
 
-      {successMsg && (
-        <div className="p-4 rounded-xl bg-emerald-500/10 border border-emerald-500/20 text-emerald-400 text-sm flex gap-3 items-center">
-          <BookmarkCheck className="h-5 w-5 shrink-0" />
-          <p>{successMsg}</p>
-        </div>
-      )}
-
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
-
-      <div className="space-y-6">
-        <AnimatePresence initial={false}>
-          {visibleMatches.length === 0 ? (
-            <div className="glass-card p-12 text-center text-slate-500 text-sm">
-              No new matching projects found. Check back later!
-            </div>
-          ) : (
-            visibleMatches.map((proj, idx) => (
-              <motion.div
-                key={proj.id}
-                initial={{ opacity: 0, y: 15 }}
-                animate={{ opacity: 1, y: 0 }}
-                exit={{ opacity: 0, x: -30 }}
-                transition={{ duration: 0.3 }}
-                className="glass-card p-6 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 hover:border-mint/20"
-              >
-                <div className="space-y-3 flex-1 min-w-0">
-                  {/* Title & Match percentage */}
-                  <div className="flex flex-wrap items-center gap-3">
-                    <h4 className="font-bold text-white text-base truncate">{proj.title}</h4>
-                    <span className="inline-flex items-center px-2.5 py-0.5 rounded-full text-xs font-semibold bg-mint/10 text-mint border border-mint/20">
-                      {proj.matchPct}% Skill Overlap
-                    </span>
+        {loading ? (
+          <div className="rounded-panel border border-line-2 bg-panel p-5 shadow-card">
+            <LoadingRows rows={4} label="Loading project matches" />
+          </div>
+        ) : visibleMatches.length === 0 ? (
+          !loadFailed && (
+            <EmptyState
+              icon={<Zap aria-hidden />}
+              title={matches.length === 0 ? 'No open projects right now' : 'You’ve hidden every match'}
+              description={
+                matches.length === 0
+                  ? 'New projects appear here as clients post them. Adding skills to your profile widens what you match.'
+                  : 'Reload the page to see hidden projects again.'
+              }
+            />
+          )
+        ) : (
+          <ol className="divide-y divide-line overflow-hidden rounded-panel border border-line-2 bg-panel shadow-card">
+            {visibleMatches.map(proj => (
+              <li key={proj.id} className="flex flex-col gap-4 px-5 py-5 sm:px-6 md:flex-row md:items-start">
+                <div className="min-w-0 flex-1 space-y-3">
+                  <div className="flex flex-wrap items-baseline justify-between gap-x-4 gap-y-1">
+                    <h2 className="text-base font-semibold text-fg">{proj.title}</h2>
+                    <p className="flex items-baseline gap-1.5">
+                      <span className="text-xl font-bold tabular-nums text-teal-ink">{proj.matchPct}%</span>
+                      <span className="text-xs text-fg-2">skill overlap</span>
+                    </p>
                   </div>
-
-                  <p className="text-xs text-slate-400 leading-relaxed line-clamp-3">
-                    {proj.description?.replace(/Client: .*\n\n/, '') || 'No description provided.'}
-                  </p>
-
-                  {/* Skills lists highlighting overlap */}
-                  <div className="flex flex-wrap gap-1.5 pt-1">
-                    {(proj.required_skills || []).map(skill => {
-                      const matched = freelancer?.skills?.includes(skill)
-                      return (
-                        <SkillBadge key={skill} skill={skill} highlighted={matched} />
-                      )
-                    })}
-                  </div>
-
-                  {/* Details stats */}
-                  <div className="flex flex-wrap gap-4 text-[11px] text-slate-500 font-medium font-mono pt-1">
-                    <span className="flex items-center gap-1"><DollarSign className="h-3.5 w-3.5" /> Budget: <strong className="text-white">${proj.budget}</strong></span>
-                    <span className="flex items-center gap-1"><Calendar className="h-3.5 w-3.5" /> Deadline: <strong className="text-white">{proj.deadline_days} days</strong></span>
-                    <span>Client: <strong className="text-white">{proj.client || 'Sara Ahmed'}</strong></span>
-                  </div>
+                  {proj.description && (
+                    <p className="line-clamp-3 max-w-prose text-sm leading-relaxed text-fg-2">
+                      {proj.description.replace(/Client: .*\n\n/, '')}
+                    </p>
+                  )}
+                  <ul className="flex flex-wrap gap-1.5" aria-label="Required skills (yours highlighted)">
+                    {(proj.required_skills || []).map(skill => (
+                      <li key={skill}><SkillBadge skill={skill} highlighted={freelancer?.skills?.includes(skill)} /></li>
+                    ))}
+                  </ul>
+                  <dl className="flex flex-wrap gap-x-5 gap-y-1 text-[13px]">
+                    <div className="flex gap-1.5"><dt className="text-fg-2">Budget</dt><dd className="font-semibold tabular-nums text-fg">{fmt.currency(proj.budget)}</dd></div>
+                    {proj.deadline_days ? <div className="flex gap-1.5"><dt className="text-fg-2">Deadline</dt><dd className="font-semibold tabular-nums text-fg">{proj.deadline_days} days</dd></div> : null}
+                    {proj.client && <div className="flex gap-1.5"><dt className="text-fg-2">Client</dt><dd className="font-semibold text-fg">{proj.client}</dd></div>}
+                  </dl>
                 </div>
 
-                {/* Actions side */}
-                <div className="flex md:flex-col gap-2 shrink-0 w-full md:w-auto items-stretch border-t md:border-t-0 md:border-l border-white/5 pt-4 md:pt-0 md:pl-6">
+                <div className="flex shrink-0 gap-2 md:w-44 md:flex-col">
                   {proj.isInterested ? (
-                    <div className="text-center py-2 px-6 bg-slate-950/40 rounded-lg border border-white/5 flex items-center justify-center text-xs text-slate-500 italic">
-                      Applied
-                    </div>
+                    <p className="flex min-h-10 flex-1 items-center justify-center gap-1.5 rounded-control bg-teal-tint text-sm font-semibold text-teal-ink">
+                      <Check className="h-4 w-4" aria-hidden /> Interest sent
+                    </p>
                   ) : (
                     <>
                       <button
+                        type="button"
                         disabled={actionLoading === proj.id}
                         onClick={() => handleExpressInterest(proj.id)}
-                        className="btn btn-sm btn-primary bg-mint hover:bg-emerald-400 border-none text-ink font-semibold flex items-center justify-center gap-1.5 cursor-pointer shadow-md"
+                        className="btn btn-primary flex-1"
                       >
-                        <ThumbsUp className="h-3.5 w-3.5" />
-                        {actionLoading === proj.id ? 'Sending...' : 'Express Interest'}
+                        {actionLoading === proj.id ? 'Sending…' : 'Express interest'}
                       </button>
-                      <button
-                        onClick={() => handleIgnore(proj.id)}
-                        className="btn btn-sm btn-ghost flex items-center justify-center gap-1.5 cursor-pointer"
-                      >
-                        <ThumbsDown className="h-3.5 w-3.5" /> Ignore
+                      <button type="button" onClick={() => handleIgnore(proj.id)} className="btn btn-ghost flex-1">
+                        Hide
                       </button>
                     </>
                   )}
                 </div>
-              </motion.div>
-            ))
-          )}
-        </AnimatePresence>
-      </div>
-    </div>
+              </li>
+            ))}
+          </ol>
+        )}
+      </PageBody>
+    </>
   )
 }

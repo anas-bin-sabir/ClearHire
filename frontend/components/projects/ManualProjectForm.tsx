@@ -4,8 +4,8 @@ import { useState, useEffect } from 'react'
 import { useRouter } from 'next/navigation'
 import { useSession } from 'next-auth/react'
 import { api } from '@/lib/api'
-import { motion, AnimatePresence } from 'framer-motion'
-import { ArrowRight, ArrowLeft, Check, Search, Plus } from 'lucide-react'
+import { Check, Plus, Search, X } from 'lucide-react'
+import { Notice, Spinner } from '@/components/ui/States'
 
 /** The original three-step form, kept as the manual alternative to brief extraction. */
 export function ManualProjectForm() {
@@ -13,8 +13,8 @@ export function ManualProjectForm() {
   const { data: session } = useSession()
 
   const [step, setStep] = useState(1)
-  const [direction, setDirection] = useState(1) // 1 = forward, -1 = backward
   const [loading, setLoading] = useState(false)
+  const [error, setError] = useState<string | null>(null)
 
   // Form states
   const [title, setTitle] = useState('')
@@ -37,14 +37,12 @@ export function ManualProjectForm() {
 
   const nextStep = () => {
     if (step < 3) {
-      setDirection(1)
       setStep(prev => prev + 1)
     }
   }
 
   const prevStep = () => {
     if (step > 1) {
-      setDirection(-1)
       setStep(prev => prev - 1)
     }
   }
@@ -67,6 +65,7 @@ export function ManualProjectForm() {
       return
     }
     setLoading(true)
+    setError(null)
     try {
       const clientName = session?.user?.name || 'Sara Ahmed'
       const result = await api.projects.create({
@@ -81,6 +80,7 @@ export function ManualProjectForm() {
       router.push(`/client/search?projectId=${result.project.id}`)
     } catch (err) {
       console.error('Failed to create project:', err)
+      setError('The project wasn’t created. Check the fields and try again.')
       setLoading(false)
     }
   }
@@ -96,243 +96,241 @@ export function ManualProjectForm() {
   ]
 
   return (
-    <div className="space-y-8">
-      {/* Steps indicator */}
-      <div className="flex justify-between items-center px-4">
-        <h3 className="text-sm font-semibold text-slate-300">Step {step} of 3</h3>
-        
-        <div className="flex items-center gap-2">
-          {stepsInfo.map((s, idx) => (
-            <div key={s.num} className="flex items-center">
-              <span className={`h-6 w-6 rounded-full flex items-center justify-center text-xs font-semibold border transition-all duration-300 ${
-                step >= s.num
-                  ? 'bg-electric text-white border-electric shadow-lg shadow-electric/25'
-                  : 'bg-slate-900 text-slate-500 border-white/5'
-              }`}>
-                {s.num}
+    <form onSubmit={handleSubmit} className="rounded-panel border border-line-2 bg-panel shadow-card">
+      {/* Steps: a real sequence, so numbered. */}
+      <ol className="flex border-b border-line" aria-label="Form progress">
+        {stepsInfo.map(s => {
+          const done = step > s.num
+          const current = step === s.num
+          return (
+            <li
+              key={s.num}
+              aria-current={current ? 'step' : undefined}
+              className={`flex flex-1 items-center gap-2 px-4 py-3 text-[13px] font-semibold sm:px-6 ${
+                current ? 'text-fg shadow-[inset_0_-2px_0_var(--primary)]' : done ? 'text-fg' : 'text-fg-2'
+              }`}
+            >
+              <span
+                className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${
+                  done ? 'bg-teal-tint text-teal-ink' : current ? 'bg-primary text-on-dark' : 'bg-sunken text-fg-2'
+                }`}
+              >
+                {done ? <Check className="h-3.5 w-3.5" aria-label="done" /> : s.num}
               </span>
-              {idx < stepsInfo.length - 1 && (
-                <div className={`w-8 h-[1px] transition-all duration-300 ${step > s.num ? 'bg-electric' : 'bg-white/5'}`} />
-              )}
+              {s.label}
+            </li>
+          )
+        })}
+      </ol>
+
+      <div className="min-h-[22rem] space-y-5 p-5 sm:p-6">
+        {step === 1 && (
+          <>
+            <div>
+              <h2 className="text-[15px] font-semibold text-fg">Project scope</h2>
+              <p className="mt-1 text-sm text-fg-2">A clear title and description help the ranker find the right people.</p>
             </div>
-          ))}
-        </div>
-      </div>
+            <div>
+              <label htmlFor="mp-title" className="field-label">Project title</label>
+              <input
+                id="mp-title"
+                type="text"
+                required
+                placeholder="e.g. High-throughput FastAPI microservice"
+                value={title}
+                onChange={e => setTitle(e.target.value)}
+                className="input"
+              />
+            </div>
+            <div>
+              <label htmlFor="mp-desc" className="field-label">Description</label>
+              <textarea
+                id="mp-desc"
+                required
+                rows={6}
+                placeholder="Tasks, technical needs and deliverables"
+                value={description}
+                onChange={e => setDescription(e.target.value)}
+                className="input"
+              />
+            </div>
+          </>
+        )}
 
-      {/* Main Glass Form Container */}
-      <div className="glass-card p-8 min-h-[380px] flex flex-col justify-between relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-32 h-32 bg-electric/2 rounded-full blur-2xl pointer-events-none" />
+        {step === 2 && (
+          <>
+            <div>
+              <h2 className="text-[15px] font-semibold text-fg">Required skills</h2>
+              <p className="mt-1 text-sm text-fg-2">Pick the skills the team needs. Add your own if they aren’t listed.</p>
+            </div>
 
-        <form onSubmit={handleSubmit} className="flex-1 flex flex-col justify-between">
-          <AnimatePresence mode="wait">
-            <motion.div 
-              key={step}
-              initial={{ opacity: 0, x: direction > 0 ? 32 : -32 }}
-              animate={{ opacity: 1, x: 0 }}
-              exit={{ opacity: 0, x: direction > 0 ? -32 : 32 }}
-              transition={{ duration: 0.22 }}
-              className="space-y-5 flex-1"
-            >
-              {step === 1 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-bold text-white mb-1">Define project scope</h3>
-                    <p className="text-xs text-slate-400">Introduce your project clearly to match the best specialists.</p>
-                  </div>
-                  <div>
-                    <label className="input-label">Project Title</label>
-                    <input 
-                      type="text" 
-                      required
-                      placeholder="e.g. Develop high-throughput FastAPI microservice"
-                      value={title}
-                      onChange={e => setTitle(e.target.value)}
-                      className="input"
-                    />
-                  </div>
-                  <div>
-                    <label className="input-label">Detailed Description</label>
-                    <textarea 
-                      required
-                      rows={5}
-                      placeholder="Provide full description of tasks, technical needs, deliverables..."
-                      value={description}
-                      onChange={e => setDescription(e.target.value)}
-                      className="input resize-none"
-                    />
-                  </div>
-                </div>
-              )}
-
-              {step === 2 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-bold text-white mb-1">Specify required skills</h3>
-                    <p className="text-xs text-slate-400">Select skills needed for the team members to complete this job.</p>
-                  </div>
-
-                  <div className="relative">
-                    <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                    <input
-                      type="text"
-                      placeholder="Search predefined skills (e.g. React, Python...)"
-                      value={skillSearch}
-                      onChange={e => setSkillSearch(e.target.value)}
-                      className="input pl-10"
-                    />
-                  </div>
-
-                  {/* Custom skill input */}
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      placeholder="Type a custom skill and press Enter..."
-                      value={customSkillInput}
-                      onChange={e => setCustomSkillInput(e.target.value)}
-                      onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
-                      className="input text-xs flex-1"
-                    />
-                    <button
-                      type="button"
-                      onClick={addCustomSkill}
-                      disabled={!customSkillInput.trim()}
-                      className="btn btn-sm btn-ghost px-3 border border-electric/20 text-electric hover:bg-electric/10 disabled:opacity-30 shrink-0 cursor-pointer"
-                    >
-                      <Plus className="h-3.5 w-3.5" />
-                    </button>
-                  </div>
-
-                  {/* Selected skills (predefined + custom) as chips */}
-                  {requiredSkills.length > 0 && (
-                    <div className="flex flex-wrap gap-1.5">
-                      {requiredSkills.map(skill => (
-                        <span key={skill} className="inline-flex items-center gap-1 text-xs px-2.5 py-1 rounded-lg bg-electric/15 text-white border border-electric/30">
-                          {skill}
-                          <button
-                            type="button"
-                            onClick={() => setRequiredSkills(prev => prev.filter(s => s !== skill))}
-                            className="text-electric/70 hover:text-white transition-colors cursor-pointer leading-none ml-0.5"
-                          >
-                            ×
-                          </button>
-                        </span>
-                      ))}
-                    </div>
-                  )}
-
-                  {/* Predefined skills list */}
-                  <div className="max-h-[160px] overflow-y-auto border border-white/5 rounded-xl bg-slate-950/30 p-3 flex flex-wrap gap-1.5 min-h-[44px]">
-                    {filteredSkills.length === 0 ? (
-                      <p className="text-xs text-slate-500 italic self-center w-full text-center">
-                        {availableSkills.length === 0 ? 'Loading predefined skills...' : 'No skills match your search'}
-                      </p>
-                    ) : filteredSkills.map(skill => {
-                      const selected = requiredSkills.includes(skill)
-                      return (
-                        <button
-                          type="button"
-                          key={skill}
-                          onClick={() => toggleSkill(skill)}
-                          className={`inline-flex items-center px-3 py-1.5 rounded-lg text-xs font-medium border cursor-pointer transition-all ${
-                            selected
-                              ? 'bg-electric text-white border-electric shadow-md'
-                              : 'bg-slate-900/60 text-slate-400 border-white/5 hover:border-white/10'
-                          }`}
-                        >
-                          {skill}
-                          {selected && <Check className="h-3 w-3 ml-1.5" />}
-                        </button>
-                      )
-                    })}
-                  </div>
-
-                  <div>
-                    <label className="input-label">Target Team Size: <strong className="text-white">{teamSize}</strong></label>
-                    <input 
-                      type="range" 
-                      min="1" 
-                      max="10" 
-                      value={teamSize}
-                      onChange={e => setTeamSize(Number(e.target.value))}
-                      className="w-full h-1.5 bg-slate-800 rounded-lg appearance-none cursor-pointer accent-electric"
-                    />
-                    <div className="flex justify-between text-[10px] text-slate-500 mt-1 font-mono">
-                      <span>1 member</span>
-                      <span>5 members</span>
-                      <span>10 members</span>
-                    </div>
-                  </div>
-                </div>
-              )}
-
-              {step === 3 && (
-                <div className="space-y-4">
-                  <div>
-                    <h3 className="text-base font-bold text-white mb-1">Budget and Timeline</h3>
-                    <p className="text-xs text-slate-400">Set realistic budgets and timelines to ensure successful agent matches.</p>
-                  </div>
-                  <div>
-                    <label className="input-label">Total Allocated Budget ($)</label>
-                    <input 
-                      type="number" 
-                      required
-                      min="100"
-                      value={budget}
-                      onChange={e => setBudget(Number(e.target.value))}
-                      className="input font-mono"
-                    />
-                  </div>
-                  <div>
-                    <label className="input-label">Deadline (Days)</label>
-                    <input 
-                      type="number" 
-                      required
-                      min="1"
-                      value={deadlineDays}
-                      onChange={e => setDeadlineDays(Number(e.target.value))}
-                      className="input font-mono"
-                    />
-                  </div>
-                </div>
-              )}
-            </motion.div>
-          </AnimatePresence>
-
-          {/* Navigation Controls */}
-          <div className="flex justify-between border-t border-white/3 pt-6 mt-8">
-            <button
-              type="button"
-              disabled={step === 1 || loading}
-              onClick={prevStep}
-              className="btn btn-md btn-ghost disabled:opacity-30 flex items-center gap-1.5"
-            >
-              <ArrowLeft className="h-4 w-4" /> Back
-            </button>
-
-            {step < 3 ? (
-              <button
-                key="btn-next"
-                type="button"
-                disabled={step === 1 && !title.trim()}
-                onClick={nextStep}
-                className="btn btn-md btn-primary flex items-center gap-1.5"
-              >
-                Next <ArrowRight className="h-4 w-4" />
-              </button>
-            ) : (
-              <button
-                key="btn-submit"
-                type="submit"
-                disabled={loading}
-                className="btn btn-md btn-primary shadow-lg shadow-electric/25 flex items-center gap-2"
-              >
-                {loading ? 'Creating project...' : 'Submit & Find Matches'}
-                {!loading && <Check className="h-4 w-4" />}
-              </button>
+            {requiredSkills.length > 0 && (
+              <ul className="flex flex-wrap gap-1.5" aria-label="Selected skills">
+                {requiredSkills.map(skill => (
+                  <li key={skill}>
+                    <span className="inline-flex min-h-8 items-center gap-1 rounded-chip bg-shell pl-2.5 pr-1 text-[13px] font-medium text-on-dark">
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => setRequiredSkills(prev => prev.filter(s => s !== skill))}
+                        className="grid h-6 w-6 place-items-center rounded-md hover:bg-shell-3"
+                        aria-label={`Remove ${skill}`}
+                      >
+                        <X className="h-3.5 w-3.5" aria-hidden />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
             )}
-          </div>
-        </form>
+
+            <div className="grid gap-2 sm:grid-cols-2">
+              <div className="relative">
+                <label htmlFor="mp-skill-search" className="sr-only">Search skills</label>
+                <Search className="pointer-events-none absolute left-3 top-1/2 h-4 w-4 -translate-y-1/2 text-fg-3" aria-hidden />
+                <input
+                  id="mp-skill-search"
+                  type="text"
+                  placeholder="Search skills"
+                  value={skillSearch}
+                  onChange={e => setSkillSearch(e.target.value)}
+                  className="input pl-9"
+                />
+              </div>
+              <div className="flex gap-2">
+                <label htmlFor="mp-custom-skill" className="sr-only">Add a custom skill</label>
+                <input
+                  id="mp-custom-skill"
+                  type="text"
+                  placeholder="Add a custom skill"
+                  value={customSkillInput}
+                  onChange={e => setCustomSkillInput(e.target.value)}
+                  onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
+                  className="input"
+                />
+                <button
+                  type="button"
+                  onClick={addCustomSkill}
+                  disabled={!customSkillInput.trim()}
+                  className="btn btn-icon btn-secondary shrink-0"
+                  aria-label="Add custom skill"
+                >
+                  <Plus aria-hidden />
+                </button>
+              </div>
+            </div>
+
+            <div className="flex max-h-44 min-h-11 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+              {filteredSkills.length === 0 ? (
+                <p className="p-1 text-[13px] text-fg-2">
+                  {availableSkills.length === 0 ? 'Loading skills' : 'No skills match your search. Add it as a custom skill.'}
+                </p>
+              ) : filteredSkills.map(skill => {
+                const selected = requiredSkills.includes(skill)
+                return (
+                  <button
+                    type="button"
+                    key={skill}
+                    onClick={() => toggleSkill(skill)}
+                    aria-pressed={selected}
+                    className={`inline-flex min-h-8 items-center gap-1 rounded-md border px-2.5 text-[13px] font-medium transition-colors duration-150 ${
+                      selected ? 'border-shell bg-shell text-on-dark' : 'border-line bg-panel text-fg-2 hover:text-fg'
+                    }`}
+                  >
+                    {skill}
+                    {selected && <Check className="h-3.5 w-3.5" aria-hidden />}
+                  </button>
+                )
+              })}
+            </div>
+
+            <div>
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="mp-team" className="field-label">Team size</label>
+                <output htmlFor="mp-team" className="text-sm font-semibold tabular-nums text-fg">{teamSize} {teamSize === 1 ? 'person' : 'people'}</output>
+              </div>
+              <input
+                id="mp-team"
+                type="range"
+                min="1"
+                max="10"
+                value={teamSize}
+                onChange={e => setTeamSize(Number(e.target.value))}
+                className="w-full"
+              />
+            </div>
+          </>
+        )}
+
+        {step === 3 && (
+          <>
+            <div>
+              <h2 className="text-[15px] font-semibold text-fg">Budget and timeline</h2>
+              <p className="mt-1 text-sm text-fg-2">The team builder keeps the total cost within this budget.</p>
+            </div>
+            <div className="grid gap-4 sm:grid-cols-2">
+              <div>
+                <label htmlFor="mp-budget" className="field-label">Total budget (USD)</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                  <input
+                    id="mp-budget"
+                    type="number"
+                    required
+                    min="100"
+                    value={budget}
+                    onChange={e => setBudget(Number(e.target.value))}
+                    className="input pl-6 tabular-nums"
+                  />
+                </div>
+                <p className="field-hint">At least $100.</p>
+              </div>
+              <div>
+                <label htmlFor="mp-deadline" className="field-label">Deadline (days)</label>
+                <input
+                  id="mp-deadline"
+                  type="number"
+                  required
+                  min="1"
+                  value={deadlineDays}
+                  onChange={e => setDeadlineDays(Number(e.target.value))}
+                  className="input tabular-nums"
+                />
+              </div>
+            </div>
+          </>
+        )}
+
+        {error && <Notice tone="danger">{error}</Notice>}
       </div>
-    </div>
+
+      <div className="flex justify-between gap-2 border-t border-line px-5 py-4 sm:px-6">
+        <button
+          type="button"
+          disabled={step === 1 || loading}
+          onClick={prevStep}
+          className="btn btn-ghost"
+        >
+          Back
+        </button>
+
+        {step < 3 ? (
+          <button
+            key="btn-next"
+            type="button"
+            disabled={step === 1 && !title.trim()}
+            onClick={nextStep}
+            className="btn btn-primary"
+          >
+            Continue
+          </button>
+        ) : (
+          <button key="btn-submit" type="submit" disabled={loading} className="btn btn-primary">
+            {loading && <Spinner />}
+            {loading ? 'Creating project…' : 'Create project and find matches'}
+          </button>
+        )}
+      </div>
+    </form>
   )
 }

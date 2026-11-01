@@ -1,30 +1,33 @@
 'use client'
 
-import { useEffect, useState } from 'react'
+import { useEffect, useMemo, useState } from 'react'
 import { useSearchParams } from 'next/navigation'
-import { api, FreelancerRecord, ProjectRecord, RankedMatch, RerankingInfo } from '@/lib/api'
-import { FreelancerCard } from '@/components/ui/FreelancerCard'
+import { Plus, Scale, Search, SlidersHorizontal, X } from 'lucide-react'
+import { api, ProjectRecord, RankedMatch, RerankingInfo, SearchGraphInfo, SearchRequest } from '@/lib/api'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
-import { MatchReasoning } from '@/components/search/MatchReasoning'
+import { CandidateRow } from '@/components/search/CandidateRow'
 import { CompareDrawer } from '@/components/search/CompareDrawer'
-import { SkillBadge } from '@/components/ui/SkillBadge'
-import { Search, Filter, Sparkles, AlertCircle, RefreshCw, Plus, Scale } from 'lucide-react'
-import { motion } from 'framer-motion'
+import { EmptyState, ErrorState, LoadingRows, Spinner } from '@/components/ui/States'
 
 export default function SearchPage() {
   const searchParams = useSearchParams()
   const projectIdParam = searchParams.get('projectId')
 
-  const [loading, setLoading] = useState(false)
+  // A project link starts in the loading state; the effect below fetches its matches.
+  const [loading, setLoading] = useState(() => Boolean(projectIdParam))
   const [error, setError] = useState<string | null>(null)
   const [project, setProject] = useState<ProjectRecord | null>(null)
-  
+  const [hasSearched, setHasSearched] = useState(false)
+  const [filtersOpen, setFiltersOpen] = useState(false)
+
   // Results
   const [results, setResults] = useState<RankedMatch[]>([])
   const [explanation, setExplanation] = useState<string>('')
+  const [totalCandidates, setTotalCandidates] = useState<number | undefined>()
   const [reranking, setReranking] = useState<RerankingInfo | undefined>()
+  const [graphInfo, setGraphInfo] = useState<SearchGraphInfo | null | undefined>()
   const [compareOpen, setCompareOpen] = useState(false)
-  
+
   // Search Form State
   const [query, setQuery] = useState('')
   const [skills, setSkills] = useState<string[]>([])
@@ -38,96 +41,100 @@ export default function SearchPage() {
 
   // Skill options
   const [allSkills, setAllSkills] = useState<string[]>([])
+  const [skillsLoaded, setSkillsLoaded] = useState(false)
   const [customSkillInput, setCustomSkillInput] = useState('')
 
-  useEffect(() => {
-    // Load skills
-    api.freelancers.skills()
-      .then(res => setAllSkills(res.skills || []))
-      .catch(err => console.error('Failed to load skills:', err))
-
-    // Handle project context if passed
-    if (projectIdParam) {
-      const pId = Number(projectIdParam)
-      setLoading(true)
-      
-      Promise.all([
-        api.projects.get(pId),
-        api.search.precomputed(pId)
-      ])
-      .then(([proj, precomputed]) => {
-        setProject(proj)
-        
-        // Map precomputed results to UI state
-        if (precomputed.precomputed && precomputed.ranked_freelancers.length) {
-          setResults(precomputed.ranked_freelancers)
-          setReranking(precomputed.reranking)
-        } else {
-          // If no precomputed, pre-populate form and trigger search
-          setQuery(proj.description || '')
-          setSkills(proj.required_skills || [])
-          setBudget(proj.budget || 5000)
-          setTeamSize(proj.team_size || 1)
-          
-          // Execute immediate search
-          executeSearch({
-            query: proj.description || '',
-            skills: proj.required_skills || [],
-            minRate: 0,
-            maxRate: 300,
-            minRating: 0,
-            availableOnly: true,
-            maxFraud: 0.6,
-            budget: proj.budget || 5000,
-            team_size: proj.team_size || 1
-          })
-        }
-        setLoading(false)
-      })
-      .catch(err => {
-        console.error('Failed to load project search context:', err)
-        setError('Failed to load project matching context.')
-        setLoading(false)
-      })
-    }
-  }, [projectIdParam])
-
-  const executeSearch = async (body: any) => {
+  const executeSearch = async (body: SearchRequest) => {
     setLoading(true)
     setError(null)
+    setHasSearched(true)
     try {
       const res = await api.search.run(body)
       setResults(res.freelancers || [])
       setExplanation(res.explanation || '')
+      setTotalCandidates(res.total_candidates)
       setReranking(res.reranking)
+      setGraphInfo(res.graph)
       setLoading(false)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Search execution failed. Please try again.')
+      setError(err instanceof Error && err.message ? err.message : 'The search didn’t complete. Check your filters and run it again.')
       setLoading(false)
     }
   }
+
+  useEffect(() => {
+    api.freelancers.skills()
+      .then(res => setAllSkills(res.skills || []))
+      .catch(err => console.error('Failed to load skills:', err))
+      .finally(() => setSkillsLoaded(true))
+
+    // Handle project context if passed
+    if (projectIdParam) {
+      const pId = Number(projectIdParam)
+
+      Promise.all([
+        api.projects.get(pId),
+        api.search.precomputed(pId),
+      ])
+        .then(([proj, precomputed]) => {
+          setProject(proj)
+          setHasSearched(true)
+
+          if (precomputed.precomputed && precomputed.ranked_freelancers.length) {
+            setResults(precomputed.ranked_freelancers)
+            setTotalCandidates(precomputed.total_candidates)
+            setReranking(precomputed.reranking)
+            setGraphInfo(precomputed.graph)
+          } else {
+            // If no precomputed, pre-populate form and trigger search
+            setQuery(proj.description || '')
+            setSkills(proj.required_skills || [])
+            setBudget(proj.budget || 5000)
+            setTeamSize(proj.team_size || 1)
+
+            executeSearch({
+              query: proj.description || '',
+              skills: proj.required_skills || [],
+              minRate: 0,
+              maxRate: 300,
+              minRating: 0,
+              availableOnly: true,
+              maxFraud: 0.6,
+              budget: proj.budget || 5000,
+              team_size: proj.team_size || 1,
+            })
+          }
+          setLoading(false)
+        })
+        .catch(err => {
+          console.error('Failed to load project search context:', err)
+          setError('This project’s matches didn’t load. Reload the page, or search manually below.')
+          setLoading(false)
+        })
+    }
+  }, [projectIdParam])
+
+  const currentPayload = (): SearchRequest => ({
+    query,
+    skills,
+    minRate,
+    maxRate,
+    minRating,
+    availableOnly,
+    maxFraud,
+    budget,
+    team_size: teamSize,
+  })
 
   const handleManualSearch = (e: React.FormEvent) => {
     e.preventDefault()
-    const payload = {
-      query,
-      skills,
-      minRate,
-      maxRate,
-      minRating,
-      availableOnly,
-      maxFraud,
-      budget,
-      team_size: teamSize
-    }
-    executeSearch(payload)
+    setFiltersOpen(false)
+    executeSearch(currentPayload())
   }
 
   const toggleFormSkill = (skill: string) => {
-    setSkills(prev =>
-      prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]
-    )
+    setSkills(prev => (prev.includes(skill) ? prev.filter(s => s !== skill) : [...prev, skill]))
   }
 
   const addCustomSkill = () => {
@@ -136,284 +143,314 @@ export default function SearchPage() {
     setCustomSkillInput('')
   }
 
+  const reloadAfterHire = () => {
+    if (projectIdParam) {
+      api.search.precomputed(Number(projectIdParam)).then(r => {
+        setResults(r.ranked_freelancers || [])
+        setReranking(r.reranking)
+      })
+    } else {
+      executeSearch(currentPayload())
+    }
+  }
+
+  const visibleSkills = useMemo(() => {
+    const q = customSkillInput.trim().toLowerCase()
+    return q ? allSkills.filter(s => s.toLowerCase().includes(q)) : allSkills
+  }, [allSkills, customSkillInput])
+
+  const wantedSkills = project?.required_skills?.length ? project.required_skills : skills
+  const graphActive = graphInfo && (graphInfo.source === 'neo4j' || graphInfo.source === 'postgres')
+  const expandedSummary = graphInfo
+    ? Object.entries(graphInfo.expanded_skills)
+        .map(([skill, rel]) => `${skill}: ${Object.keys(rel).slice(0, 5).join(', ')}`)
+        .join('\n')
+    : ''
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <Sparkles className="h-5 w-5 text-indigo-400" /> 
-            {project ? `Matches for ${project.title}` : 'AI-Driven Skill Matchmaking'}
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">
-            {project 
-              ? 'Ranked by semantic similarity and project constraints.'
-              : 'Search the talent pool using natural language, skill requirements, and trust criteria.'}
-          </p>
-        </div>
-      </div>
+    <form onSubmit={handleManualSearch} className="min-h-full">
+      {/* Requirement banner: the query is the page's subject. */}
+      <section className="m-3 rounded-panel bg-shell px-5 py-6 text-on-dark sm:m-4 sm:px-8 sm:py-8">
+        <h1 className="text-2xl font-bold tracking-tight sm:text-[28px]">
+          {project ? `Matches for ${project.title || `project #${project.id}`}` : 'Search & match'}
+        </h1>
+        <p className="mt-1.5 max-w-2xl text-[15px] text-on-dark-2">
+          {project
+            ? 'Ranked against this project’s required skills, budget and trust threshold. Refine the search below to re-rank.'
+            : 'Describe who you need in plain language. ClearHire ranks the talent pool by skill fit, then explains each rank with evidence.'}
+        </p>
 
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Search Form */}
-        <div className="lg:col-span-1">
-          <div className="glass-card p-6 space-y-6 sticky top-8">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Filter className="h-4.5 w-4.5 text-electric" /> Search Parameters
-            </h3>
+        {project && (
+          <dl className="mt-5 flex flex-wrap gap-x-8 gap-y-3 text-sm">
+            <div>
+              <dt className="text-on-dark-2">Required skills</dt>
+              <dd className="mt-1 flex flex-wrap gap-1.5">
+                {(project.required_skills ?? []).map(s => (
+                  <span key={s} className="rounded-chip bg-shell-3 px-2 py-0.5 text-xs font-medium">{s}</span>
+                ))}
+              </dd>
+            </div>
+            <div>
+              <dt className="text-on-dark-2">Budget</dt>
+              <dd className="mt-1 font-semibold tabular-nums">${project.budget.toLocaleString('en-US')}</dd>
+            </div>
+            <div>
+              <dt className="text-on-dark-2">Team size</dt>
+              <dd className="mt-1 font-semibold tabular-nums">{project.team_size}</dd>
+            </div>
+          </dl>
+        )}
 
-            <form onSubmit={handleManualSearch} className="space-y-4">
-              <div>
-                <label className="input-label">Natural Language Prompt</label>
-                <div className="relative">
-                  <Search className="absolute left-3 top-3 h-4 w-4 text-slate-500" />
-                  <input 
-                    type="text"
-                    placeholder="e.g. Python microservice expert with Docker"
-                    value={query}
-                    onChange={e => setQuery(e.target.value)}
-                    className="input pl-10"
-                  />
-                </div>
-              </div>
-
-              <div>
-                <label className="input-label">Filter Skills</label>
-
-                {/* Custom skill input */}
-                <div className="flex gap-2 mb-2">
-                  <input
-                    type="text"
-                    placeholder="Type a custom skill and press Enter..."
-                    value={customSkillInput}
-                    onChange={e => setCustomSkillInput(e.target.value)}
-                    onKeyDown={e => { if (e.key === 'Enter') { e.preventDefault(); addCustomSkill() } }}
-                    className="input text-xs flex-1"
-                  />
-                  <button
-                    type="button"
-                    onClick={addCustomSkill}
-                    disabled={!customSkillInput.trim()}
-                    className="btn btn-sm btn-ghost px-3 border border-electric/20 text-electric hover:bg-electric/10 disabled:opacity-30 shrink-0 cursor-pointer"
-                  >
-                    <Plus className="h-3.5 w-3.5" />
-                  </button>
-                </div>
-
-                {/* Selected skill chips */}
-                {skills.length > 0 && (
-                  <div className="flex flex-wrap gap-1 mb-2">
-                    {skills.map(skill => (
-                      <span key={skill} className="inline-flex items-center gap-1 text-[10px] px-2 py-0.5 rounded bg-electric/15 text-white border border-electric/30">
-                        {skill}
-                        <button
-                          type="button"
-                          onClick={() => setSkills(prev => prev.filter(s => s !== skill))}
-                          className="text-electric/70 hover:text-white ml-0.5 transition-colors cursor-pointer leading-none"
-                        >
-                          ×
-                        </button>
-                      </span>
-                    ))}
-                  </div>
-                )}
-
-                <div className="max-h-[120px] overflow-y-auto bg-slate-950/40 p-2.5 rounded-xl border border-white/5 flex flex-wrap gap-1 min-h-[40px]">
-                  {allSkills.length === 0 ? (
-                    <p className="text-[10px] text-slate-500 italic self-center w-full text-center">Loading predefined skills...</p>
-                  ) : allSkills.map(skill => {
-                    const active = skills.includes(skill)
-                    return (
-                      <button
-                        type="button"
-                        key={skill}
-                        onClick={() => toggleFormSkill(skill)}
-                        className={`text-[10px] px-2 py-1 rounded border cursor-pointer transition-colors ${
-                          active
-                            ? 'bg-electric/15 text-white border-electric'
-                            : 'bg-slate-900/60 text-slate-400 border-white/5'
-                        }`}
-                      >
-                        {skill}
-                      </button>
-                    )
-                  })}
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="input-label">Min Rate ($/hr)</label>
-                  <input 
-                    type="number"
-                    min="0"
-                    value={minRate}
-                    onChange={e => setMinRate(Number(e.target.value))}
-                    className="input font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="input-label">Max Rate ($/hr)</label>
-                  <input 
-                    type="number"
-                    min="0"
-                    value={maxRate}
-                    onChange={e => setMaxRate(Number(e.target.value))}
-                    className="input font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="grid grid-cols-2 gap-3">
-                <div>
-                  <label className="input-label">Min Rating</label>
-                  <input 
-                    type="number"
-                    step="0.1"
-                    min="0"
-                    max="5"
-                    value={minRating}
-                    onChange={e => setMinRating(Number(e.target.value))}
-                    className="input font-mono"
-                  />
-                </div>
-                <div>
-                  <label className="input-label">Max Fraud Threshold</label>
-                  <input 
-                    type="number"
-                    step="0.05"
-                    min="0"
-                    max="1"
-                    value={maxFraud}
-                    onChange={e => setMaxFraud(Number(e.target.value))}
-                    className="input font-mono"
-                  />
-                </div>
-              </div>
-
-              <div className="flex items-center gap-2 pt-2">
-                <input 
-                  type="checkbox"
-                  id="availCheck"
-                  checked={availableOnly}
-                  onChange={e => setAvailableOnly(e.target.checked)}
-                  className="rounded bg-slate-900 border-white/5 text-electric focus:ring-0 cursor-pointer h-4 w-4"
-                />
-                <label htmlFor="availCheck" className="text-xs text-slate-300 font-semibold cursor-pointer">Available Candidates Only</label>
-              </div>
-
-              <button
-                type="submit"
-                disabled={loading}
-                className="w-full btn btn-md btn-primary flex items-center justify-center gap-2 cursor-pointer mt-4"
-              >
-                {loading ? (
-                  <>
-                    <RefreshCw className="h-4 w-4 animate-spin" /> Matching...
-                  </>
-                ) : (
-                  <>
-                    <Search className="h-4 w-4" /> Run Matchmaker
-                  </>
-                )}
-              </button>
-            </form>
+        <div className="mt-6 flex flex-col gap-2 sm:flex-row">
+          <label htmlFor="search-query" className="sr-only">Describe who you need</label>
+          <div className="relative flex-1">
+            <Search className="pointer-events-none absolute left-3.5 top-1/2 h-4 w-4 -translate-y-1/2 text-on-dark-2" aria-hidden />
+            <input
+              id="search-query"
+              type="text"
+              placeholder="e.g. Python microservice engineer with Docker and Postgres"
+              value={query}
+              onChange={e => setQuery(e.target.value)}
+              className="input input-dark min-h-12 pl-10 text-[15px]"
+            />
+          </div>
+          <div className="flex gap-2">
+            <button
+              type="button"
+              onClick={() => setFiltersOpen(o => !o)}
+              aria-expanded={filtersOpen}
+              aria-controls="search-filters"
+              className="btn btn-dark min-h-12 flex-none px-3.5 lg:hidden"
+            >
+              <SlidersHorizontal aria-hidden /> Filters{skills.length > 0 ? ` (${skills.length})` : ''}
+            </button>
+            <button type="submit" disabled={loading} className="btn btn-primary min-h-12 flex-1 px-4 sm:flex-none sm:px-6">
+              {loading ? <Spinner /> : <Search aria-hidden />}
+              {loading ? 'Ranking…' : 'Find matches'}
+            </button>
           </div>
         </div>
+      </section>
 
-        {/* Right Column: Search Results */}
-        <div className="lg:col-span-2 space-y-6">
-          {error && (
-            <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-              <AlertCircle className="h-5 w-5 shrink-0" />
-              <p>{error}</p>
+      <div className="grid grid-cols-1 gap-6 px-3 pb-8 sm:px-4 lg:grid-cols-[18rem_1fr] xl:grid-cols-[20rem_1fr]">
+        {/* Filters */}
+        <aside
+          id="search-filters"
+          aria-label="Search filters"
+          className={`${filtersOpen ? 'block' : 'hidden'} self-start rounded-panel border border-line-2 bg-panel p-5 shadow-card lg:sticky lg:top-4 lg:block`}
+        >
+          <fieldset>
+            <legend className="field-label">Skills</legend>
+            {skills.length > 0 && (
+              <ul className="mb-3 flex flex-wrap gap-1.5" aria-label="Selected skills">
+                {skills.map(skill => (
+                  <li key={skill}>
+                    <span className="inline-flex items-center gap-1 rounded-chip bg-shell py-0.5 pl-2 pr-1 text-xs font-medium text-on-dark">
+                      {skill}
+                      <button
+                        type="button"
+                        onClick={() => setSkills(prev => prev.filter(s => s !== skill))}
+                        className="grid h-5 w-5 place-items-center rounded-md hover:bg-shell-3"
+                        aria-label={`Remove ${skill}`}
+                      >
+                        <X className="h-3 w-3" aria-hidden />
+                      </button>
+                    </span>
+                  </li>
+                ))}
+              </ul>
+            )}
+            <div className="flex gap-2">
+              <label htmlFor="skill-input" className="sr-only">Find or add a skill</label>
+              <input
+                id="skill-input"
+                type="text"
+                placeholder="Find or add a skill"
+                value={customSkillInput}
+                onChange={e => setCustomSkillInput(e.target.value)}
+                onKeyDown={e => {
+                  if (e.key === 'Enter') {
+                    e.preventDefault()
+                    addCustomSkill()
+                  }
+                }}
+                className="input"
+              />
+              <button
+                type="button"
+                onClick={addCustomSkill}
+                disabled={!customSkillInput.trim()}
+                className="btn btn-icon btn-secondary shrink-0"
+                aria-label="Add skill"
+              >
+                <Plus aria-hidden />
+              </button>
             </div>
+            <div className="mt-2 flex max-h-36 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+              {!skillsLoaded ? (
+                <p className="p-1 text-xs text-fg-2">Loading skills</p>
+              ) : visibleSkills.length === 0 ? (
+                <p className="p-1 text-xs text-fg-2">
+                  {allSkills.length === 0 ? 'No skill list available. Type a skill and press Enter.' : 'No match. Press Enter to add it.'}
+                </p>
+              ) : (
+                visibleSkills.map(skill => {
+                  const active = skills.includes(skill)
+                  return (
+                    <button
+                      type="button"
+                      key={skill}
+                      onClick={() => toggleFormSkill(skill)}
+                      aria-pressed={active}
+                      className={`min-h-7 rounded-md border px-2 text-xs font-medium transition-colors duration-150 ${
+                        active ? 'border-shell bg-shell text-on-dark' : 'border-line bg-panel text-fg-2 hover:text-fg'
+                      }`}
+                    >
+                      {skill}
+                    </button>
+                  )
+                })
+              )}
+            </div>
+          </fieldset>
+
+          <fieldset className="mt-6 border-t border-line pt-5">
+            <legend className="sr-only">Rate and quality</legend>
+            <div className="grid grid-cols-2 gap-3">
+              <div>
+                <label htmlFor="min-rate" className="field-label">Min rate</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                  <input id="min-rate" type="number" min="0" value={minRate} onChange={e => setMinRate(Number(e.target.value))} className="input pl-6 tabular-nums" />
+                </div>
+              </div>
+              <div>
+                <label htmlFor="max-rate" className="field-label">Max rate</label>
+                <div className="relative">
+                  <span className="pointer-events-none absolute left-3 top-1/2 -translate-y-1/2 text-sm text-fg-2">$</span>
+                  <input id="max-rate" type="number" min="0" value={maxRate} onChange={e => setMaxRate(Number(e.target.value))} className="input pl-6 tabular-nums" />
+                </div>
+              </div>
+            </div>
+            <p className="field-hint">Hourly, in USD.</p>
+
+            <div className="mt-4">
+              <label htmlFor="min-rating" className="field-label">Minimum rating</label>
+              <input
+                id="min-rating"
+                type="number"
+                step="0.1"
+                min="0"
+                max="5"
+                value={minRating}
+                onChange={e => setMinRating(Number(e.target.value))}
+                className="input tabular-nums"
+              />
+            </div>
+
+            <div className="mt-4">
+              <div className="flex items-baseline justify-between">
+                <label htmlFor="max-fraud" className="field-label">Fraud risk cut-off</label>
+                <output htmlFor="max-fraud" className="text-sm font-semibold tabular-nums text-fg">{Math.round(maxFraud * 100)}%</output>
+              </div>
+              <input
+                id="max-fraud"
+                type="range"
+                step="0.05"
+                min="0"
+                max="1"
+                value={maxFraud}
+                onChange={e => setMaxFraud(Number(e.target.value))}
+                className="w-full"
+              />
+              <p className="field-hint">Candidates scored above this are left out.</p>
+            </div>
+
+            <label className="mt-4 flex min-h-11 cursor-pointer items-center gap-3 text-sm font-medium text-fg">
+              <input
+                type="checkbox"
+                checked={availableOnly}
+                onChange={e => setAvailableOnly(e.target.checked)}
+                className="h-4 w-4"
+              />
+              Only show available candidates
+            </label>
+          </fieldset>
+
+          <button type="submit" disabled={loading} className="btn btn-primary mt-4 w-full">
+            {loading ? 'Ranking…' : 'Apply filters'}
+          </button>
+        </aside>
+
+        {/* Results */}
+        <section aria-labelledby="results-heading" aria-busy={loading} className="min-w-0 space-y-4">
+          {error && (
+            <ErrorState
+              message={error}
+              onRetry={projectIdParam && !hasSearched ? undefined : () => executeSearch(currentPayload())}
+            />
           )}
 
           {loading ? (
-            <div className="flex flex-col items-center justify-center py-24 gap-3 glass-card">
-              <div className="h-8 w-8 border-2 border-electric border-t-transparent rounded-full animate-spin" />
-              <p className="text-slate-400 text-xs font-semibold uppercase tracking-wider">Ranking matches...</p>
+            <div className="rounded-panel border border-line-2 bg-panel p-6 shadow-card">
+              <LoadingRows rows={5} label="Ranking candidates" />
             </div>
           ) : results.length === 0 ? (
-            <div className="glass-card p-12 text-center text-slate-500 text-sm">
-              No matching freelancers found. Try relaxing the search parameters.
-            </div>
+            !error && (
+              <EmptyState
+                icon={<Search aria-hidden />}
+                title={hasSearched ? 'No one matched these filters' : 'Start with a description'}
+                description={
+                  hasSearched
+                    ? 'Widen the rate range, lower the minimum rating, raise the fraud risk cut-off, or remove a skill.'
+                    : 'Write what the work needs above, or pick skills in the filters, then choose Find matches.'
+                }
+              />
+            )
           ) : (
-            <div className="space-y-6">
-              <div className="flex justify-between items-center px-1">
-                <h3 className="text-sm font-bold text-white uppercase tracking-wider">
-                  Matches Found ({results.length})
-                </h3>
-                <div className="flex items-center gap-3">
-                  {project && (
-                    <span className="text-[10px] text-slate-400 font-mono">
-                      Project scope: {project.required_skills?.join(', ')}
-                    </span>
-                  )}
-                  {reranking && (
-                    <span
-                      className="text-[10px] font-mono text-slate-400"
-                      title={reranking.error ?? undefined}
-                    >
-                      {reranking.path === 'llm' ? 'AI reranked' : 'Ranked deterministically'}
-                    </span>
-                  )}
-                  {results.length >= 2 && (
-                    <button
-                      onClick={() => setCompareOpen(true)}
-                      className="btn btn-sm btn-ghost flex items-center gap-1.5 cursor-pointer"
-                    >
-                      <Scale className="h-3.5 w-3.5" /> Compare top 2
-                    </button>
-                  )}
+            <>
+              <div className="flex flex-wrap items-end justify-between gap-3 px-1">
+                <div>
+                  <h2 id="results-heading" className="text-lg font-bold tracking-tight text-fg">
+                    {results.length} ranked {results.length === 1 ? 'candidate' : 'candidates'}
+                    {totalCandidates ? <span className="font-medium text-fg-2"> of {totalCandidates} considered</span> : null}
+                  </h2>
+                  <p className="mt-0.5 flex flex-wrap gap-x-4 text-[13px] text-fg-2">
+                    {reranking && (
+                      <span title={reranking.error ?? undefined}>
+                        {reranking.path === 'llm'
+                          ? `Top ${reranking.top_n} reranked by AI fit`
+                          : 'Ranked deterministically'}
+                      </span>
+                    )}
+                    {graphActive && (
+                      <span title={expandedSummary || undefined} className="text-teal-ink">
+                        Skills expanded with the knowledge graph ({graphInfo?.source})
+                      </span>
+                    )}
+                  </p>
                 </div>
+                {results.length >= 2 && (
+                  <button type="button" onClick={() => setCompareOpen(true)} className="btn btn-sm btn-secondary">
+                    <Scale aria-hidden /> Compare top 2
+                  </button>
+                )}
               </div>
 
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              {explanation && <AIReasoningBox explanation={explanation} title="How these were ranked" />}
+
+              <ol className="divide-y divide-line overflow-hidden rounded-panel border border-line-2 bg-panel shadow-card">
                 {results.map((fl, idx) => (
-                  <motion.div
+                  <CandidateRow
                     key={fl.id}
-                    initial={{ opacity: 0, y: 10 }}
-                    animate={{ opacity: 1, y: 0 }}
-                    transition={{ delay: idx * 0.04, duration: 0.3 }}
-                  >
-                    <FreelancerCard 
-                      freelancer={fl}
-                      role="client"
-                      showHireAction={true}
-                      onHireSuccess={() => {
-                        // Reload precomputed or search results on success
-                        if (projectIdParam) {
-                          api.search.precomputed(Number(projectIdParam))
-                            .then(r => {
-                              setResults(r.ranked_freelancers || [])
-                              setReranking(r.reranking)
-                            })
-                        } else {
-                          const payload = {
-                            query,
-                            skills,
-                            minRate,
-                            maxRate,
-                            minRating,
-                            availableOnly,
-                            maxFraud,
-                            budget,
-                            team_size: teamSize
-                          }
-                          executeSearch(payload)
-                        }
-                      }}
-                    />
-                    {fl.reasoning && (
-                      <MatchReasoning
-                        reasoning={fl.reasoning}
-                        deterministicScore={fl.deterministic_match_score}
-                      />
-                    )}
-                  </motion.div>
+                    match={fl}
+                    position={idx + 1}
+                    wantedSkills={wantedSkills}
+                    reasoningOpen={idx === 0}
+                    onHireSuccess={reloadAfterHire}
+                  />
                 ))}
-              </div>
+              </ol>
 
               <CompareDrawer
                 open={compareOpen}
@@ -421,25 +458,10 @@ export default function SearchPage() {
                 matches={results.slice(0, 2)}
                 reranking={reranking}
               />
-
-              {explanation && (
-                <motion.div 
-                  initial={{ opacity: 0, y: 10 }}
-                  animate={{ opacity: 1, y: 0 }}
-                  transition={{ delay: 0.2 }}
-                  className="pt-4"
-                >
-                  <AIReasoningBox 
-                    explanation={explanation}
-                    title="Matchmaker Agent Explanations"
-                    defaultOpen={true}
-                  />
-                </motion.div>
-              )}
-            </div>
+            </>
           )}
-        </div>
+        </section>
       </div>
-    </div>
+    </form>
   )
 }

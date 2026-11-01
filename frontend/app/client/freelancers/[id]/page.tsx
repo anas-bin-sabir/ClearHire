@@ -7,21 +7,13 @@ import { FraudGauge } from '@/components/ui/FraudGauge'
 import { AIReasoningBox } from '@/components/ui/AIReasoningBox'
 import { SkillBadge } from '@/components/ui/SkillBadge'
 import { HireModal } from '@/components/ui/HireModal'
-import { fmt } from '@/lib/utils'
-import { 
-  User, 
-  MapPin, 
-  Briefcase, 
-  ShieldCheck, 
-  AlertTriangle, 
-  Mail, 
-  Link2, 
-  Clock, 
-  Award,
-  Globe,
-  BookOpen
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { AlertTriangle, ArrowLeft, Check, Link2, Star } from 'lucide-react'
+import { signalLabel } from '@/lib/fraudSignals'
+import { Avatar } from '@/components/ui/Avatar'
+import { Badge } from '@/components/ui/Badge'
+import { Panel } from '@/components/ui/Panel'
+import { EmptyState, ErrorState, LoadingRows } from '@/components/ui/States'
 
 export default function FreelancerDetailPage() {
   const params = useParams()
@@ -54,7 +46,7 @@ export default function FreelancerDetailPage() {
 
         // Find connected skill nodes from the D3 graph data
         // Search links where source/target matches freelancer name or id node
-        const flNodeId = `F${freelancerId}`
+        const flNodeId = `f-${freelancerId}`
         const connectedNodeIds = graphRes.links
           .filter(l => l.source === flNodeId || l.target === flNodeId)
           .map(l => l.source === flNodeId ? l.target : l.source)
@@ -65,10 +57,10 @@ export default function FreelancerDetailPage() {
 
         setConnectedSkills(skills)
         setLoading(false)
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err)
         if (active) {
-          setError('Failed to load profile details.')
+          setError('This profile couldn’t be loaded. Go back and open it again.')
           setLoading(false)
         }
       }
@@ -80,209 +72,193 @@ export default function FreelancerDetailPage() {
     }
   }, [freelancerId])
 
+  const back = (
+    <Link href="/client/search" className="inline-flex items-center gap-1.5 text-[13px] font-medium text-fg-2 hover:text-fg">
+      <ArrowLeft className="h-4 w-4" aria-hidden /> Search & match
+    </Link>
+  )
+
   if (loading) {
     return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-electric border-t-transparent animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Loading credentials profile...</p>
-        </div>
+      <div className="p-5 sm:p-8">
+        {back}
+        <div className="mt-6 max-w-xl"><LoadingRows rows={3} label="Loading profile" /></div>
       </div>
     )
   }
 
   if (!freelancer) {
     return (
-      <div className="p-8 max-w-md mx-auto text-center space-y-4">
-        <AlertTriangle className="h-12 w-12 text-rose-500 mx-auto" />
-        <h3 className="text-lg font-bold text-white">Freelancer Not Found</h3>
-        <button onClick={() => router.back()} className="btn btn-md btn-primary">Go Back</button>
+      <div className="space-y-4 p-5 sm:p-8">
+        {back}
+        {error ? (
+          <ErrorState message={error} />
+        ) : (
+          <EmptyState
+            title="Freelancer not found"
+            description="This profile may have been removed."
+            action={<button type="button" onClick={() => router.back()} className="btn btn-sm btn-secondary">Go back</button>}
+          />
+        )}
       </div>
     )
   }
 
-  // Fraud signals checklist
-  const SIGNALS = [
-    { key: 'low_account_age', label: 'Account age sufficient (>30 days)' },
-    { key: 'low_rating', label: 'Rating above 3.0 stars' },
-    { key: 'no_portfolio', label: 'Portfolio web links supplied' },
-    { key: 'low_review_count', label: 'Received reviewer feedback' },
-    { key: 'high_rate', label: 'Hourly rate fits market range' }
-  ]
-
   return (
-    <div className="p-8 max-w-6xl mx-auto space-y-8">
-      {/* Header Profile Info */}
-      <div className="glass-card p-8 flex flex-col md:flex-row justify-between items-start md:items-center gap-6 relative overflow-hidden">
-        <div className="absolute top-0 right-0 w-64 h-64 bg-indigo-500/3 rounded-full blur-3xl pointer-events-none" />
-
-        <div className="flex items-center gap-5">
-          <div className="h-16 w-16 bg-slate-900 rounded-2xl border border-white/10 flex items-center justify-center text-slate-400">
-            <User className="h-8 w-8 text-electric" />
-          </div>
-          <div>
-            <div className="flex flex-wrap items-center gap-3">
-              <h2 className="text-2xl font-bold text-white tracking-tight">{freelancer.name}</h2>
-            </div>
-            <div className="flex flex-wrap gap-x-4 gap-y-1 text-xs text-slate-400 mt-1.5 font-medium">
-              <span className="flex items-center gap-1"><MapPin className="h-3.5 w-3.5" /> {freelancer.location || 'Distributed'}</span>
-              <span className="flex items-center gap-1"><Briefcase className="h-3.5 w-3.5" /> {freelancer.experience_years} Years Experience</span>
-              <span className="flex items-center gap-1"><Clock className="h-3.5 w-3.5" /> {freelancer.availability ? 'Available Now' : 'Busy'}</span>
+    <>
+      {/* Identity */}
+      <header className="border-b border-line px-5 pb-6 pt-6 sm:px-8 sm:pt-8">
+        {back}
+        <div className="mt-4 flex flex-col gap-5 md:flex-row md:items-center md:justify-between">
+          <div className="flex items-center gap-4">
+            <Avatar name={freelancer.name} size="lg" tone="color" />
+            <div className="min-w-0">
+              <h1 className="text-2xl font-bold tracking-tight text-fg sm:text-[28px]">{freelancer.name}</h1>
+              <p className="mt-1 flex flex-wrap items-center gap-x-4 gap-y-1 text-sm text-fg-2">
+                {freelancer.location && <span>{freelancer.location}</span>}
+                <span className="tabular-nums">{freelancer.experience_years} years experience</span>
+                {freelancer.availability ? <Badge tone="ok">Available</Badge> : <Badge>Unavailable</Badge>}
+              </p>
             </div>
           </div>
+          <button type="button" onClick={() => setShowHireModal(true)} className="btn btn-primary btn-lg shrink-0">
+            Hire {freelancer.name.split(' ')[0]}
+          </button>
         </div>
+      </header>
 
-        <button 
-          onClick={() => setShowHireModal(true)}
-          className="btn btn-md btn-primary px-8 shadow-lg shadow-electric/25 cursor-pointer shrink-0"
-        >
-          Hire Freelancer
-        </button>
-      </div>
+      <div className="grid grid-cols-1 gap-6 px-5 py-6 sm:px-8 sm:py-8 lg:grid-cols-[minmax(0,1fr)_22rem]">
+        {/* Profile facts, as entered by the freelancer */}
+        <div className="min-w-0 space-y-6">
+          <Panel title="Profile">
+            <p className="max-w-prose text-[15px] leading-relaxed text-fg">
+              {freelancer.bio || <span className="text-fg-2">No bio yet.</span>}
+            </p>
+            <dl className="mt-5 grid grid-cols-2 gap-4 border-t border-line pt-5 sm:grid-cols-3">
+              <div>
+                <dt className="text-[13px] text-fg-2">Hourly rate</dt>
+                <dd className="mt-1 text-xl font-bold tabular-nums text-fg">${freelancer.hourly_rate}</dd>
+              </div>
+              <div>
+                <dt className="text-[13px] text-fg-2">Rating</dt>
+                <dd className="mt-1 flex items-center gap-1 text-xl font-bold tabular-nums text-fg">
+                  {freelancer.review_count > 0 ? (
+                    <>
+                      <Star className="h-4 w-4 fill-star text-star" aria-hidden />
+                      {freelancer.rating.toFixed(1)}
+                      <span className="text-[13px] font-medium text-fg-2">({freelancer.review_count})</span>
+                    </>
+                  ) : (
+                    <span className="text-base font-medium text-fg-2">No reviews</span>
+                  )}
+                </dd>
+              </div>
+              <div>
+                <dt className="text-[13px] text-fg-2">Account age</dt>
+                <dd className="mt-1 text-xl font-bold tabular-nums text-fg">{freelancer.account_age_days} days</dd>
+              </div>
+            </dl>
+          </Panel>
 
-      {/* Main Content Grid */}
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
-        {/* Left Column: Fraud Metrics & Bayesian signals */}
-        <div className="lg:col-span-1 space-y-6">
-          <div className="glass-card p-6 flex flex-col items-center">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider mb-6 flex items-center gap-2 self-start w-full">
-              <ShieldCheck className="h-4.5 w-4.5 text-electric" /> Bayesian Trust Index
-            </h3>
-
-            {fraud && (
-              <div className="space-y-6 w-full flex flex-col items-center">
-                <FraudGauge score={fraud.score} confidence={fraud.confidence} size="lg" />
-                
-                {fraud.is_flagged && (
-                  <div className="w-full p-3.5 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-xs flex items-center gap-2.5">
-                    <AlertTriangle className="h-4.5 w-4.5 shrink-0" />
-                    <span>Account is flagged for administrative fraud review.</span>
-                  </div>
-                )}
-
-                {/* Checklist signals */}
-                <div className="w-full space-y-3 bg-slate-950/20 p-4 border border-white/5 rounded-xl">
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Checklist Evidence</span>
-                  {SIGNALS.map(s => {
-                    // Check if signal key is inside the active signals list
-                    const triggered = fraud.signals?.includes(s.key)
-                    return (
-                      <div key={s.key} className="flex justify-between items-center text-xs">
-                        <span className="text-slate-400 font-medium">{s.label}</span>
-                        <span className={`font-mono font-bold ${triggered ? 'text-rose-400' : 'text-emerald-400'}`}>
-                          {triggered ? '✗ Alert' : '✓ Pass'}
-                        </span>
-                      </div>
-                    )
-                  })}
-                </div>
+          <Panel title="Skills" description="Declared by the freelancer.">
+            <ul className="flex flex-wrap gap-1.5">
+              {freelancer.skills?.map(skill => (
+                <li key={skill}><SkillBadge skill={skill} /></li>
+              ))}
+            </ul>
+            {connectedSkills.length > 0 && (
+              <div className="ai-rule mt-5">
+                <p className="text-[13px] font-semibold text-fg">Linked in the knowledge graph</p>
+                <ul className="mt-2 flex flex-wrap gap-1.5">
+                  {connectedSkills.map(skill => (
+                    <li key={skill}><Badge tone="ai">{skill}</Badge></li>
+                  ))}
+                </ul>
               </div>
             )}
-          </div>
+          </Panel>
 
-          {fraud?.explanation && (
-            <AIReasoningBox 
-              explanation={fraud.explanation}
-              title="Fraud Signal Explanations"
-              defaultOpen={true}
-            />
-          )}
+          <Panel title="Portfolio">
+            {freelancer.portfolio_urls && freelancer.portfolio_urls.length > 0 ? (
+              <ul className="divide-y divide-line">
+                {freelancer.portfolio_urls.map((url, idx) => (
+                  <li key={idx}>
+                    <a
+                      href={url}
+                      target="_blank"
+                      rel="noopener noreferrer"
+                      className="flex min-h-11 items-center gap-2 text-sm font-medium text-primary-ink hover:underline"
+                    >
+                      <Link2 className="h-4 w-4 shrink-0" aria-hidden />
+                      <span className="truncate">{url}</span>
+                      <span className="sr-only">(opens in a new tab)</span>
+                    </a>
+                  </li>
+                ))}
+              </ul>
+            ) : (
+              <p className="text-sm text-fg-2">No portfolio links added.</p>
+            )}
+          </Panel>
         </div>
 
-        {/* Right Column: Bio, Skills, and Ontologies */}
-        <div className="lg:col-span-2 space-y-6">
-          {/* Summary / Bio */}
-          <div className="glass-card p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <BookOpen className="h-4.5 w-4.5 text-indigo-400" /> Bio & Background
-            </h3>
-            <p className="text-sm text-slate-300 leading-relaxed font-medium">
-              {freelancer.bio || "No biography details added. Contact this freelancer for interview requests."}
-            </p>
-
-            <div className="grid grid-cols-2 gap-6 border-t border-white/3 pt-5 mt-4 text-xs">
-              <div>
-                <span className="text-slate-500 font-medium block">Compensation Rate</span>
-                <span className="text-base font-bold text-white mt-1 block">${freelancer.hourly_rate}/hr</span>
-              </div>
-              <div>
-                <span className="text-slate-500 font-medium block">Job Success Rating</span>
-                <span className="text-base font-bold text-white mt-1 block">{freelancer.rating ? `${(freelancer.rating * 20).toFixed(0)}%` : '0%'} Success</span>
-              </div>
-            </div>
-          </div>
-
-          {/* Portfolio Links */}
-          <div className="glass-card p-6 space-y-4">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Globe className="h-4.5 w-4.5 text-indigo-400" /> Portfolios & URLs
-            </h3>
-            {freelancer.portfolio_urls && freelancer.portfolio_urls.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-3 text-xs">
-                {freelancer.portfolio_urls.map((url, idx) => (
-                  <a 
-                    key={idx}
-                    href={url}
-                    target="_blank"
-                    rel="noopener noreferrer"
-                    className="flex items-center gap-2 px-4 py-3 bg-slate-950/20 border border-white/5 rounded-xl hover:border-indigo-500/20 hover:bg-white/2 text-slate-300 hover:text-white"
-                  >
-                    <Link2 className="h-4 w-4 text-indigo-400" />
-                    <span className="truncate">{url}</span>
-                  </a>
-                ))}
+        {/* Model output, kept apart from profile facts */}
+        <aside aria-labelledby="trust-heading" className="space-y-4 self-start lg:sticky lg:top-4">
+          <Panel
+            title={<span id="trust-heading">Trust analysis</span>}
+            description="Output of ClearHire’s fraud model. A signal for review, not a verdict."
+          >
+            {fraud ? (
+              <div className="space-y-5">
+                <div className="flex justify-center">
+                  <FraudGauge score={fraud.score} confidence={fraud.confidence} size="md" />
+                </div>
+                {fraud.is_flagged && (
+                  <p role="status" className="flex gap-2 rounded-control bg-danger-tint p-3 text-[13px] font-medium text-danger">
+                    <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
+                    Flagged for admin review.
+                  </p>
+                )}
+                <div className="border-t border-line pt-4">
+                  <p className="text-[13px] font-semibold text-fg">Signals found</p>
+                  {fraud.signals && fraud.signals.length > 0 ? (
+                    <ul className="mt-2 space-y-2">
+                      {fraud.signals.map(sig => (
+                        <li key={sig} className="flex gap-2 text-[13px] text-fg" title={sig}>
+                          <AlertTriangle className="mt-0.5 h-4 w-4 shrink-0 text-warn" aria-hidden />
+                          {signalLabel(sig)}
+                        </li>
+                      ))}
+                    </ul>
+                  ) : (
+                    <p className="mt-2 flex gap-2 text-[13px] text-fg-2">
+                      <Check className="mt-0.5 h-4 w-4 shrink-0 text-ok" aria-hidden />
+                      The model didn’t trigger any fraud signals.
+                    </p>
+                  )}
+                </div>
               </div>
             ) : (
-              <p className="text-xs text-slate-500 italic">No external web links added.</p>
+              <p className="text-sm text-fg-2">No trust analysis available for this profile.</p>
             )}
-          </div>
+          </Panel>
 
-          {/* Skills & Graph Node links */}
-          <div className="glass-card p-6 space-y-5">
-            <h3 className="text-sm font-bold text-white uppercase tracking-wider flex items-center gap-2">
-              <Award className="h-4.5 w-4.5 text-indigo-400" /> Skill Matrix
-            </h3>
-            
-            <div className="space-y-4.5">
-              <div>
-                <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Declared Skills</span>
-                <div className="flex flex-wrap gap-2">
-                  {freelancer.skills?.map(skill => (
-                    <SkillBadge key={skill} skill={skill} />
-                  ))}
-                </div>
-              </div>
-
-              {connectedSkills.length > 0 && (
-                <div>
-                  <span className="text-[10px] font-bold text-slate-500 uppercase tracking-widest block mb-2">Ontology Graph Links (Neo4j)</span>
-                  <div className="flex flex-wrap gap-2">
-                    {connectedSkills.map(skill => (
-                      <span 
-                        key={skill}
-                        className="inline-flex items-center px-2.5 py-1 rounded-lg text-xs font-medium border bg-indigo-500/10 text-indigo-400 border-indigo-500/20"
-                      >
-                        {skill}
-                      </span>
-                    ))}
-                  </div>
-                </div>
-              )}
-            </div>
-          </div>
-        </div>
+          {fraud?.explanation && (
+            <AIReasoningBox explanation={fraud.explanation} title="Why the model scored it this way" defaultOpen />
+          )}
+        </aside>
       </div>
 
-      {showHireModal && (
-        <HireModal 
-          freelancerId={freelancer.id} 
-          onSuccess={() => {
-            setShowHireModal(false)
-            router.push('/client/contracts')
-          }}
-          onClose={() => setShowHireModal(false)}
-        />
-      )}
-    </div>
+      <HireModal
+        open={showHireModal}
+        freelancerId={freelancer.id}
+        freelancerName={freelancer.name}
+        onSuccess={() => {
+          setShowHireModal(false)
+          router.push('/client/contracts')
+        }}
+        onClose={() => setShowHireModal(false)}
+      />
+    </>
   )
 }

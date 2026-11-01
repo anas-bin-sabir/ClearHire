@@ -1,8 +1,8 @@
 'use client'
 
-import { motion, AnimatePresence } from 'framer-motion'
-import { X, Scale } from 'lucide-react'
 import type { MatchComparison, RankedMatch, RerankingInfo } from '@/lib/api'
+import { Dialog } from '@/components/ui/Dialog'
+import { Avatar } from '@/components/ui/Avatar'
 import { MatchReasoning, evidenceLabel } from './MatchReasoning'
 
 interface Props {
@@ -21,82 +21,70 @@ function comparisonFor(comparisons: MatchComparison[], a: number, b: number) {
 /** Side-by-side view of the top two matches with the "why #1 over #2" reasoning. */
 export function CompareDrawer({ open, onClose, matches, reranking }: Props) {
   const [first, second] = matches
-  const comparison = first && second
-    ? comparisonFor(reranking?.comparisons ?? [], first.id, second.id)
-    : undefined
+  if (!first || !second) return null
+  const comparison = comparisonFor(reranking?.comparisons ?? [], first.id, second.id)
 
   return (
-    <AnimatePresence>
-      {open && first && second && (
-        <>
-          <motion.div
-            className="fixed inset-0 bg-slate-950/70 z-40"
-            initial={{ opacity: 0 }}
-            animate={{ opacity: 1 }}
-            exit={{ opacity: 0 }}
-            onClick={onClose}
-          />
-          <motion.aside
-            className="fixed right-0 top-0 h-full w-full max-w-3xl bg-slate-950 border-l border-white/5 z-50 overflow-y-auto"
-            initial={{ x: '100%' }}
-            animate={{ x: 0 }}
-            exit={{ x: '100%' }}
-            transition={{ duration: 0.3, ease: [0.16, 1, 0.3, 1] }}
-            role="dialog"
-            aria-label="Compare top matches"
-          >
-            <div className="flex items-center justify-between px-6 py-4 border-b border-white/5">
-              <h3 className="flex items-center gap-2 text-sm font-bold text-white uppercase tracking-wider">
-                <Scale className="h-4 w-4 text-electric" /> Compare top 2
-              </h3>
-              <button onClick={onClose} className="text-slate-400 hover:text-white cursor-pointer" aria-label="Close">
-                <X className="h-5 w-5" />
-              </button>
-            </div>
+    <Dialog
+      open={open}
+      onClose={onClose}
+      variant="sheet"
+      size="lg"
+      title={`${first.name} vs ${second.name}`}
+      description={
+        reranking?.path === 'llm'
+          ? `AI rerank of the top ${reranking.top_n}, blending ${Math.round(reranking.alpha * 100)}% ranker score with ${Math.round((1 - reranking.alpha) * 100)}% AI fit${reranking.cached ? ' (cached result)' : ''}.`
+          : 'Deterministic ranking. The AI rerank didn’t run for this search.'
+      }
+    >
+      <div className="space-y-6">
+        {comparison && (
+          <section className="ai-rule">
+            <h3 className="text-sm font-semibold text-fg">Why the higher-ranked candidate wins</h3>
+            <p className="mt-1.5 max-w-prose text-sm leading-relaxed text-fg">{comparison.reason}</p>
+            {comparison.evidence.length > 0 && (
+              <ul className="mt-3 flex flex-wrap gap-1.5" aria-label="Evidence">
+                {comparison.evidence.map(ref => {
+                  const owner = ref.match(/^f(\d+)/)?.[1] === String(first.id) ? first : second
+                  return (
+                    <li key={ref} title={ref} className="rounded-md bg-sunken px-1.5 py-px font-mono text-[11px] text-fg-2">
+                      {owner.name}: {evidenceLabel(ref, owner.graph)}
+                    </li>
+                  )
+                })}
+              </ul>
+            )}
+          </section>
+        )}
 
-            <div className="p-6 space-y-6">
-              {comparison && (
-                <div className="rounded-xl border border-electric/20 bg-electric/5 p-4">
-                  <p className="text-sm text-slate-200 leading-relaxed">{comparison.reason}</p>
-                  <div className="mt-2 flex flex-wrap gap-1">
-                    {comparison.evidence.map(ref => (
-                      <span key={ref} title={ref} className="px-1.5 py-px rounded bg-white/5 text-[10px] font-mono text-slate-400">
-                        {ref.match(/^f(\d+)/)?.[1] === String(first.id) ? first.name : second.name}: {evidenceLabel(ref)}
-                      </span>
-                    ))}
-                  </div>
+        <div className="grid grid-cols-1 gap-6 md:grid-cols-2 md:divide-x md:divide-line">
+          {[first, second].map((m, i) => (
+            <section key={m.id} className={`space-y-4 ${i === 1 ? 'border-t border-line pt-6 md:border-t-0 md:pl-6 md:pt-0' : ''}`}>
+              <div className="flex items-center gap-3">
+                <Avatar name={m.name} tone="color" />
+                <div className="min-w-0 flex-1">
+                  <p className="text-xs font-medium text-fg-2">Rank {i + 1}</p>
+                  <h3 className="truncate text-[15px] font-semibold text-fg">{m.name}</h3>
                 </div>
-              )}
-
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
-                {[first, second].map((m, i) => (
-                  <div key={m.id} className="glass-card p-4">
-                    <div className="flex items-baseline justify-between">
-                      <span className="text-sm font-semibold text-white">#{i + 1} {m.name}</span>
-                      <span className="text-xs font-mono text-electric">{Math.round(m.match_score)}</span>
-                    </div>
-                    <dl className="mt-3 grid grid-cols-2 gap-y-1 text-[11px] text-slate-400">
-                      <dt>Rate</dt><dd className="text-slate-200">${m.hourly_rate}/h</dd>
-                      <dt>Experience</dt><dd className="text-slate-200">{m.experience_years} yrs</dd>
-                      <dt>Rating</dt><dd className="text-slate-200">{m.rating?.toFixed(1)}</dd>
-                      <dt>Skills</dt><dd className="text-slate-200">{m.skills?.join(', ')}</dd>
-                    </dl>
-                    {m.reasoning && (
-                      <MatchReasoning reasoning={m.reasoning} deterministicScore={m.deterministic_match_score} />
-                    )}
-                  </div>
-                ))}
+                <p className="text-right">
+                  <span className="block text-2xl font-bold leading-none tabular-nums text-fg">{Math.round(m.match_score)}</span>
+                  <span className="text-xs text-fg-2">match</span>
+                </p>
               </div>
-
-              <p className="text-[10px] text-slate-500 font-mono">
-                {reranking?.path === 'llm'
-                  ? `AI rerank of the top ${reranking.top_n}, blended ${Math.round(reranking.alpha * 100)}% ranker / ${Math.round((1 - reranking.alpha) * 100)}% AI fit${reranking.cached ? ' (cached)' : ''}.`
-                  : 'Deterministic ranking; AI rerank unavailable for this search.'}
-              </p>
-            </div>
-          </motion.aside>
-        </>
-      )}
-    </AnimatePresence>
+              <dl className="grid grid-cols-[auto_1fr] gap-x-4 gap-y-1.5 text-[13px]">
+                <dt className="text-fg-2">Rate</dt><dd className="tabular-nums text-fg">${m.hourly_rate}/hr</dd>
+                <dt className="text-fg-2">Experience</dt><dd className="tabular-nums text-fg">{m.experience_years} yrs</dd>
+                <dt className="text-fg-2">Rating</dt>
+                <dd className="tabular-nums text-fg">{m.review_count > 0 ? `${m.rating.toFixed(1)} (${m.review_count})` : 'No reviews'}</dd>
+                <dt className="text-fg-2">Skills</dt><dd className="text-fg">{m.skills?.join(', ')}</dd>
+              </dl>
+              {m.reasoning && (
+                <MatchReasoning reasoning={m.reasoning} deterministicScore={m.deterministic_match_score} graph={m.graph} />
+              )}
+            </section>
+          ))}
+        </div>
+      </div>
+    </Dialog>
   )
 }

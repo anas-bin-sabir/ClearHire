@@ -10,8 +10,8 @@ export default function LandingPage() {
     <main>
       <Navbar />
       <Hero />
-      <Features />
       <HowItWorks />
+      <Features />
       <Security />
       <Footer />
     </main>

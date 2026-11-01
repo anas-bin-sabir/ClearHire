@@ -2,18 +2,14 @@
 
 import { useEffect, useState } from 'react'
 import { useSession } from 'next-auth/react'
-import { api, ContractRecord, ProjectRecord, FreelancerRecord } from '@/lib/api'
+import { api, ContractRecord } from '@/lib/api'
 import { StatusBadge } from '@/components/ui/StatusBadge'
 import { fmt } from '@/lib/utils'
-import { 
-  FileText, 
-  CheckCircle, 
-  XCircle, 
-  AlertCircle, 
-  Calendar,
-  DollarSign
-} from 'lucide-react'
-import { motion } from 'framer-motion'
+import Link from 'next/link'
+import { FileText } from 'lucide-react'
+import { PageBody, PageHeader } from '@/components/ui/PageHeader'
+import { EmptyState, LoadingRows, Notice } from '@/components/ui/States'
+import { Dialog } from '@/components/ui/Dialog'
 
 interface EnrichedContract extends ContractRecord {
   projectName: string
@@ -27,6 +23,7 @@ export default function ClientContractsPage() {
   const [loading, setLoading] = useState(true)
   const [actionLoading, setActionLoading] = useState<number | null>(null)
   const [error, setError] = useState<string | null>(null)
+  const [confirmCancel, setConfirmCancel] = useState<EnrichedContract | null>(null)
 
   useEffect(() => {
     let active = true
@@ -56,7 +53,7 @@ export default function ClientContractsPage() {
             try {
               const fl = await api.freelancers.get(id)
               freelancerCache[id] = { name: fl.name, rate: fl.hourly_rate }
-            } catch (err) {
+            } catch {
               freelancerCache[id] = { name: `Freelancer #${id}`, rate: 0 }
             }
           })
@@ -77,10 +74,10 @@ export default function ClientContractsPage() {
           setContracts(enriched)
           setLoading(false)
         }
-      } catch (err: any) {
+      } catch (err: unknown) {
         console.error(err)
         if (active) {
-          setError('Failed to retrieve contracts.')
+          setError('Your contracts couldn’t be loaded. Refresh the page to try again.')
           setLoading(false)
         }
       }
@@ -92,7 +89,7 @@ export default function ClientContractsPage() {
     }
   }, [session])
 
-  const handleUpdateStatus = async (contractId: number, status: 'completed' | 'cancelled') => {
+  const handleUpdateStatus = async (contractId: number, status: 'active' | 'completed' | 'cancelled') => {
     setActionLoading(contractId)
     setError(null)
     try {
@@ -101,113 +98,150 @@ export default function ClientContractsPage() {
         prev.map(c => c.id === contractId ? { ...c, status } : c)
       )
       setActionLoading(null)
-    } catch (err: any) {
+    } catch (err: unknown) {
       console.error(err)
-      setError(err?.message || 'Failed to update contract status.')
+      setError(err instanceof Error && err.message ? err.message : 'The contract status wasn’t changed. Try again.')
       setActionLoading(null)
     }
   }
 
-  if (loading) {
-    return (
-      <div className="p-8 flex items-center justify-center h-[calc(100vh-4rem)]">
-        <div className="flex flex-col items-center gap-3">
-          <div className="h-8 w-8 rounded-full border-2 border-electric border-t-transparent animate-spin" />
-          <p className="text-sm text-slate-500 font-medium">Retrieving active agreements...</p>
+  const actions = (contract: EnrichedContract) => {
+    const busy = actionLoading === contract.id
+    if (contract.status === 'pending') {
+      // A pending contract is an open offer or a freelancer's interest: accept it or decline it.
+      return (
+        <div className="flex gap-2 md:justify-end">
+          <button type="button" disabled={busy} onClick={() => handleUpdateStatus(contract.id, 'active')} className="btn btn-sm btn-secondary">
+            {busy ? 'Saving…' : 'Accept'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirmCancel(contract)}
+            className="btn btn-sm btn-ghost text-danger hover:bg-danger-tint hover:text-danger"
+          >
+            Decline
+          </button>
         </div>
-      </div>
-    )
+      )
+    }
+    if (contract.status === 'active') {
+      return (
+        <div className="flex gap-2 md:justify-end">
+          <button type="button" disabled={busy} onClick={() => handleUpdateStatus(contract.id, 'completed')} className="btn btn-sm btn-secondary">
+            {busy ? 'Saving…' : 'Mark complete'}
+          </button>
+          <button
+            type="button"
+            disabled={busy}
+            onClick={() => setConfirmCancel(contract)}
+            className="btn btn-sm btn-ghost text-danger hover:bg-danger-tint hover:text-danger"
+          >
+            Cancel
+          </button>
+        </div>
+      )
+    }
+    return <span className="text-[13px] text-fg-3">Closed</span>
   }
 
+  const created = (c: EnrichedContract) => (c.created_at ? new Date(c.created_at).toLocaleDateString() : '—')
+
   return (
-    <div className="p-8 max-w-7xl mx-auto space-y-8">
-      {/* Header Banner */}
-      <div className="flex justify-between items-center bg-radial from-slate-900/40 to-transparent p-6 border border-white/5 rounded-2xl">
-        <div>
-          <h2 className="text-xl font-bold text-white flex items-center gap-2">
-            <FileText className="h-5.5 w-5.5 text-indigo-400" /> Contracts Ledger
-          </h2>
-          <p className="text-xs text-slate-400 mt-1">Manage project engagements, track status milestones, and cancel or complete developer services.</p>
-        </div>
-      </div>
+    <>
+      <PageHeader
+        title="Contracts"
+        description="Engagements on your projects. Mark work complete when it's delivered, or cancel a contract that won't go ahead."
+      />
+      <PageBody className="space-y-4">
+        {error && <Notice tone="danger">{error}</Notice>}
 
-      {error && (
-        <div className="p-4 rounded-xl bg-rose-500/10 border border-rose-500/20 text-rose-400 text-sm flex gap-3 items-center">
-          <AlertCircle className="h-5 w-5 shrink-0" />
-          <p>{error}</p>
-        </div>
-      )}
-
-      {/* Contracts Table */}
-      <div className="glass-card overflow-hidden">
-        {contracts.length === 0 ? (
-          <div className="p-12 text-center text-slate-500 text-sm">
-            You don't have any active contracts. Initiate hires through the search matchmaking view.
+        {loading ? (
+          <div className="rounded-panel border border-line-2 bg-panel p-5 shadow-card">
+            <LoadingRows rows={4} label="Loading contracts" />
           </div>
+        ) : contracts.length === 0 ? (
+          <EmptyState
+            icon={<FileText aria-hidden />}
+            title="No contracts yet"
+            description="Contracts are created when you hire someone from search results or the team builder."
+            action={<Link href="/client/search" className="btn btn-sm btn-secondary">Find candidates</Link>}
+          />
         ) : (
-          <div className="overflow-x-auto">
-            <table className="w-full text-left border-collapse">
+          <div className="overflow-hidden rounded-panel border border-line-2 bg-panel shadow-card">
+            {/* Wide screens: table */}
+            <table className="data-table hidden md:table">
               <thead>
-                <tr className="border-b border-white/5 bg-slate-900/40 text-xs font-semibold text-slate-400 uppercase tracking-wider">
-                  <th className="py-4 px-6">Project Name</th>
-                  <th className="py-4 px-6">Freelancer</th>
-                  <th className="py-4 px-6">Status</th>
-                  <th className="py-4 px-6">Compensation</th>
-                  <th className="py-4 px-6">Created</th>
-                  <th className="py-4 px-6 text-right">Actions</th>
+                <tr>
+                  <th scope="col">Project</th>
+                  <th scope="col">Freelancer</th>
+                  <th scope="col">Status</th>
+                  <th scope="col" className="text-right">Rate</th>
+                  <th scope="col">Created</th>
+                  <th scope="col" className="text-right"><span className="sr-only">Actions</span></th>
                 </tr>
               </thead>
-              <tbody className="divide-y divide-white/3 text-sm text-slate-300">
+              <tbody>
                 {contracts.map(contract => (
-                  <tr key={contract.id} className="hover:bg-white/1">
-                    <td className="py-4.5 px-6 font-semibold text-white">{contract.projectName}</td>
-                    <td className="py-4.5 px-6">{contract.freelancerName}</td>
-                    <td className="py-4.5 px-6">
-                      <StatusBadge status={contract.status} />
-                    </td>
-                    <td className="py-4.5 px-6 font-mono text-xs">
-                      <span className="flex items-center gap-1">
-                        <DollarSign className="h-3.5 w-3.5 text-emerald-400" /> 
-                        {fmt.rate(contract.hourlyRate)}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6 font-mono text-xs text-slate-400">
-                      <span className="flex items-center gap-1.5">
-                        <Calendar className="h-3.5 w-3.5" />
-                        {contract.created_at ? new Date(contract.created_at).toLocaleDateString() : 'N/A'}
-                      </span>
-                    </td>
-                    <td className="py-4.5 px-6 text-right">
-                      {contract.status === 'active' || contract.status === 'pending' ? (
-                        <div className="flex gap-2 justify-end">
-                          <button
-                            disabled={actionLoading === contract.id}
-                            onClick={() => handleUpdateStatus(contract.id, 'completed')}
-                            className="btn btn-sm btn-ghost hover:bg-emerald-500/10 hover:text-emerald-400 hover:border-emerald-500/20 text-slate-400 flex items-center gap-1 cursor-pointer"
-                          >
-                            <CheckCircle className="h-3.5 w-3.5" />
-                            {actionLoading === contract.id ? '...' : 'Complete'}
-                          </button>
-                          <button
-                            disabled={actionLoading === contract.id}
-                            onClick={() => handleUpdateStatus(contract.id, 'cancelled')}
-                            className="btn btn-sm btn-danger flex items-center gap-1 cursor-pointer"
-                          >
-                            <XCircle className="h-3.5 w-3.5" />
-                            {actionLoading === contract.id ? '...' : 'Cancel'}
-                          </button>
-                        </div>
-                      ) : (
-                        <span className="text-xs text-slate-500 italic">No Actions</span>
-                      )}
-                    </td>
+                  <tr key={contract.id}>
+                    <td className="font-semibold text-fg">{contract.projectName}</td>
+                    <td className="text-fg">{contract.freelancerName}</td>
+                    <td><StatusBadge status={contract.status} /></td>
+                    <td className="text-right tabular-nums text-fg">{fmt.rate(contract.hourlyRate)}</td>
+                    <td className="tabular-nums text-fg-2">{created(contract)}</td>
+                    <td>{actions(contract)}</td>
                   </tr>
                 ))}
               </tbody>
             </table>
+
+            {/* Narrow screens: stacked list */}
+            <ul className="divide-y divide-line md:hidden">
+              {contracts.map(contract => (
+                <li key={contract.id} className="space-y-3 p-4">
+                  <div className="flex items-start justify-between gap-3">
+                    <div className="min-w-0">
+                      <p className="font-semibold text-fg">{contract.projectName}</p>
+                      <p className="text-[13px] text-fg-2">{contract.freelancerName}</p>
+                    </div>
+                    <StatusBadge status={contract.status} />
+                  </div>
+                  <p className="flex gap-4 text-[13px] text-fg-2">
+                    <span className="tabular-nums text-fg">{fmt.rate(contract.hourlyRate)}</span>
+                    <span className="tabular-nums">Created {created(contract)}</span>
+                  </p>
+                  {actions(contract)}
+                </li>
+              ))}
+            </ul>
           </div>
         )}
-      </div>
-    </div>
+      </PageBody>
+
+      <Dialog
+        open={confirmCancel !== null}
+        onClose={() => setConfirmCancel(null)}
+        size="sm"
+        title={confirmCancel?.status === 'pending' ? 'Decline this contract?' : 'Cancel this contract?'}
+        description={confirmCancel ? `${confirmCancel.freelancerName} on ${confirmCancel.projectName}.` : undefined}
+        footer={
+          <>
+            <button type="button" className="btn btn-secondary" onClick={() => setConfirmCancel(null)}>Keep contract</button>
+            <button
+              type="button"
+              className="btn btn-danger"
+              onClick={() => {
+                if (confirmCancel) handleUpdateStatus(confirmCancel.id, 'cancelled')
+                setConfirmCancel(null)
+              }}
+            >
+              {confirmCancel?.status === 'pending' ? 'Decline' : 'Cancel contract'}
+            </button>
+          </>
+        }
+      >
+        <p className="text-sm text-fg-2">The status changes to cancelled, and the contract can no longer be marked complete.</p>
+      </Dialog>
+    </>
   )
 }
