@@ -20,7 +20,7 @@ const FEATURES = [
 
 export default function Features() {
   return (
-    <section id="features" className="scroll-mt-4 bg-canvas">
+    <section id="features" className="scroll-mt-24 bg-canvas">
       <div className="mx-auto max-w-5xl px-5 py-20 sm:px-8 lg:py-24">
         <h2 className="text-center text-[44px] text-fg sm:text-[56px]">Beyond a single hire</h2>
         <ul className="mt-10 space-y-4">

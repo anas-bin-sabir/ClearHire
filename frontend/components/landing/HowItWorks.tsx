@@ -20,7 +20,7 @@ const STEPS = [
 
 export default function HowItWorks() {
   return (
-    <section id="how-it-works" className="scroll-mt-4 bg-panel">
+    <section id="how-it-works" className="scroll-mt-24 bg-panel">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
         <h2 className="text-[44px] text-fg sm:text-[56px]">How a search works</h2>
         <ol className="mt-10 grid grid-cols-1 gap-5 md:grid-cols-3">

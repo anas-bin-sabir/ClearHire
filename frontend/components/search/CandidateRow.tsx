@@ -40,7 +40,7 @@ export function CandidateRow({ match, position, wantedSkills, reasoningOpen = fa
 
   return (
     <li className="grid grid-cols-[2.5rem_1fr] gap-x-3 px-4 py-5 sm:grid-cols-[3.5rem_1fr] sm:gap-x-4 sm:px-6">
-      <p className="pt-0.5 text-[28px] font-bold leading-none tracking-tight tabular-nums text-fg-3 sm:text-[34px]">
+      <p className="font-display pt-0.5 text-[30px] leading-none tabular-nums text-fg-3 sm:text-[38px]">
         <span className="sr-only">Rank </span>
         {String(rank).padStart(2, '0')}
       </p>
@@ -71,7 +71,7 @@ export function CandidateRow({ match, position, wantedSkills, reasoningOpen = fa
 
           <div className="flex shrink-0 items-center gap-4 sm:w-44 sm:flex-col sm:items-end sm:gap-2">
             <p className="flex items-baseline gap-1.5">
-              <span className="text-2xl font-bold leading-none tabular-nums text-fg">{score}</span>
+              <span className="font-display text-[30px] leading-none tabular-nums text-fg">{score}</span>
               <span className="text-xs text-fg-2">match score</span>
             </p>
             <div className="h-1.5 w-24 overflow-hidden rounded-full bg-sunken sm:w-full" aria-hidden>

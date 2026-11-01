@@ -10,29 +10,32 @@ ClearHire is an AI talent-matching and team-formation product: FastAPI backend (
 - No new dependencies for styling or motion. Available: Tailwind v4, lucide-react, framer-motion, recharts, d3.
 - Don't use `any`, disable lint rules, or suppress TS errors.
 
-## Design system — ClearHire palette
+## Design system — charcoal and lime
 
-The palette is fixed; don't introduce new hues. Tokens live in `frontend/app/globals.css` (`:root` and `.dark`) and are exposed to Tailwind via `@theme`. Use the semantic utilities, never raw hex or Tailwind palette colors (`slate-*`, `indigo-*`, `white/5` …) in pages.
+The palette is fixed; don't introduce new hues. Tokens live in `frontend/app/globals.css` (`:root` and `.dark`) and are exposed to Tailwind via `@theme`. Token names are semantic and were kept from the previous palette, so `primary` is the action colour and `teal` is the machine-output marker (now lime). Use the semantic utilities, never raw hex or Tailwind palette colours in pages.
 
 | Color | Hex | Used for | Utility |
 |---|---|---|---|
-| Electric Indigo | #4F46E5 | Primary buttons, active navigation, links | `bg-primary`, `text-primary-ink`, `bg-primary-tint`, `.btn-primary` |
-| Midnight Navy | #111827 | Sidebar/frame, headings, dark UI | `bg-shell` (+ `bg-shell-2` #1F2937, `bg-shell-3` #374151), `text-fg` |
-| Teal | #14B8A6 | AI match indicators, positive signals | `bg-teal` (bars, rules), `text-teal-ink` (#0F766E — teal text must use this for AA), `bg-teal-tint` |
-| Cool White | #F8FAFC | Page background | `bg-canvas` |
-| White | #FFFFFF | Cards, surfaces | `bg-panel` |
-| Slate | #E2E8F0 | Borders, dividers | `border-line` |
-| Slate Gray | #64748B | Secondary text | `text-fg-2` |
+| Lime | #C6F135 | Primary buttons, active navigation, AI marks | `bg-primary` + `text-on-primary`, `.btn-primary`, `bg-teal` |
+| Lime ink | #4D6B00 | Lime-family text on light surfaces (AA) | `text-primary-ink`, `text-teal-ink`, tints `bg-primary-tint` |
+| Charcoal | #3A3A3C | App frame, sidebar, dark panels, stat strip | `bg-shell` (+ `bg-shell-2`, `bg-shell-3`) |
+| Ink | #2B2B2D | Headings and body text | `text-fg` |
+| Canvas | #F2F1EC | Page background | `bg-canvas`, `bg-sunken` |
+| White | #FFFFFF | Cards | `bg-panel` |
+| Line | #E3E1DA | Borders, dividers | `border-line` |
+| Muted | #6B6A66 | Secondary text | `text-fg-2` |
+| Signal | #FF4521 | Fills and large display type only (3.4:1 on white) | `bg-signal`, `text-signal-on-dark` |
 
-Status colors (existing identity): warning amber `text-warn` (#B45309), danger rose `text-danger` (#E11D48), positive = teal (`text-ok`). Star ratings use `text-star`.
+Status: warning `text-warn` (#B45309), danger `text-danger` (#C2300F), positive = lime ink (`text-ok`). Lime text never goes on white; use the ink token.
 
 ### Rules
-- Indigo is the action color; one primary button per area. Everything else is `.btn-secondary` / `.btn-ghost`.
-- Teal marks machine output: AI match scores, match reasoning, extracted requirements and the AI explanation all carry teal (`.ai-rule` left rule, teal bars) and say where they came from.
-- Type: Plus Jakarta Sans for everything, JetBrains Mono only for identifiers and evidence refs (`f12.skills`). Both are self-hosted in `frontend/app/fonts/` via `next/font/local` — don't switch back to `next/font/google` (the build machine can't reach fonts.gstatic.com). Numbers use `tabular-nums`.
-- Sentence case everywhere. No all-caps labels, no eyebrow above every heading, no `→` on button text, no gradient text, no blurred blobs, no glassmorphism.
+- Lime is the action colour; one primary button per area, charcoal text on lime. Others use `.btn-secondary` (outlined pill) or `.btn-ghost`.
+- Lime also marks machine output: AI scores, match reasoning, extracted requirements carry the `.ai-rule` left rule and say where they came from.
+- Type: Anton (`font-display`, applied to `h1`/`h2` automatically) for titles and big figures; Plus Jakarta Sans for everything else; JetBrains Mono only for identifiers and evidence refs. All three are self-hosted in `frontend/app/fonts/` via `next/font/local` — don't switch to `next/font/google`. Anton has a single weight: never add `font-bold` to it. Numbers use `tabular-nums`.
+- Signature shape: `.notch` folder-tab card (clip-path `shape()`, rounded fallback). `Panel` applies it when it has a title. Anything placed in the notch must sit outside the clipped element, because clip-path clips children.
+- Sentence case everywhere. No all-caps labels, no `→` on button text, no gradient text, no blurred blobs. The only glassmorphism is the sticky landing header (requested by the product owner).
 - Numbers (`01`, `02`) only for real sequences: search rank, workflow steps.
-- Radii: frame 20px, panel 14px, control 10px, chip 8px. Shadows: `shadow-card`, `shadow-menu` only.
+- Radii: frame 28px, panel 22px, field 14px (`rounded-field`, for boxes and inputs), controls and chips are pills. Surfaces are flat; `shadow-menu` only for popovers.
 - Don't nest panels in panels; separate with spacing and `divide-line`.
 - Scores are only shown when the API returned them, labelled, with evidence nearby. `match_score` is 0–100; `fraud_score` is 0–1.
 - Fraud output is a *signal*, never a verdict: say "flagged for review", not "fraudulent".

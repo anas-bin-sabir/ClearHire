@@ -9,11 +9,11 @@ const LINKS = [
 
 export default function Navbar() {
   return (
-    <header className="bg-canvas">
-      <nav aria-label="Main" className="mx-auto flex h-20 max-w-6xl items-center justify-between gap-4 border-b border-line px-5 sm:px-8">
+    <header className="sticky top-0 z-40 border-b border-line/70 bg-canvas/80 backdrop-blur-xl backdrop-saturate-150 supports-[not(backdrop-filter:blur(1px))]:bg-canvas">
+      <nav aria-label="Main" className="mx-auto flex h-16 max-w-6xl items-center justify-between gap-3 px-4 sm:h-20 sm:px-8">
         <Link href="/" className="flex items-center gap-2.5 rounded-full" aria-label="ClearHire home">
           <Image src="/clearhire-logo-rremoveBG.png" alt="" width={28} height={28} className="h-7 w-7 object-contain" />
-          <span className="font-display text-[28px] leading-none text-fg">ClearHire</span>
+          <span className="font-display text-[24px] leading-none text-fg sm:text-[28px]">ClearHire</span>
         </Link>
         <ul className="hidden items-center gap-1 rounded-full bg-shell p-1.5 md:flex">
           {LINKS.map(l => (
@@ -25,7 +25,7 @@ export default function Navbar() {
           ))}
         </ul>
         <div className="flex items-center gap-2">
-          <Link href="/login" className="btn btn-ghost hidden sm:inline-flex">Sign in</Link>
+          <Link href="/login" className="btn btn-ghost hidden text-fg sm:inline-flex">Sign in</Link>
           <Link href="/signup" className="btn btn-primary">Get started</Link>
         </div>
       </nav>

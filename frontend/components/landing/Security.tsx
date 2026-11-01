@@ -10,7 +10,7 @@ const PRINCIPLES = [
 export default function Security() {
   const [lead, ...rest] = PRINCIPLES
   return (
-    <section id="security" className="scroll-mt-4 bg-shell text-on-dark">
+    <section id="security" className="scroll-mt-24 bg-shell text-on-dark">
       <div className="mx-auto max-w-6xl px-5 py-20 sm:px-8 lg:py-24">
         <div className="flex items-start justify-between gap-6">
           <h2 className="max-w-2xl text-[44px] sm:text-[56px]">Built to be checked, by the people who use it</h2>

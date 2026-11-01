@@ -21,7 +21,7 @@ export default function Footer() {
         <div className="mx-auto grid max-w-6xl grid-cols-1 gap-10 px-5 pb-8 pt-16 sm:px-8 md:grid-cols-[minmax(0,1fr)_auto]">
           <div>
             <p className="max-w-sm text-[14px] leading-relaxed text-fg-2">Describe the work, get a ranked shortlist with evidence, and build a team inside your budget.</p>
-            <p className="font-display mt-6 text-[88px] leading-[0.9] text-fg sm:text-[120px]">ClearHire</p>
+            <p className="font-display mt-6 text-[64px] leading-[0.9] text-fg min-[400px]:text-[88px] sm:text-[120px]">ClearHire</p>
           </div>
           <nav aria-label="Footer" className="flex gap-16">
             {COLUMNS.map(c => (
