@@ -13,6 +13,14 @@ const jakarta = localFont({
   display: "swap",
 });
 
+// Condensed display face for headings (SIL OFL, see fonts/Anton-OFL.txt).
+const anton = localFont({
+  src: "./fonts/Anton-Regular.woff2",
+  variable: "--font-anton",
+  weight: "400",
+  display: "swap",
+});
+
 const jetbrainsMono = localFont({
   src: "./fonts/JetBrainsMono-Variable.woff2",
   variable: "--font-jetbrains",
@@ -32,7 +40,7 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html lang="en" className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`} suppressHydrationWarning>
+    <html lang="en" className={`${jakarta.variable} ${anton.variable} ${jetbrainsMono.variable} h-full`} suppressHydrationWarning>
       <body className="min-h-full bg-shell text-fg flex flex-col">
         <Providers>{children}</Providers>
         <CookieConsentBanner />
