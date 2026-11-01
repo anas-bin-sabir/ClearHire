@@ -49,7 +49,7 @@ export default function LoginPage() {
 
   return (
     <AuthFrame>
-      <h1 className="text-[28px] font-bold tracking-tight text-fg">Sign in</h1>
+      <h1 className="text-[48px] text-fg">Sign in</h1>
       <p className="mt-1.5 text-sm text-fg-2">Use the email you registered with. You’ll land on your workspace.</p>
 
       <form onSubmit={handleSubmit} className="mt-8 space-y-5">

@@ -185,7 +185,7 @@ export default function AdminProjectsPage() {
                             {proj.contracts && proj.contracts.length > 0 ? (
                               <ul className="mt-2 grid grid-cols-1 gap-2 md:grid-cols-2 xl:grid-cols-3">
                                 {proj.contracts.map(contract => (
-                                  <li key={contract.id} className="flex items-center justify-between gap-3 rounded-control border border-line bg-panel px-3 py-2.5">
+                                  <li key={contract.id} className="flex items-center justify-between gap-3 rounded-field border border-line bg-panel px-3 py-2.5">
                                     <div className="min-w-0">
                                       <p className="text-[13px] font-semibold text-fg">Freelancer #{contract.freelancer_id}</p>
                                       <p className="mt-0.5 flex items-center gap-2 text-xs text-fg-2">
@@ -241,7 +241,7 @@ export default function AdminProjectsPage() {
         </form>
         <div className="mt-4" aria-live="polite">
           {searchResults.length > 0 ? (
-            <ul className="divide-y divide-line rounded-control border border-line">
+            <ul className="divide-y divide-line rounded-field border border-line">
               {searchResults.map(fl => (
                 <li key={fl.id} className="flex items-center gap-3 px-3 py-2.5">
                   <Avatar name={fl.name} size="sm" />

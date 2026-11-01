@@ -262,7 +262,7 @@ export default function EditProfilePage() {
                 </button>
               </div>
             </div>
-            <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+            <div className="flex max-h-44 flex-wrap gap-1.5 overflow-y-auto rounded-field border border-line bg-sunken p-2">
               {filteredSkills.length === 0 ? (
                 <p className="p-1 text-[13px] text-fg-2">No listed skill matches. Add it as your own.</p>
               ) : filteredSkills.map(skill => {

@@ -84,7 +84,7 @@ export default function SeederPage() {
               </div>
             </div>
 
-            <label className={`flex cursor-pointer items-start gap-3 rounded-control border p-4 transition-colors duration-150 ${reset ? 'border-danger bg-danger-tint' : 'border-line'}`}>
+            <label className={`flex cursor-pointer items-start gap-3 rounded-field border p-4 transition-colors duration-150 ${reset ? 'border-danger bg-danger-tint' : 'border-line'}`}>
               <input
                 type="checkbox"
                 checked={reset}
@@ -118,7 +118,7 @@ export default function SeederPage() {
                 <p className="flex items-center gap-2 text-sm font-semibold text-ok">
                   <CheckCircle2 className="h-4 w-4" aria-hidden /> Seeding finished
                 </p>
-                <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-control border border-line bg-line">
+                <dl className="grid grid-cols-2 gap-px overflow-hidden rounded-field border border-line bg-line">
                   {results.map(r => (
                     <div key={r.label} className="bg-panel px-4 py-3">
                       <dt className="text-xs text-fg-2">{r.label}</dt>

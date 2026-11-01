@@ -214,7 +214,7 @@ export default function FreelancerDetailPage() {
                   <FraudGauge score={fraud.score} confidence={fraud.confidence} size="md" />
                 </div>
                 {fraud.is_flagged && (
-                  <p role="status" className="flex gap-2 rounded-control bg-danger-tint p-3 text-[13px] font-medium text-danger">
+                  <p role="status" className="flex gap-2 rounded-field bg-danger-tint p-3 text-[13px] font-medium text-danger">
                     <AlertTriangle className="h-4 w-4 shrink-0" aria-hidden />
                     Flagged for admin review.
                   </p>

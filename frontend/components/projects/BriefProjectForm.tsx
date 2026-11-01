@@ -285,7 +285,7 @@ export function BriefProjectForm() {
 
         <div className="space-y-6 p-5 sm:p-6">
           {result.ambiguities.length > 0 && (
-            <div className="rounded-control bg-warn-tint p-4">
+            <div className="rounded-field bg-warn-tint p-4">
               <p className="flex items-center gap-2 text-sm font-semibold text-warn">
                 <AlertTriangle className="h-4 w-4" aria-hidden /> Check these before creating the project
               </p>
@@ -502,7 +502,7 @@ export function BriefProjectForm() {
           {draft.constraints.length > 0 && (
             <div className="border-t border-line pt-5">
               <p className="field-label">Other requirements</p>
-              <ul className="divide-y divide-line rounded-control border border-line">
+              <ul className="divide-y divide-line rounded-field border border-line">
                 {draft.constraints.map(c => (
                   <li key={c} className="flex items-center justify-between gap-2 px-3 py-2 text-sm text-fg">
                     <span>{c}</span>

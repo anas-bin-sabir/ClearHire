@@ -212,7 +212,7 @@ export default function TeamBuilderPage() {
               onChange={e => setSkillQuery(e.target.value)}
               className="input mb-2"
             />
-            <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+            <div className="flex max-h-36 flex-wrap gap-1.5 overflow-y-auto rounded-field border border-line bg-sunken p-2">
               {filteredSkills.length === 0 ? (
                 <p className="p-1 text-xs text-fg-2">{allSkills.length === 0 ? 'Loading skills' : 'No skills match.'}</p>
               ) : filteredSkills.map(skill => {

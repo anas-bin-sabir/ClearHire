@@ -17,17 +17,17 @@ export function AuthFrame({ children }: { children: React.ReactNode }) {
           <span className="grid h-9 w-9 place-items-center rounded-control bg-shell-2">
             <Image src="/clearhire-logo-rremoveBG.png" alt="" width={24} height={24} className="h-6 w-6 object-contain" />
           </span>
-          <span className="text-[15px] font-bold tracking-tight">ClearHire</span>
+          <span className="font-display text-[26px] leading-none">ClearHire</span>
         </Link>
 
         <div className="hidden flex-1 flex-col justify-center lg:flex">
-          <p className="max-w-md text-[40px] font-bold leading-[1.08] tracking-tight">
+          <p className="font-display max-w-md text-[64px] leading-[0.98]">
             Find the right people. Build the right team.
           </p>
           <ul className="mt-10 max-w-md space-y-6">
             {POINTS.map(p => (
-              <li key={p.title} className="border-l-2 border-teal pl-4">
-                <p className="text-[15px] font-semibold">{p.title}</p>
+              <li key={p.title} className="border-l-4 border-primary pl-4">
+                <p className="font-display text-[22px] leading-tight">{p.title}</p>
                 <p className="mt-1 text-sm leading-relaxed text-on-dark-2">{p.body}</p>
               </li>
             ))}

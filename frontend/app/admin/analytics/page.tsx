@@ -20,7 +20,7 @@ function ChartTooltip({ active, payload, label }: TooltipContentProps) {
   if (!active || !payload?.length) return null
   const entry = payload[0]
   return (
-    <div className="rounded-chip border border-line bg-panel px-3 py-2 text-xs shadow-menu">
+    <div className="rounded-field border border-line bg-panel px-3 py-2 text-xs shadow-menu">
       <p className="text-base font-bold tabular-nums text-fg">{entry.value}</p>
       <p className="text-fg-2">{label}</p>
     </div>

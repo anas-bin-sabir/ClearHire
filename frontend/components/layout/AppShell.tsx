@@ -102,7 +102,7 @@ function Brand({ area, compact }: { area: string; compact?: boolean }) {
       </span>
       {!compact && (
         <span className="min-w-0">
-          <span className="block text-[15px] font-bold tracking-tight text-on-dark">ClearHire</span>
+          <span className="font-display block text-[22px] leading-none text-on-dark">ClearHire</span>
           <span className="block truncate text-xs text-on-dark-2">{area}</span>
         </span>
       )}
@@ -138,7 +138,7 @@ function NavList({
                 compact ? 'justify-center' : 'gap-3 px-3'
               } ${
                 active
-                  ? 'bg-primary text-on-dark'
+                  ? 'bg-primary font-semibold text-on-primary'
                   : 'text-on-dark-2 hover:bg-shell-2/60 hover:text-on-dark'
               }`}
             >

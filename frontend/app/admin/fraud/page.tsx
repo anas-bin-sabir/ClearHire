@@ -114,7 +114,7 @@ export default function FraudQueuePage() {
                       onClick={() => toggleRow(item.id)}
                       aria-expanded={!!item.expanded}
                       aria-controls={panelId}
-                      className="flex min-w-0 flex-1 items-center gap-3 rounded-control text-left"
+                      className="flex min-w-0 flex-1 items-center gap-3 rounded-field text-left"
                     >
                       <ChevronDown className={`h-4 w-4 shrink-0 text-fg-2 transition-transform duration-150 ${item.expanded ? 'rotate-180' : ''}`} aria-hidden />
                       <Avatar name={item.name} />

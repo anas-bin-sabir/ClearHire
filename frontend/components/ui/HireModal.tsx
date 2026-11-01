@@ -84,7 +84,7 @@ export function HireModal({ freelancerId, freelancerName, onSuccess, onClose, op
           <Spinner /> Loading your open projects
         </p>
       ) : projects && projects.length === 0 ? (
-        <div className="rounded-control border border-dashed border-line-strong px-4 py-6 text-center">
+        <div className="rounded-field border border-dashed border-line-strong px-4 py-6 text-center">
           <p className="text-sm text-fg-2">You have no open projects. Post one first, then hire into it.</p>
           <Link href="/client/projects/new" className="btn btn-sm btn-secondary mt-3">
             <Plus aria-hidden /> Post a project

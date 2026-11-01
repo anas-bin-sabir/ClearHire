@@ -57,7 +57,7 @@ export function Notice({ tone, children }: { tone: 'ok' | 'danger' | 'warn' | 'a
     ai: 'bg-teal-tint text-teal-ink',
   }[tone]
   return (
-    <div role={tone === 'danger' ? 'alert' : 'status'} className={`rounded-control px-4 py-3 text-sm font-medium ${styles}`}>
+    <div role={tone === 'danger' ? 'alert' : 'status'} className={`rounded-field px-4 py-3 text-sm font-medium ${styles}`}>
       {children}
     </div>
   )

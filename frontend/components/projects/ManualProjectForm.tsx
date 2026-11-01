@@ -112,7 +112,7 @@ export function ManualProjectForm() {
             >
               <span
                 className={`grid h-6 w-6 shrink-0 place-items-center rounded-full text-xs tabular-nums ${
-                  done ? 'bg-teal-tint text-teal-ink' : current ? 'bg-primary text-on-dark' : 'bg-sunken text-fg-2'
+                  done ? 'bg-teal-tint text-teal-ink' : current ? 'bg-primary text-on-primary' : 'bg-sunken text-fg-2'
                 }`}
               >
                 {done ? <Check className="h-3.5 w-3.5" aria-label="done" /> : s.num}
@@ -220,7 +220,7 @@ export function ManualProjectForm() {
               </div>
             </div>
 
-            <div className="flex max-h-44 min-h-11 flex-wrap gap-1.5 overflow-y-auto rounded-control border border-line bg-sunken p-2">
+            <div className="flex max-h-44 min-h-11 flex-wrap gap-1.5 overflow-y-auto rounded-field border border-line bg-sunken p-2">
               {filteredSkills.length === 0 ? (
                 <p className="p-1 text-[13px] text-fg-2">
                   {availableSkills.length === 0 ? 'Loading skills' : 'No skills match your search. Add it as a custom skill.'}

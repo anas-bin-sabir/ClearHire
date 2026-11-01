@@ -7,20 +7,29 @@ interface Props extends Omit<React.HTMLAttributes<HTMLElement>, 'title'> {
   flush?: boolean
 }
 
-/** White surface with a hairline border. The only card primitive; don't nest it. */
+/**
+ * White folder-tab card. With a title, the top-right corner steps down into a notch:
+ * the title sits on the raised tab and actions sit in the notch, outside the clipped
+ * shape so they stay visible. The only card primitive; don't nest it.
+ */
 export function Panel({ as: Tag = 'section', title, description, actions, flush, className = '', children, ...rest }: Props) {
+  const tabbed = Boolean(title || actions)
   return (
-    <Tag className={`rounded-panel border border-line-2 bg-panel shadow-card ${className}`} {...rest}>
-      {(title || actions) && (
-        <div className="flex items-start justify-between gap-3 border-b border-line px-5 py-4">
-          <div className="min-w-0 flex-1">
-            {title && <h2 className="text-[15px] font-semibold text-fg">{title}</h2>}
-            {description && <p className="mt-0.5 text-[13px] text-fg-2">{description}</p>}
+    <Tag className={`relative min-w-0 ${className}`} {...rest}>
+      <div className={`h-full bg-panel ${tabbed ? 'notch' : 'rounded-panel'}`}>
+        {tabbed && (
+          <div className="px-5 pt-4">
+            {title && (
+              <h2 className="pr-[calc(var(--notch-w,38%)+0.5rem)] text-[22px] text-fg">{title}</h2>
+            )}
+            {description && <p className="mt-2 text-[13px] leading-relaxed text-fg-2">{description}</p>}
           </div>
-          {actions && <div className="flex shrink-0 items-center gap-2">{actions}</div>}
-        </div>
+        )}
+        <div className={flush ? (tabbed ? 'pt-3' : '') : tabbed ? 'px-5 pb-5 pt-4' : 'p-5'}>{children}</div>
+      </div>
+      {actions && (
+        <div className="absolute right-0 top-0 flex h-11 w-[38%] items-center justify-end gap-2">{actions}</div>
       )}
-      <div className={flush ? '' : 'p-5'}>{children}</div>
     </Tag>
   )
 }
