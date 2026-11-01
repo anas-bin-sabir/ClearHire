@@ -1,25 +1,29 @@
 import type { Metadata } from "next";
-import { Sora, JetBrains_Mono } from "next/font/google";
+import localFont from "next/font/local";
 import "./globals.css";
 import { Providers } from "@/components/providers";
-import { ThemeContextProvider } from "./ThemeContextHelper";
 import { CookieConsentBanner } from "@/components/layout/CookieConsentBanner";
 
-const sora = Sora({
-  variable: "--font-sora",
-  subsets: ["latin"],
-  weight: ["300", "400", "500", "600", "700", "800"],
+// Self-hosted (latin, variable weight) so dev/build don't depend on reaching
+// fonts.gstatic.com, which next/font/google fetches at compile time.
+const jakarta = localFont({
+  src: "./fonts/PlusJakartaSans-Variable.woff2",
+  variable: "--font-jakarta",
+  weight: "200 800",
+  display: "swap",
 });
 
-const jetbrainsMono = JetBrains_Mono({
+const jetbrainsMono = localFont({
+  src: "./fonts/JetBrainsMono-Variable.woff2",
   variable: "--font-jetbrains",
-  subsets: ["latin"],
-  weight: ["400", "500"],
+  weight: "100 800",
+  display: "swap",
 });
 
 export const metadata: Metadata = {
-  title: "ClearHire — AI Freelance Matchmaking & Trust Verification",
-  description: "Verify credentials, solve team allocation constraints, and monitor account risks in real-time.",
+  title: "ClearHire — find the right people, build the right team",
+  description:
+    "Describe a project in plain language. ClearHire extracts the requirements, ranks freelancers with evidence, assembles teams within budget, and flags risky profiles for review.",
 };
 
 export default function RootLayout({
@@ -28,18 +32,11 @@ export default function RootLayout({
   children: React.ReactNode;
 }>) {
   return (
-    <html
-      lang="en"
-      className={`${sora.variable} ${jetbrainsMono.variable} h-full antialiased dark`}
-    >
-      <body className="min-h-full bg-background text-foreground flex flex-col transition-colors duration-300">
-        <ThemeContextProvider>
-          <Providers>{children}</Providers>
-          <CookieConsentBanner />
-        </ThemeContextProvider>
+    <html lang="en" className={`${jakarta.variable} ${jetbrainsMono.variable} h-full`} suppressHydrationWarning>
+      <body className="min-h-full bg-shell text-fg flex flex-col">
+        <Providers>{children}</Providers>
+        <CookieConsentBanner />
       </body>
     </html>
   );
 }
-
-
