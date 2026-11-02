@@ -167,6 +167,13 @@ class Settings(BaseSettings):
             raise ValueError(f"DB_SSL_MODE must be one of {', '.join(DB_SSL_MODES)}")
         return mode
 
+    @field_validator("cors_origin_regex", mode="before")
+    @classmethod
+    def _empty_regex_is_none(cls, value: object) -> object:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
+
     @field_validator("db_statement_cache_size", mode="before")
     @classmethod
     def _empty_cache_size_is_none(cls, value: object) -> object:

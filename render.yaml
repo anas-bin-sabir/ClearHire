@@ -2,9 +2,17 @@ services:
   - type: web
     name: clearhire-api
     runtime: python
+    plan: free
+    # Pick the Render region closest to your Supabase project's region (every query
+    # crosses that link): Supabase eu-* -> frankfurt, ap-south-1/ap-southeast-1 ->
+    # singapore, us-east-1 -> virginia, us-west-1 -> oregon.
+    region: frankfurt
     rootDir: backend
-    buildCommand: pip install -r requirements.txt
-    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT
+    # Download the embedding model at build time so cold starts don't fetch it.
+    buildCommand: >-
+      pip install -r requirements.txt &&
+      python -c "from app.ai.embeddings import warm_up; warm_up()"
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips='*'
     healthCheckPath: /health
     envVars:
       - key: PYTHON_VERSION
@@ -17,31 +25,42 @@ services:
         value: "5"
       - key: DB_MAX_OVERFLOW
         value: "5"
+      # Supabase Auth owns passwords and issues the tokens the API verifies.
+      - key: AUTH_PROVIDER
+        value: supabase
+      - key: SUPABASE_URL
+        sync: false
+      - key: SUPABASE_ANON_KEY
+        sync: false
+      - key: SUPABASE_SERVICE_ROLE_KEY
+        sync: false
+      # Only for projects still on the legacy JWT secret; leave empty otherwise.
+      - key: SUPABASE_JWT_SECRET
+        sync: false
       - key: DEBUG
         value: "false"
       - key: SECRET_KEY
         generateValue: true
       - key: CORS_ORIGINS
-        sync: false
-      # Language model, optional (deterministic fallbacks without one). Put a Google
-      # AI Studio key in GEMINI_API_KEY; LLM_PROVIDER=auto then uses Gemini.
+        value: https://clearhire-talent.vercel.app
+      # Default allows localhost only; no other origins in production.
+      - key: CORS_ORIGIN_REGEX
+        value: ""
+      # Gemini (Google AI Studio key). Without a key every AI feature falls back to
+      # its deterministic path.
       - key: LLM_PROVIDER
-        value: auto
+        value: gemini
       - key: GEMINI_API_KEY
         sync: false
       - key: GEMINI_MODEL
         value: gemini-3.5-flash-lite
-      - key: ANTHROPIC_API_KEY
-        sync: false
+      # Local ONNX embeddings (MiniLM, 384-d), cached inside the build.
+      - key: EMBEDDING_PROVIDER
+        value: local
+      - key: EMBEDDING_CACHE_DIR
+        value: .cache/fastembed
+      # Graph features run on Supabase Postgres (recursive CTEs); no Neo4j.
+      - key: NEO4J_URI
+        value: ""
       - key: SEED_ENABLED
         value: "false"
-      # Optional Neo4j graph read model. Neo4j AuraDB Free is enough for demo scale:
-      # use its neo4j+s://<id>.databases.neo4j.io URI. Leave NEO4J_URI unset to run
-      # Postgres-only (graph features use the Postgres fallback). After enabling,
-      # call POST /admin/graph/rebuild once.
-      - key: NEO4J_URI
-        sync: false
-      - key: NEO4J_USER
-        sync: false
-      - key: NEO4J_PASSWORD
-        sync: false
