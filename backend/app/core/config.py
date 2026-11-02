@@ -21,6 +21,25 @@ class Settings(BaseSettings):
     access_token_expire_minutes: int = Field(
         default=60 * 24, alias="ACCESS_TOKEN_EXPIRE_MINUTES"
     )
+    # Who owns passwords and issues tokens. "supabase" = Supabase Auth (passwords live
+    # in auth.users, the API verifies Supabase access tokens); "local" = the app's own
+    # PBKDF2 hashes and HS256 JWTs (tests, offline dev). "auto" = supabase when
+    # SUPABASE_URL is set.
+    auth_provider: Literal["auto", "local", "supabase"] = Field(
+        default="auto", alias="AUTH_PROVIDER"
+    )
+    # Project URL, e.g. https://<ref>.supabase.co
+    supabase_url: str = Field(default="", alias="SUPABASE_URL")
+    # Publishable (sb_publishable_...) or legacy anon key: password sign-in and refresh.
+    supabase_anon_key: str = Field(default="", alias="SUPABASE_ANON_KEY")
+    # Secret (sb_secret_...) or legacy service_role key: creating users server-side.
+    # Server-only; never expose it to the frontend.
+    supabase_service_role_key: str = Field(default="", alias="SUPABASE_SERVICE_ROLE_KEY")
+    # Only for projects still on the legacy shared HS256 JWT secret. Projects using
+    # signing keys (the default for new projects) are verified through JWKS instead.
+    supabase_jwt_secret: str = Field(default="", alias="SUPABASE_JWT_SECRET")
+    supabase_timeout_seconds: float = Field(default=10.0, alias="SUPABASE_TIMEOUT_SECONDS")
+
     cors_origins: str = Field(
         default=(
             "http://localhost:3000,http://127.0.0.1:3000,"
@@ -154,6 +173,12 @@ class Settings(BaseSettings):
         if isinstance(value, str) and not value.strip():
             return None
         return value
+
+    @property
+    def uses_supabase_auth(self) -> bool:
+        if self.auth_provider == "auto":
+            return bool(self.supabase_url)
+        return self.auth_provider == "supabase"
 
     @property
     def cors_origin_list(self) -> List[str]:

@@ -1,4 +1,6 @@
-from sqlalchemy import select
+import uuid
+
+from sqlalchemy import select, update
 from sqlalchemy.dialects.postgresql import insert
 from sqlalchemy.ext.asyncio import AsyncSession
 
@@ -18,6 +20,21 @@ class UserRepository:
         result = await self._session.execute(select(User).where(User.email == normalized))
         return result.scalar_one_or_none()
 
+    async def get_by_auth_id(self, auth_user_id: str | uuid.UUID) -> User | None:
+        result = await self._session.execute(
+            select(User).where(User.auth_user_id == uuid.UUID(str(auth_user_id)))
+        )
+        return result.scalar_one_or_none()
+
+    async def link_auth_id(self, user_id: int, auth_user_id: str | uuid.UUID) -> None:
+        """Attach a Supabase Auth account. The local hash is dropped: Supabase owns
+        the password from now on."""
+        await self._session.execute(
+            update(User)
+            .where(User.id == user_id)
+            .values(auth_user_id=uuid.UUID(str(auth_user_id)), password_hash=None)
+        )
+
     async def create(
         self,
         *,
@@ -25,12 +42,14 @@ class UserRepository:
         email: str,
         role: str,
         password_hash: str | None = None,
+        auth_user_id: str | uuid.UUID | None = None,
     ) -> User:
         user = User(
             name=name,
             email=email.strip().lower(),
             role=role,
             password_hash=password_hash,
+            auth_user_id=uuid.UUID(str(auth_user_id)) if auth_user_id else None,
         )
         self._session.add(user)
         await self._session.flush()

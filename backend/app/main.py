@@ -7,6 +7,7 @@ from fastapi.middleware.cors import CORSMiddleware
 from fastapi.routing import APIRoute
 
 from app.ai.embeddings import warm_up
+from app.core import supabase_auth
 from app.core.config import settings
 from app.db import close_postgres, init_postgres
 from app.db.repositories.postgres import SkillRepository
@@ -69,6 +70,7 @@ async def lifespan(app: FastAPI):
     finally:
         await graph_sync.stop_drainer()
         await graph_driver.close_driver()
+        await supabase_auth.close_client()
         await close_postgres()
 
 

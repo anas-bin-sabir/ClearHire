@@ -23,6 +23,9 @@ os.environ.update(
         "GEMINI_API_KEY": "",
         "LLM_PROVIDER": "auto",
         "SECRET_KEY": "test-secret",
+        # Local auth unless a test opts in to Supabase mode with mocked calls.
+        "AUTH_PROVIDER": "local",
+        "SUPABASE_URL": "",
         "AUTO_MIGRATE": "true",
         # Graph tests opt in to Neo4j via the neo4j_graph fixture; the rest of the
         # suite runs with it disabled (Postgres fallback).
