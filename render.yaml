@@ -6,7 +6,7 @@ services:
     # Pick the Render region closest to your Supabase project's region (every query
     # crosses that link): Supabase eu-* -> frankfurt, ap-south-1/ap-southeast-1 ->
     # singapore, us-east-1 -> virginia, us-west-1 -> oregon.
-    region: eu-west-1
+    region: frankfurt
     rootDir: backend
     # Download the embedding model at build time so cold starts don't fetch it.
     buildCommand: >-
