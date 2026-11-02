@@ -16,7 +16,7 @@ function ApiTokenSync() {
 
 export function Providers({ children }: { children: React.ReactNode }) {
   return (
-    <SessionProvider>
+    <SessionProvider refetchInterval={4 * 60}>
       <ApiTokenSync />
       <ThemeProvider>{children}</ThemeProvider>
     </SessionProvider>

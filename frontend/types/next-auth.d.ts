@@ -7,10 +7,13 @@ declare module 'next-auth' {
     role: Role
     freelancerId?: number
     accessToken: string
+    refreshToken?: string
+    accessTokenExpires?: number
   }
 
   interface Session {
     accessToken?: string
+    error?: 'RefreshAccessTokenError'
     user?: {
       name?: string | null
       email?: string | null
@@ -26,5 +29,8 @@ declare module 'next-auth/jwt' {
     role?: Role
     freelancerId?: number
     accessToken?: string
+    refreshToken?: string
+    accessTokenExpires?: number
+    error?: 'RefreshAccessTokenError'
   }
 }

@@ -461,9 +461,8 @@ async function currentToken(): Promise<string | undefined> {
   return apiToken
 }
 
-async function req<T>(path: string, opts?: RequestInit): Promise<T> {
-  const token = await currentToken()
-  const res = await fetch(`${BASE}${path}`, {
+function send(path: string, token: string | undefined, opts?: RequestInit) {
+  return fetch(`${BASE}${path}`, {
     ...opts,
     headers: {
       'Content-Type': 'application/json',
@@ -471,6 +470,19 @@ async function req<T>(path: string, opts?: RequestInit): Promise<T> {
       ...opts?.headers,
     },
   })
+}
+
+async function req<T>(path: string, opts?: RequestInit): Promise<T> {
+  const token = await currentToken()
+  let res = await send(path, token, opts)
+  // An expired token: fetching the session renews it (see lib/auth.ts), then retry once.
+  if (res.status === 401 && token && typeof window !== 'undefined') {
+    const fresh = (await getSession())?.accessToken
+    if (fresh && fresh !== token) {
+      apiToken = fresh
+      res = await send(path, fresh, opts)
+    }
+  }
   if (!res.ok) throw new Error(`${res.status} ${await res.text()}`)
   return res.json()
 }
