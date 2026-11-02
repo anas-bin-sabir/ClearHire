@@ -47,6 +47,10 @@ PAKISTANI_LAST_NAMES = [
 ]
 LOCATIONS = ["Karachi", "Lahore", "Islamabad", "Peshawar", "Faisalabad", "Multan", "Rawalpindi", "Remote"]
 
+# Meets the signup rule (8+ chars, a letter and a digit) and Supabase Auth's minimum,
+# so seeded accounts can move to Supabase on first login.
+DEMO_PASSWORD = "demo1234"
+
 
 @dataclass
 class SeedResult:
@@ -84,7 +88,7 @@ class DatabaseSeeder:
 
         # Also restores the curated skill adjacency deleted above.
         await self._taxonomy.sync_taxonomy()
-        demo_pwd_hash = get_password_hash("demo")
+        demo_pwd_hash = get_password_hash(DEMO_PASSWORD)
 
         await self._users.upsert(
             name="Admin System",

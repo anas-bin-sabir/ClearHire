@@ -4,6 +4,10 @@ from fastapi import Depends, HTTPException, status
 from fastapi.security import HTTPAuthorizationCredentials, HTTPBearer
 from sqlalchemy.ext.asyncio import AsyncSession
 
+from jose import JWTError
+
+from app.core import supabase_auth
+from app.core.config import settings
 from app.core.security import decode_access_token
 from app.db.repositories.postgres import (
     ActivityLogRepository,
@@ -87,6 +91,29 @@ def get_ai_explanation_repo(
     return AIExplanationRepository(session)
 
 
+async def _user_from_supabase_token(token: str, user_repo: UserRepository) -> User | None:
+    try:
+        claims = await supabase_auth.verify_access_token(token)
+    except JWTError as exc:
+        raise HTTPException(
+            status_code=status.HTTP_401_UNAUTHORIZED,
+            detail="Could not validate credentials",
+            headers={"WWW-Authenticate": "Bearer"},
+        ) from exc
+    except supabase_auth.SupabaseUnavailable as exc:
+        raise HTTPException(
+            status_code=status.HTTP_503_SERVICE_UNAVAILABLE,
+            detail="Sign-in is temporarily unavailable",
+        ) from exc
+    subject = claims.get("sub")
+    if not subject:
+        return None
+    try:
+        return await user_repo.get_by_auth_id(subject)
+    except ValueError:  # sub isn't a UUID
+        return None
+
+
 async def get_current_user(
     credentials: HTTPAuthorizationCredentials | None = Depends(bearer_scheme),
     user_repo: UserRepository = Depends(get_user_repo),
@@ -97,8 +124,11 @@ async def get_current_user(
             detail="Not authenticated",
             headers={"WWW-Authenticate": "Bearer"},
         )
-    payload = decode_access_token(credentials.credentials)
-    user = await user_repo.get_by_id(int(payload["user_id"]))
+    if settings.uses_supabase_auth:
+        user = await _user_from_supabase_token(credentials.credentials, user_repo)
+    else:
+        payload = decode_access_token(credentials.credentials)
+        user = await user_repo.get_by_id(int(payload["user_id"]))
     if user is None:
         raise HTTPException(
             status_code=status.HTTP_401_UNAUTHORIZED,

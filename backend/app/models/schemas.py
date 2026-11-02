@@ -417,6 +417,7 @@ class HealthResponse(BaseModel):
     # True when the active LLM provider has a key (name kept for API compatibility).
     anthropic_configured: bool
     llm_provider: Literal["gemini", "claude"] | None = None
+    auth_provider: Literal["supabase", "local"] = "local"
 
 
 # --- Analytics ---

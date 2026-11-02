@@ -41,4 +41,5 @@ async def health() -> HealthResponse:
         neo4j=neo4j_status,
         anthropic_configured=llm.is_configured(),
         llm_provider=llm.provider() if llm.is_configured() else None,
+        auth_provider="supabase" if settings.uses_supabase_auth else "local",
     )
