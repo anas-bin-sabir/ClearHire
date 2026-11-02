@@ -56,15 +56,17 @@ The schema is managed by Alembic and applied automatically on startup (`AUTO_MIG
 
 ## Hosted database (Supabase)
 
-In production the API uses Supabase as plain hosted Postgres (pgvector included). Auth stays in the app and only FastAPI talks to the database. Set `DATABASE_URL` to the session pooler URL (`postgresql+asyncpg://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`), then move local data with `backend/scripts/migrate_to_supabase.sh` or reseed with `--reseed`. The full runbook, covering connection options, security and free-tier limits, is in [`docs/SUPABASE.md`](docs/SUPABASE.md). Tests always run on the local Docker database.
+In production the API uses Supabase for the database (Postgres + pgvector; graph features run on recursive CTEs, no Neo4j) and for authentication (Supabase Auth owns passwords and issues the tokens FastAPI verifies). Only FastAPI talks to Supabase. Set `DATABASE_URL` to the session pooler URL (`postgresql+asyncpg://postgres.<ref>:<password>@aws-0-<region>.pooler.supabase.com:5432/postgres`), then move local data with `backend/scripts/migrate_to_supabase.sh` or reseed with `--reseed`. The full runbook, covering connection options, security and free-tier limits, is in [`docs/SUPABASE.md`](docs/SUPABASE.md). Tests always run on the local Docker database.
 
 ## Demo accounts (after seeding)
 
 | Role | Email | Password |
 |---|---|---|
-| Admin | `admin@demo.com` | `demo` |
-| Client | `client@demo.com` | `demo` |
-| Freelancer | `freelancer@demo.com` | `demo` |
+| Admin | `admin@demo.com` | `demo1234` |
+| Client | `client@demo.com` | `demo1234` |
+| Freelancer | `freelancer@demo.com` | `demo1234` |
+
+With Supabase Auth, seeded accounts are copied into Supabase on their first login.
 
 Self-signup is limited to the client and freelancer roles. Admins come from the seeder.
 
